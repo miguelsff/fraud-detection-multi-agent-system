@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls \"D:\\\\trabajos-miguel\\\\ai-developer\\\\fraud-detection-multi-agent-system\\\\backend\\\\app\\\\models\"\" 2>nul || echo \"models dir does not exist yet \")",
+      "Bash(uv run:*)",
+      "Bash(where:*)",
+      "Bash(\"D:/trabajos-miguel/ai-developer/fraud-detection-multi-agent-system/backend/.venv/Scripts/python.exe\" -c:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd backend project structure, Pydantic v2 models, config, and utilities\n\nSet up the fraud detection backend with:\n- Pydantic v2 models \\(transaction, signals, evidence, debate, decision, trace\\)\n- OrchestratorState as TypedDict for LangGraph shared state\n- Central config via pydantic-settings loading from .env\n- Dependency factories \\(async DB sessions, ChatOllama, ChromaDB\\)\n- Structured logging with structlog \\(JSON output\\)\n- @timed_agent decorator for agent execution tracing\n- Project scaffolding \\(pyproject.toml, docker-compose, CLAUDE.md\\)\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)"
+    ]
+  }
+}
