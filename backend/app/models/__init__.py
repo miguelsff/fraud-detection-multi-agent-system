@@ -2,7 +2,7 @@
 
 from .transaction import Transaction, CustomerBehavior
 from .signals import TransactionSignals, BehavioralSignals
-from .evidence import PolicyMatch, PolicyMatchResult, ThreatSource, ThreatIntelResult, AggregatedEvidence
+from .evidence import PolicyMatch, PolicyMatchResult, ThreatSource, ThreatIntelResult, AggregatedEvidence, RiskCategory
 from .debate import DebateArguments
 from .decision import FraudDecision, ExplanationResult
 from .trace import AgentTraceEntry, OrchestratorState
@@ -17,6 +17,7 @@ __all__ = [
     "ThreatSource",
     "ThreatIntelResult",
     "AggregatedEvidence",
+    "RiskCategory",
     "DebateArguments",
     "FraudDecision",
     "ExplanationResult",
