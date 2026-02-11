@@ -4,7 +4,7 @@ from .transaction import Transaction, CustomerBehavior
 from .signals import TransactionSignals, BehavioralSignals
 from .evidence import PolicyMatch, PolicyMatchResult, ThreatSource, ThreatIntelResult, AggregatedEvidence, RiskCategory
 from .debate import DebateArguments
-from .decision import FraudDecision, ExplanationResult
+from .decision import DecisionType, FraudDecision, ExplanationResult
 from .trace import AgentTraceEntry, OrchestratorState
 
 __all__ = [
@@ -19,6 +19,7 @@ __all__ = [
     "AggregatedEvidence",
     "RiskCategory",
     "DebateArguments",
+    "DecisionType",
     "FraudDecision",
     "ExplanationResult",
     "AgentTraceEntry",

@@ -44,22 +44,22 @@ Detailed architecture documentation (in Spanish) lives in `.claude/docs/arquitec
 cd backend
 
 # Install dependencies (uses uv, Python 3.13)
-uv sync
+python -m uv sync
 
 # Install with dev dependencies
-uv sync --group dev
+python -m uv sync --group dev
 
 # Run the backend server
-uv run uvicorn app.main:app --reload
+python -m uv run uvicorn app.main:app --reload
 
 # Run all tests
-uv run pytest
+python -m uv run pytest
 
 # Run a single test file
-uv run pytest tests/test_agents/test_example.py
+python -m uv run pytest tests/test_agents/test_example.py
 
 # Run a specific test
-uv run pytest tests/test_agents/test_example.py::test_function_name -v
+python -m uv run pytest tests/test_agents/test_example.py::test_function_name -v
 
 # Start PostgreSQL (from repo root)
 docker compose -f devops/docker-compose.yml up -d
