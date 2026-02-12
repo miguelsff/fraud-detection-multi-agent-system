@@ -1,0 +1,134 @@
+[
+  {
+    "transaction": {
+      "transaction_id": "T-1001",
+      "customer_id": "C-501",
+      "amount": 1800.00,
+      "currency": "PEN",
+      "country": "PE",
+      "channel": "web",
+      "device_id": "D-01",
+      "timestamp": "2025-01-15T03:15:00Z",
+      "merchant_id": "M-200"
+    },
+    "customer_behavior": {
+      "customer_id": "C-501",
+      "usual_amount_avg": 500.00,
+      "usual_hours": "08:00-22:00",
+      "usual_countries": ["PE"],
+      "usual_devices": ["D-01", "D-02"]
+    },
+    "expected_outcome": "CHALLENGE",
+    "reason": "Monto alto (3.6x promedio) + fuera de horario habitual, pero país y device conocidos"
+  },
+  {
+    "transaction": {
+      "transaction_id": "T-1002",
+      "customer_id": "C-502",
+      "amount": 8500.00,
+      "currency": "USD",
+      "country": "NG",
+      "channel": "mobile",
+      "device_id": "D-99",
+      "timestamp": "2025-01-15T02:00:00Z",
+      "merchant_id": "M-305"
+    },
+    "customer_behavior": {
+      "customer_id": "C-502",
+      "usual_amount_avg": 500.00,
+      "usual_hours": "08:00-22:00",
+      "usual_countries": ["PE", "CL"],
+      "usual_devices": ["D-03"]
+    },
+    "expected_outcome": "BLOCK",
+    "reason": "Monto muy alto (17x promedio) + país inusual (Nigeria) + device desconocido + fuera de horario"
+  },
+  {
+    "transaction": {
+      "transaction_id": "T-1003",
+      "customer_id": "C-503",
+      "amount": 250.00,
+      "currency": "PEN",
+      "country": "PE",
+      "channel": "web",
+      "device_id": "D-03",
+      "timestamp": "2025-01-15T14:30:00Z",
+      "merchant_id": "M-150"
+    },
+    "customer_behavior": {
+      "customer_id": "C-503",
+      "usual_amount_avg": 500.00,
+      "usual_hours": "08:00-22:00",
+      "usual_countries": ["PE"],
+      "usual_devices": ["D-03", "D-04"]
+    },
+    "expected_outcome": "APPROVE",
+    "reason": "Monto bajo (0.5x promedio) + país usual + horario normal + device conocido - perfil normal"
+  },
+  {
+    "transaction": {
+      "transaction_id": "T-1004",
+      "customer_id": "C-504",
+      "amount": 2000.00,
+      "currency": "USD",
+      "country": "CO",
+      "channel": "web",
+      "device_id": "D-01",
+      "timestamp": "2025-01-15T16:00:00Z",
+      "merchant_id": "M-280"
+    },
+    "customer_behavior": {
+      "customer_id": "C-504",
+      "usual_amount_avg": 500.00,
+      "usual_hours": "08:00-22:00",
+      "usual_countries": ["PE"],
+      "usual_devices": ["D-01"]
+    },
+    "expected_outcome": "ESCALATE_TO_HUMAN",
+    "reason": "Ambiguo: monto alto (4x promedio) pero device conocido, país nuevo (Colombia) pero cercano y bajo riesgo"
+  },
+  {
+    "transaction": {
+      "transaction_id": "T-1005",
+      "customer_id": "C-505",
+      "amount": 3000.00,
+      "currency": "PEN",
+      "country": "PE",
+      "channel": "mobile",
+      "device_id": "D-05",
+      "timestamp": "2025-01-15T10:00:00Z",
+      "merchant_id": "M-180"
+    },
+    "customer_behavior": {
+      "customer_id": "C-505",
+      "usual_amount_avg": 500.00,
+      "usual_hours": "08:00-22:00",
+      "usual_countries": ["PE"],
+      "usual_devices": ["D-01"]
+    },
+    "expected_outcome": "CHALLENGE",
+    "reason": "Monto alto (6x promedio) + device nuevo, pero país usual y horario normal"
+  },
+  {
+    "transaction": {
+      "transaction_id": "T-1006",
+      "customer_id": "C-506",
+      "amount": 15000.00,
+      "currency": "USD",
+      "country": "RU",
+      "channel": "web",
+      "device_id": "D-88",
+      "timestamp": "2025-01-16T01:00:00Z",
+      "merchant_id": "M-999"
+    },
+    "customer_behavior": {
+      "customer_id": "C-506",
+      "usual_amount_avg": 500.00,
+      "usual_hours": "08:00-22:00",
+      "usual_countries": ["PE"],
+      "usual_devices": ["D-01"]
+    },
+    "expected_outcome": "BLOCK",
+    "reason": "Monto extremadamente alto (30x promedio) + país alto riesgo (Rusia) + device desconocido + fuera de horario - todos los factores de riesgo"
+  }
+]

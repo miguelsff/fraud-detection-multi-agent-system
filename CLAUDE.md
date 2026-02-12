@@ -36,6 +36,7 @@ Detailed architecture documentation (in Spanish) lives in `.claude/docs/arquitec
 - `services/` — Business logic layer
 - `hitl/` — Human-in-the-loop queue and models
 - `utils/` — Structured logging (structlog), timing decorators
+- `data/` — Synthetic test data for pipeline validation
 
 ## Build & Development Commands
 
@@ -63,7 +64,23 @@ python -m uv run pytest tests/test_agents/test_example.py::test_function_name -v
 
 # Start PostgreSQL (from repo root)
 docker compose -f devops/docker-compose.yml up -d
+
+# Run seed & test with synthetic data
+python seed_test.py
+python seed_test.py --parallel  # Run analyses in parallel
 ```
+
+## Testing with Synthetic Data
+
+The `backend/data/synthetic_data.json` file contains 6 test transactions covering all outcomes:
+- T-1001: CHALLENGE (high amount + off-hours)
+- T-1002: BLOCK (very high amount + unusual country + unknown device)
+- T-1003: APPROVE (normal transaction profile)
+- T-1004: ESCALATE_TO_HUMAN (ambiguous signals)
+- T-1005: CHALLENGE (high amount + new device)
+- T-1006: BLOCK (all risk factors present)
+
+Run `python seed_test.py` from `backend/` to test the full pipeline against these scenarios. See `backend/data/README.md` for details.
 
 ## Key Design Decisions
 
@@ -85,6 +102,4 @@ GET    /api/v1/transactions                  — List analyzed transactions
 GET    /api/v1/hitl/queue                    — HITL review queue
 POST   /api/v1/hitl/{id}/resolve            — Resolve HITL case
 GET    /api/v1/health                        — Health check
-WS     /api/v1/ws/transactions              — Real-time updates
-GET    /api/v1/analytics/summary             — Aggregated metrics
-```
+WS     /api/v1/ws/transactions        

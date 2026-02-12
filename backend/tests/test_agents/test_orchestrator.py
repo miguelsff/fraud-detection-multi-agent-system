@@ -160,6 +160,7 @@ def _runnable_config(db_session=None) -> dict:
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_validate_input_valid(sample_transaction, sample_customer_behavior):
     """Valid state returns status=processing."""
     state: OrchestratorState = {
@@ -176,6 +177,7 @@ async def test_validate_input_valid(sample_transaction, sample_customer_behavior
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_validate_input_missing_transaction(sample_customer_behavior):
     """Missing transaction returns status=error."""
     state: OrchestratorState = {
@@ -189,6 +191,7 @@ async def test_validate_input_missing_transaction(sample_customer_behavior):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_validate_input_missing_customer(sample_transaction):
     """Missing customer_behavior returns status=error."""
     state: OrchestratorState = {
@@ -205,24 +208,28 @@ async def test_validate_input_missing_customer(sample_transaction):
 # ============================================================================
 
 
+@pytest.mark.unit
 def test_route_after_validation_ok():
     """Returns 'continue' for status=processing."""
     state: OrchestratorState = {"status": "processing", "trace": []}
     assert route_after_validation(state) == "continue"
 
 
+@pytest.mark.unit
 def test_route_after_validation_error():
     """Returns 'error' for status=error."""
     state: OrchestratorState = {"status": "error", "trace": []}
     assert route_after_validation(state) == "error"
 
 
+@pytest.mark.unit
 def test_route_decision_approve(sample_decision):
     """Non-escalate decision routes to 'respond'."""
     state: OrchestratorState = {"decision": sample_decision, "trace": []}
     assert route_decision(state) == "respond"
 
 
+@pytest.mark.unit
 def test_route_decision_escalate(sample_transaction):
     """ESCALATE_TO_HUMAN decision routes to 'hitl_queue'."""
     escalate_decision = FraudDecision(
@@ -246,6 +253,7 @@ def test_route_decision_escalate(sample_transaction):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_respond_sets_completed():
     """respond sets status=completed when not escalated."""
     state: OrchestratorState = {"status": "processing", "trace": []}
@@ -254,6 +262,7 @@ async def test_respond_sets_completed():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_respond_keeps_escalated():
     """respond preserves escalated status."""
     state: OrchestratorState = {"status": "escalated", "trace": []}
@@ -267,6 +276,7 @@ async def test_respond_keeps_escalated():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_phase1_parallel_all_succeed(sample_transaction, sample_customer_behavior):
     """All 3 agents succeed; merged output contains all expected keys."""
     state: OrchestratorState = {
@@ -294,6 +304,7 @@ async def test_phase1_parallel_all_succeed(sample_transaction, sample_customer_b
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_phase1_parallel_one_fails(sample_transaction, sample_customer_behavior):
     """One agent raises; other 2 succeed (graceful degradation)."""
     state: OrchestratorState = {
@@ -324,6 +335,7 @@ async def test_phase1_parallel_one_fails(sample_transaction, sample_customer_beh
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_phase1_parallel_merges_trace(sample_transaction, sample_customer_behavior):
     """Trace entries from all agents are combined."""
     state: OrchestratorState = {
@@ -355,6 +367,7 @@ async def test_phase1_parallel_merges_trace(sample_transaction, sample_customer_
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_debate_parallel_merges_into_debate_arguments():
     """Two flat results merged into a single DebateArguments."""
     state: OrchestratorState = {"evidence": MagicMock(), "trace": []}
@@ -388,6 +401,7 @@ async def test_debate_parallel_merges_into_debate_arguments():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_debate_parallel_one_fails():
     """One debate agent fails; DebateArguments uses fallback values."""
     state: OrchestratorState = {"evidence": MagicMock(), "trace": []}
@@ -424,6 +438,7 @@ async def test_debate_parallel_one_fails():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_persist_audit_creates_records(full_state):
     """TransactionRecord and AgentTrace rows are created."""
     db_session = _mock_db_session()
@@ -438,6 +453,7 @@ async def test_persist_audit_creates_records(full_state):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_persist_audit_db_error_non_fatal(full_state):
     """DB error is logged but pipeline continues (returns empty dict)."""
     db_session = _mock_db_session()
@@ -455,6 +471,7 @@ async def test_persist_audit_db_error_non_fatal(full_state):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_hitl_queue_creates_case(sample_transaction):
     """HITLCase is created and status is set to 'escalated'."""
     state: OrchestratorState = {
@@ -472,6 +489,7 @@ async def test_hitl_queue_creates_case(sample_transaction):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_hitl_queue_db_error_non_fatal(sample_transaction):
     """DB error in HITL is logged but returns escalated status."""
     state: OrchestratorState = {
@@ -492,6 +510,7 @@ async def test_hitl_queue_db_error_non_fatal(sample_transaction):
 # ============================================================================
 
 
+@pytest.mark.unit
 def test_build_graph_compiles():
     """Graph compiles without errors and has expected nodes."""
     compiled = build_graph()
@@ -505,6 +524,7 @@ def test_build_graph_compiles():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_analyze_transaction_full_pipeline(
     sample_transaction, sample_customer_behavior, sample_decision, sample_explanation
 ):
@@ -575,6 +595,7 @@ async def test_analyze_transaction_full_pipeline(
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_analyze_transaction_validation_error(sample_customer_behavior):
     """Missing transaction causes error status — pipeline short-circuits."""
     db_session = _mock_db_session()
@@ -596,6 +617,7 @@ async def test_analyze_transaction_validation_error(sample_customer_behavior):
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_analyze_transaction_escalation(
     sample_transaction, sample_customer_behavior, sample_explanation
 ):
@@ -666,3 +688,128 @@ async def test_analyze_transaction_escalation(
     assert final_state["status"] == "escalated"
     # db_session.add should have been called for HITLCase (and TransactionRecord)
     assert db_session.add.call_count >= 1
+
+
+# ============================================================================
+# Integration Tests (Require Ollama Running)
+# ============================================================================
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+@pytest.mark.llm
+@pytest.mark.db
+async def test_full_pipeline_approve_t1003(
+    transaction_t1003, customer_behavior_c503, in_memory_db
+):
+    """Integration test: T-1003 → APPROVE or CHALLENGE (requires Ollama running).
+
+    T-1003 characteristics:
+    - Amount: 250 PEN (0.5x avg 500) - LOW
+    - Country: PE (usual)
+    - Time: 14:30 (normal hours)
+    - Device: D-03 (known)
+
+    Expected: APPROVE decision with high confidence (or CHALLENGE if LLM is conservative).
+    This test validates the full pipeline with real LLM calls.
+    """
+    decision = await analyze_transaction(
+        transaction_t1003,
+        customer_behavior_c503,
+        in_memory_db,
+    )
+
+    # Assertions
+    assert isinstance(decision, FraudDecision)
+    assert decision.transaction_id == "T-1003"
+
+    # May be APPROVE or CHALLENGE depending on LLM, but should NOT be BLOCK
+    assert decision.decision in ["APPROVE", "CHALLENGE"]
+    assert decision.confidence > 0.5
+
+    # Should have explanations
+    assert len(decision.explanation_customer) > 0
+    assert len(decision.explanation_audit) > 0
+
+    # Should have agent trace
+    assert len(decision.agent_trace) > 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+@pytest.mark.llm
+@pytest.mark.db
+async def test_full_pipeline_block_t1002(
+    transaction_t1002, customer_behavior_c502, in_memory_db
+):
+    """Integration test: T-1002 → BLOCK or ESCALATE (requires Ollama).
+
+    T-1002 characteristics:
+    - Amount: 8500 USD (17x avg 500) - VERY HIGH
+    - Country: NG (Nigeria, not usual)
+    - Time: 02:00 (off-hours)
+    - Device: D-99 (unknown)
+
+    Expected: BLOCK decision with high confidence (or ESCALATE_TO_HUMAN).
+    This test validates extreme risk scenario handling.
+    """
+    decision = await analyze_transaction(
+        transaction_t1002,
+        customer_behavior_c502,
+        in_memory_db,
+    )
+
+    # Assertions
+    assert isinstance(decision, FraudDecision)
+    assert decision.transaction_id == "T-1002"
+
+    # Should BLOCK or ESCALATE due to extreme risk
+    assert decision.decision in ["BLOCK", "ESCALATE_TO_HUMAN"]
+    assert decision.confidence > 0.6
+
+    # Should have multiple signals
+    assert len(decision.signals) >= 3
+
+    # Should have explanations
+    assert len(decision.explanation_customer) > 0
+    assert len(decision.explanation_audit) > 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.integration
+@pytest.mark.llm
+@pytest.mark.db
+async def test_full_pipeline_challenge_t1001(
+    transaction_t1001, customer_behavior_c501, in_memory_db
+):
+    """Integration test: T-1001 → CHALLENGE or APPROVE (requires Ollama).
+
+    T-1001 characteristics:
+    - Amount: 1800 PEN (3.6x avg 500) - MODERATE
+    - Country: PE (usual)
+    - Time: 03:15 (off-hours)
+    - Device: D-01 (known)
+
+    Expected: CHALLENGE decision (ambiguous risk - moderate amount + off-hours).
+    This test validates the debate and decision arbiter logic.
+    """
+    decision = await analyze_transaction(
+        transaction_t1001,
+        customer_behavior_c501,
+        in_memory_db,
+    )
+
+    # Assertions
+    assert isinstance(decision, FraudDecision)
+    assert decision.transaction_id == "T-1001"
+
+    # Should CHALLENGE or APPROVE (not extreme enough for BLOCK)
+    assert decision.decision in ["CHALLENGE", "APPROVE"]
+    assert 0.5 <= decision.confidence <= 0.9
+
+    # Should have at least 2 signals (high_amount, off_hours)
+    assert len(decision.signals) >= 2
+
+    # Should have explanations
+    assert len(decision.explanation_customer) > 0
+    assert len(decision.explanation_audit) > 0

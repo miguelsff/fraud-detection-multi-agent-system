@@ -9,28 +9,24 @@ from app.models import CustomerBehavior, OrchestratorState, Transaction
 
 
 @pytest.mark.asyncio
-async def test_transaction_context_normal_transaction():
-    """Test transaction context agent with a normal transaction."""
+@pytest.mark.unit
+async def test_transaction_context_normal_transaction(
+    transaction_t1003, customer_behavior_c503
+):
+    """Test T-1003: Normal transaction with low amount (APPROVE expected).
+
+    T-1003 characteristics:
+    - Amount: 250 PEN (0.5x avg 500) - LOW
+    - Country: PE (usual)
+    - Time: 14:30 (normal hours)
+    - Device: D-03 (known)
+
+    Expected: Low risk signals, no flags.
+    """
     # Arrange
     state: OrchestratorState = {
-        "transaction": Transaction(
-            transaction_id="T-1001",
-            customer_id="C-501",
-            amount=500.00,
-            currency="PEN",
-            country="PE",
-            channel="app",
-            device_id="D-01",
-            timestamp=datetime(2025, 1, 15, 14, 30, 0, tzinfo=timezone.utc),
-            merchant_id="M-200",
-        ),
-        "customer_behavior": CustomerBehavior(
-            customer_id="C-501",
-            usual_amount_avg=500.00,
-            usual_hours="08:00-22:00",
-            usual_countries=["PE"],
-            usual_devices=["D-01", "D-02"],
-        ),
+        "transaction": transaction_t1003,
+        "customer_behavior": customer_behavior_c503,
         "status": "processing",
         "trace": [],
     }
@@ -42,12 +38,13 @@ async def test_transaction_context_normal_transaction():
     assert "transaction_signals" in result
     signals = result["transaction_signals"]
 
-    assert signals.amount_ratio == 1.0
+    # T-1003: amount=250, avg=500 → ratio=0.5 (low)
+    assert signals.amount_ratio == 0.5
     assert signals.is_off_hours is False
     assert signals.is_foreign is False
     assert signals.is_unknown_device is False
     assert signals.channel_risk == "low"
-    assert len(signals.flags) == 0
+    assert len(signals.flags) == 0  # No risk flags
 
     # Trace entry should be added by decorator
     assert "trace" in result
@@ -57,28 +54,24 @@ async def test_transaction_context_normal_transaction():
 
 
 @pytest.mark.asyncio
-async def test_transaction_context_high_amount_off_hours():
-    """Test transaction with high amount and off-hours."""
+@pytest.mark.unit
+async def test_transaction_context_high_amount_off_hours(
+    transaction_t1001, customer_behavior_c501
+):
+    """Test T-1001: High amount (3.6x) + off-hours → CHALLENGE expected.
+
+    T-1001 characteristics:
+    - Amount: 1800 PEN (3.6x avg 500) - HIGH
+    - Country: PE (usual)
+    - Time: 03:15 (off-hours)
+    - Device: D-01 (known)
+
+    Expected: High amount ratio flag, off-hours flag.
+    """
     # Arrange
     state: OrchestratorState = {
-        "transaction": Transaction(
-            transaction_id="T-1002",
-            customer_id="C-502",
-            amount=1800.00,
-            currency="PEN",
-            country="PE",
-            channel="web",
-            device_id="D-01",
-            timestamp=datetime(2025, 1, 15, 3, 15, 0, tzinfo=timezone.utc),
-            merchant_id="M-200",
-        ),
-        "customer_behavior": CustomerBehavior(
-            customer_id="C-502",
-            usual_amount_avg=500.00,
-            usual_hours="08:00-22:00",
-            usual_countries=["PE"],
-            usual_devices=["D-01"],
-        ),
+        "transaction": transaction_t1001,
+        "customer_behavior": customer_behavior_c501,
         "status": "processing",
         "trace": [],
     }
@@ -89,6 +82,7 @@ async def test_transaction_context_high_amount_off_hours():
     # Assert
     signals = result["transaction_signals"]
 
+    # T-1001: amount=1800, avg=500 → ratio=3.6
     assert signals.amount_ratio == 3.6
     assert signals.is_off_hours is True
     assert signals.is_foreign is False
@@ -102,28 +96,24 @@ async def test_transaction_context_high_amount_off_hours():
 
 
 @pytest.mark.asyncio
-async def test_transaction_context_foreign_unknown_device():
-    """Test transaction from foreign country with unknown device."""
+@pytest.mark.unit
+async def test_transaction_context_foreign_unknown_device(
+    transaction_t1002, customer_behavior_c502
+):
+    """Test T-1002: Very high amount + unusual country + unknown device → BLOCK expected.
+
+    T-1002 characteristics:
+    - Amount: 8500 USD (17x avg 500) - VERY HIGH
+    - Country: NG (Nigeria, not in usual [PE, CL]) - FOREIGN
+    - Time: 02:00 (off-hours)
+    - Device: D-99 (not in usual [D-03]) - UNKNOWN
+
+    Expected: Multiple risk flags (amount, foreign, device, off-hours).
+    """
     # Arrange
     state: OrchestratorState = {
-        "transaction": Transaction(
-            transaction_id="T-1003",
-            customer_id="C-503",
-            amount=600.00,
-            currency="USD",
-            country="US",
-            channel="web_unknown",
-            device_id="D-99",
-            timestamp=datetime(2025, 1, 15, 10, 0, 0, tzinfo=timezone.utc),
-            merchant_id="M-201",
-        ),
-        "customer_behavior": CustomerBehavior(
-            customer_id="C-503",
-            usual_amount_avg=500.00,
-            usual_hours="08:00-22:00",
-            usual_countries=["PE"],
-            usual_devices=["D-01", "D-02"],
-        ),
+        "transaction": transaction_t1002,
+        "customer_behavior": customer_behavior_c502,
         "status": "processing",
         "trace": [],
     }
@@ -134,20 +124,22 @@ async def test_transaction_context_foreign_unknown_device():
     # Assert
     signals = result["transaction_signals"]
 
-    assert signals.amount_ratio == 1.2
-    assert signals.is_off_hours is False
+    # T-1002: amount=8500, avg=500 → ratio=17.0
+    assert signals.amount_ratio == 17.0
+    assert signals.is_off_hours is True
     assert signals.is_foreign is True
     assert signals.is_unknown_device is True
-    assert signals.channel_risk == "high"
+    assert signals.channel_risk == "medium"  # mobile channel
 
-    # Check flags
-    assert len(signals.flags) == 3
+    # Check flags - should have multiple risk indicators
+    assert len(signals.flags) >= 3
+    assert any("high_amount_ratio" in flag for flag in signals.flags)
     assert any("foreign_country" in flag for flag in signals.flags)
     assert any("unknown_device" in flag for flag in signals.flags)
-    assert "high_risk_channel" in signals.flags
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_transaction_context_zero_usual_amount():
     """Test transaction with zero usual_amount_avg (edge case)."""
     # Arrange
@@ -186,6 +178,7 @@ async def test_transaction_context_zero_usual_amount():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_transaction_context_mobile_channel():
     """Test transaction with mobile channel (medium risk)."""
     # Arrange
@@ -221,6 +214,7 @@ async def test_transaction_context_mobile_channel():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_transaction_context_overnight_hours():
     """Test transaction with overnight usual_hours (22:00-06:00)."""
     # Arrange

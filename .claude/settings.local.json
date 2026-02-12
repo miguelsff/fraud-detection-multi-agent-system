@@ -25,7 +25,11 @@
       "Bash(\"C:\\\\Users\\\\USER\\\\AppData\\\\Local\\\\Packages\\\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\\\LocalCache\\\\local-packages\\\\Python313\\\\Scripts\\\\uv.exe\" run pytest tests/test_agents/test_debate.py::test_debate_agents_partial_state_update tests/test_agents/test_decision_arbiter.py::test_decision_arbiter_agent_exception_handling tests/test_agents/test_explainability.py::test_enhance_audit_explanation_adds_policies --tb=line)",
       "Bash(\"C:\\\\Users\\\\USER\\\\AppData\\\\Local\\\\Packages\\\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\\\LocalCache\\\\local-packages\\\\Python313\\\\Scripts\\\\uv.exe\" run pytest tests/test_agents/test_debate.py::test_debate_agents_partial_state_update tests/test_agents/test_decision_arbiter.py::test_decision_arbiter_agent_exception_handling tests/test_agents/test_explainability.py::test_enhance_audit_explanation_adds_policies -v)",
       "Bash(\"C:\\\\Users\\\\USER\\\\AppData\\\\Local\\\\Packages\\\\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\\\\LocalCache\\\\local-packages\\\\Python313\\\\Scripts\\\\uv.exe\" run pytest tests/ --tb=no -q)",
-      "Bash(python -c:*)"
+      "Bash(python -c:*)",
+      "Bash(python -m uv sync:*)",
+      "Bash(test:*)",
+      "Bash(python -m uv run pytest:*)",
+      "Bash(make:*)"
     ]
   }
 }

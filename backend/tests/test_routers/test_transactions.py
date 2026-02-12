@@ -1,9 +1,11 @@
 """Tests for transaction analysis endpoints."""
 import pytest
-from unittest.mock import AsyncMock, patch
+from datetime import datetime, timezone
+from unittest.mock import AsyncMock, Mock, patch
 from fastapi.testclient import TestClient
 from app.main import app
-from app.models import FraudDecision
+from app.models import FraudDecision, AgentTraceEntry
+from app.dependencies import get_db
 
 client = TestClient(app)
 
@@ -34,18 +36,156 @@ def sample_transaction_request():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
+async def test_analyze_transaction_success(sample_transaction_request, mock_db_session):
+    """Test POST /api/v1/transactions/analyze with mocked orchestrator.
+
+    Validates that the endpoint correctly:
+    - Parses request body
+    - Calls analyze_transaction orchestrator
+    - Returns FraudDecision response
+    """
+    # Mock the analyze_transaction function
+    mock_decision = FraudDecision(
+        transaction_id="T-TEST-001",
+        decision="CHALLENGE",
+        confidence=0.75,
+        signals=["high_amount_ratio_3.0x", "transaction_off_hours"],
+        citations_internal=[
+            {"policy_id": "FP-01", "text": "High amount transactions"}
+        ],
+        citations_external=[{"source": "OSINT", "detail": "Country flagged"}],
+        explanation_customer="Verificación adicional requerida por monto elevado",
+        explanation_audit="Transaction flagged for high amount ratio (3.0x) and off-hours timing",
+        agent_trace=["transaction_context", "policy_rag", "evidence_aggregation"],
+    )
+
+    with patch("app.routers.transactions.analyze_transaction") as mock_analyze:
+        mock_analyze.return_value = mock_decision
+
+        # Override DB dependency
+        app.dependency_overrides[get_db] = lambda: mock_db_session
+
+        response = client.post(
+            "/api/v1/transactions/analyze", json=sample_transaction_request
+        )
+
+        # Cleanup
+        app.dependency_overrides.clear()
+
+    # Assertions
+    assert response.status_code == 200
+    data = response.json()
+    assert data["transaction_id"] == "T-TEST-001"
+    assert data["decision"] == "CHALLENGE"
+    assert data["confidence"] == 0.75
+    assert len(data["signals"]) == 2
+    assert len(data["agent_trace"]) == 3
+
+
+@pytest.mark.asyncio
+@pytest.mark.unit
+async def test_get_result_success(mock_db_session):
+    """Test GET /api/v1/transactions/{id}/result with existing transaction.
+
+    Validates that the endpoint correctly:
+    - Queries database for TransactionRecord
+    - Returns transaction result with decision
+    """
+    # Mock DB query to return a TransactionRecord
+    mock_record = Mock()
+    mock_record.transaction_id = "T-001"
+    mock_record.raw_data = {
+        "transaction_id": "T-001",
+        "amount": 1500.0,
+        "currency": "PEN",
+    }
+    mock_record.decision = "APPROVE"
+    mock_record.confidence = 0.95
+    mock_record.signals = ["low_risk"]
+    mock_record.created_at = datetime.now(timezone.utc)
+
+    mock_db_session.execute = AsyncMock(
+        return_value=AsyncMock(scalar_one_or_none=Mock(return_value=mock_record))
+    )
+
+    app.dependency_overrides[get_db] = lambda: mock_db_session
+
+    response = client.get("/api/v1/transactions/T-001/result")
+
+    app.dependency_overrides.clear()
+
+    # Assertions
+    assert response.status_code == 200
+    data = response.json()
+    assert data["transaction_id"] == "T-001"
+    assert data["decision"] == "APPROVE"
+    assert data["confidence"] == 0.95
+
+
+@pytest.mark.asyncio
+@pytest.mark.unit
+async def test_get_trace_success(mock_db_session):
+    """Test GET /api/v1/transactions/{id}/trace with existing traces.
+
+    Validates that the endpoint correctly:
+    - Queries database for AgentTrace records
+    - Returns list of agent execution traces
+    """
+    # Mock DB query to return list of AgentTrace
+    mock_trace1 = Mock()
+    mock_trace1.agent_name = "transaction_context"
+    mock_trace1.duration_ms = 15.5
+    mock_trace1.status = "success"
+    mock_trace1.input_summary = "Transaction T-001"
+    mock_trace1.output_summary = "6 signals generated"
+    mock_trace1.created_at = datetime.now(timezone.utc)
+
+    mock_trace2 = Mock()
+    mock_trace2.agent_name = "evidence_aggregation"
+    mock_trace2.duration_ms = 8.2
+    mock_trace2.status = "success"
+    mock_trace2.input_summary = "Signals from 3 sources"
+    mock_trace2.output_summary = "Composite score: 45.0"
+    mock_trace2.created_at = datetime.now(timezone.utc)
+
+    mock_db_session.execute = AsyncMock(
+        return_value=AsyncMock(
+            scalars=Mock(return_value=Mock(all=Mock(return_value=[mock_trace1, mock_trace2])))
+        )
+    )
+
+    app.dependency_overrides[get_db] = lambda: mock_db_session
+
+    response = client.get("/api/v1/transactions/T-001/trace")
+
+    app.dependency_overrides.clear()
+
+    # Assertions
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 2
+    assert data[0]["agent_name"] == "transaction_context"
+    assert data[0]["duration_ms"] == 15.5
+    assert data[1]["agent_name"] == "evidence_aggregation"
+    assert data[1]["duration_ms"] == 8.2
+
+
+@pytest.mark.asyncio
 async def test_analyze_endpoint_requires_auth_in_future():
     """Placeholder test - will add authentication tests later."""
     # TODO: Add authentication tests when auth is implemented
     pass
 
 
+@pytest.mark.unit
 def test_analyze_missing_fields():
     """Test analyze endpoint with missing required fields."""
     response = client.post("/api/v1/transactions/analyze", json={})
     assert response.status_code == 422  # Validation error
 
 
+@pytest.mark.unit
 def test_batch_analyze_empty_list():
     """Test batch analyze with empty list."""
     response = client.post("/api/v1/transactions/analyze/batch", json=[])
@@ -53,6 +193,7 @@ def test_batch_analyze_empty_list():
     assert response.json() == []
 
 
+@pytest.mark.unit
 def test_get_result_not_found():
     """Test getting result for non-existent transaction."""
     response = client.get("/api/v1/transactions/NONEXISTENT-ID/result")
@@ -60,6 +201,7 @@ def test_get_result_not_found():
     assert "not found" in response.json()["detail"].lower()
 
 
+@pytest.mark.unit
 def test_get_trace_not_found():
     """Test getting trace for non-existent transaction."""
     response = client.get("/api/v1/transactions/NONEXISTENT-ID/trace")
@@ -67,6 +209,7 @@ def test_get_trace_not_found():
     assert "not found" in response.json()["detail"].lower()
 
 
+@pytest.mark.unit
 def test_list_transactions_default_params():
     """Test listing transactions with default pagination."""
     response = client.get("/api/v1/transactions")
@@ -74,6 +217,7 @@ def test_list_transactions_default_params():
     assert isinstance(response.json(), list)
 
 
+@pytest.mark.unit
 def test_list_transactions_custom_pagination():
     """Test listing transactions with custom pagination."""
     response = client.get("/api/v1/transactions?limit=10&offset=5")

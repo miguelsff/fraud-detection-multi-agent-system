@@ -24,6 +24,7 @@ from app.models import (
 )
 
 
+@pytest.mark.unit
 def test_calculate_composite_score_all_inputs():
     """Test composite score calculation with all inputs provided."""
     transaction_signals = TransactionSignals(
@@ -76,6 +77,7 @@ def test_calculate_composite_score_all_inputs():
     assert isinstance(score, float)
 
 
+@pytest.mark.unit
 def test_calculate_composite_score_low_risk():
     """Test composite score with low-risk inputs."""
     transaction_signals = TransactionSignals(
@@ -108,6 +110,7 @@ def test_calculate_composite_score_low_risk():
     assert score < 30.0
 
 
+@pytest.mark.unit
 def test_calculate_composite_score_none_inputs():
     """Test graceful degradation with None inputs."""
     score = _calculate_composite_score(None, None, None, None)
@@ -116,6 +119,7 @@ def test_calculate_composite_score_none_inputs():
     assert score == 0.0
 
 
+@pytest.mark.unit
 def test_calculate_composite_score_partial_inputs():
     """Test score calculation with some inputs missing."""
     transaction_signals = TransactionSignals(
@@ -134,6 +138,7 @@ def test_calculate_composite_score_partial_inputs():
     assert 0.0 < score < 50.0
 
 
+@pytest.mark.unit
 def test_aggregate_signals_all_sources():
     """Test signal aggregation from all sources."""
     transaction_signals = TransactionSignals(
@@ -184,6 +189,7 @@ def test_aggregate_signals_all_sources():
     assert "threat_high_risk_country_IR" in signals
 
 
+@pytest.mark.unit
 def test_aggregate_signals_no_duplicates():
     """Test that duplicate signals are removed."""
     transaction_signals = TransactionSignals(
@@ -202,6 +208,7 @@ def test_aggregate_signals_no_duplicates():
     assert signals.count("flag1") == 1
 
 
+@pytest.mark.unit
 def test_aggregate_signals_empty_inputs():
     """Test signal aggregation with empty inputs."""
     signals = _aggregate_signals(None, None, None, None)
@@ -209,6 +216,7 @@ def test_aggregate_signals_empty_inputs():
     assert signals == []
 
 
+@pytest.mark.unit
 def test_aggregate_citations_with_policies_and_threats():
     """Test citation aggregation from policies and threats."""
     policy_matches = PolicyMatchResult(
@@ -244,6 +252,7 @@ def test_aggregate_citations_with_policies_and_threats():
     assert any("merchant_watchlist_M-999" in c for c in citations)
 
 
+@pytest.mark.unit
 def test_aggregate_citations_empty_inputs():
     """Test citation aggregation with empty inputs."""
     citations = _aggregate_citations(None, None)
@@ -251,6 +260,7 @@ def test_aggregate_citations_empty_inputs():
     assert citations == []
 
 
+@pytest.mark.unit
 def test_determine_risk_category_low():
     """Test risk category determination for low risk."""
     assert _determine_risk_category(0.0) == "low"
@@ -258,6 +268,7 @@ def test_determine_risk_category_low():
     assert _determine_risk_category(29.9) == "low"
 
 
+@pytest.mark.unit
 def test_determine_risk_category_medium():
     """Test risk category determination for medium risk."""
     assert _determine_risk_category(30.0) == "medium"
@@ -265,6 +276,7 @@ def test_determine_risk_category_medium():
     assert _determine_risk_category(59.9) == "medium"
 
 
+@pytest.mark.unit
 def test_determine_risk_category_high():
     """Test risk category determination for high risk."""
     assert _determine_risk_category(60.0) == "high"
@@ -272,6 +284,7 @@ def test_determine_risk_category_high():
     assert _determine_risk_category(79.9) == "high"
 
 
+@pytest.mark.unit
 def test_determine_risk_category_critical():
     """Test risk category determination for critical risk."""
     assert _determine_risk_category(80.0) == "critical"
@@ -280,6 +293,7 @@ def test_determine_risk_category_critical():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_evidence_aggregation_agent_full_state():
     """Test evidence aggregation agent with complete state."""
     state: OrchestratorState = {
@@ -370,6 +384,7 @@ async def test_evidence_aggregation_agent_full_state():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_evidence_aggregation_agent_partial_state():
     """Test evidence aggregation with partial state (some agents failed)."""
     state: OrchestratorState = {
@@ -415,6 +430,7 @@ async def test_evidence_aggregation_agent_partial_state():
 
 
 @pytest.mark.asyncio
+@pytest.mark.unit
 async def test_evidence_aggregation_agent_error_fallback():
     """Test agent returns safe defaults on error."""
     # Create state that will cause an error (missing required fields)
