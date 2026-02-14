@@ -1,11 +1,12 @@
-"""External Threat Agent - simulated threat intelligence lookup and LLM interpretation.
+"""External Threat Agent - modular threat intelligence with real OSINT and sanctions screening.
 
-NOTE: This is a SIMULATED implementation for portfolio demonstration.
-In production, this would integrate with real threat intelligence APIs such as:
-- OSINT feeds (OpenPhish, URLhaus, abuse.ch)
-- Commercial threat intel (ThreatMetrix, Recorded Future, Chainalysis)
-- Payment network watchlists (Visa RiskRecon, Mastercard MATCH)
-- Government sanctions lists (OFAC SDN, EU Consolidated List)
+Integrates with multiple threat intelligence providers:
+- FATF country risk lists (blacklist, graylist, elevated risk)
+- OSINT web search (DuckDuckGo for fraud reports and sanctions alerts)
+- OpenSanctions API (sanctions screening - optional with API key)
+- LLM interpretation for nuanced threat assessment
+
+Uses a provider-based architecture for easy extension with additional threat sources.
 """
 
 import asyncio
@@ -15,66 +16,19 @@ from typing import Optional
 
 from langchain_ollama import ChatOllama
 
+from ..config import settings
 from ..dependencies import get_llm
 from ..models import OrchestratorState, ThreatIntelResult, ThreatSource, Transaction, TransactionSignals
+from ..services.threat_intel import (
+    CountryRiskProvider,
+    OSINTSearchProvider,
+    SanctionsProvider,
+    ThreatProvider,
+)
 from ..utils.logger import get_logger
 from ..utils.timing import timed_agent
 
 logger = get_logger(__name__)
-
-# ============================================================================
-# SIMULATED THREAT FEEDS (Hardcoded for Portfolio Demo)
-# ============================================================================
-# In production, these would be:
-# - Real-time API calls to threat intelligence providers
-# - Database lookups of merchant watchlists
-# - OSINT aggregation services
-# - Payment network fraud alerts
-# ============================================================================
-
-THREAT_FEEDS = {
-    # High-risk countries (simplified for demo - based on FATF gray/blacklist)
-    "high_risk_countries": {
-        "KP": {"risk_score": 1.0, "reason": "FATF blacklist - high money laundering risk"},
-        "IR": {"risk_score": 1.0, "reason": "FATF blacklist - sanctions risk"},
-        "MM": {"risk_score": 0.9, "reason": "FATF graylist - AML deficiencies"},
-        "PK": {"risk_score": 0.7, "reason": "FATF graylist - terrorism financing concerns"},
-        "NG": {"risk_score": 0.6, "reason": "High fraud jurisdiction"},
-        "RU": {"risk_score": 0.8, "reason": "Sanctions risk - OFAC"},
-        "CN": {"risk_score": 0.5, "reason": "Capital controls - unusual cross-border activity"},
-        "VE": {"risk_score": 0.9, "reason": "FATF graylist - weak AML controls"},
-    },
-    # Medium-risk countries (emerging markets with elevated fraud)
-    "medium_risk_countries": {
-        "BR": {"risk_score": 0.4, "reason": "Elevated fraud rates - e-commerce"},
-        "IN": {"risk_score": 0.3, "reason": "High volume of card testing attacks"},
-        "ID": {"risk_score": 0.4, "reason": "Identity theft concerns"},
-        "PH": {"risk_score": 0.3, "reason": "Social engineering fraud"},
-        "MX": {"risk_score": 0.4, "reason": "Organized crime involvement"},
-    },
-    # Merchant watchlist (reported merchants)
-    "merchant_watchlist": {
-        "M-999": {"risk_score": 0.95, "reason": "Multiple fraud reports - chargeback rate >5%"},
-        "M-888": {"risk_score": 0.85, "reason": "Suspected front company"},
-        "M-777": {"risk_score": 0.70, "reason": "Unusual transaction patterns"},
-        "M-666": {"risk_score": 0.90, "reason": "Operating in sanctioned sector"},
-    },
-    # Known fraud patterns (device/IP combinations)
-    "fraud_patterns": {
-        "web_unknown_foreign": {
-            "risk_score": 0.6,
-            "reason": "High-risk channel from foreign country",
-        },
-        "high_amount_new_device": {
-            "risk_score": 0.7,
-            "reason": "Large transaction from unrecognized device",
-        },
-        "off_hours_foreign": {
-            "risk_score": 0.5,
-            "reason": "Unusual timing from foreign location",
-        },
-    },
-}
 
 THREAT_ANALYSIS_PROMPT = """Eres un analista de inteligencia de amenazas financieras. Evalúa el nivel de amenaza externa para esta transacción basándote en las fuentes de inteligencia disponibles.
 
@@ -91,6 +45,11 @@ THREAT_ANALYSIS_PROMPT = """Eres un analista de inteligencia de amenazas financi
 **SEÑALES DE CONTEXTO:**
 {signals_summary}
 
+**TIPO DE FUENTES:**
+- FATF Lists: Blacklist/graylist de países de alto riesgo (FATF oficial)
+- OSINT Search: Búsqueda web de reportes de fraude y sanciones
+- Sanctions API: Screening contra listas de sanciones internacionales
+
 **INSTRUCCIONES:**
 1. Evalúa el nivel de amenaza general en una escala de 0.0 a 1.0
    - 0.0-0.3: Amenaza baja (información contextual)
@@ -99,30 +58,34 @@ THREAT_ANALYSIS_PROMPT = """Eres un analista de inteligencia de amenazas financi
    - 0.8-1.0: Amenaza crítica (bloqueo recomendado)
 
 2. Considera:
-   - Severidad de cada fuente de inteligencia
-   - Combinación de múltiples señales
-   - Contexto de la transacción
+   - **Tipo de fuente**: FATF es oficial, OSINT es indicativa, Sanctions es crítica
+   - **Severidad**: Confidence score de cada fuente (0.0-1.0)
+   - **Combinación**: Múltiples fuentes independientes aumentan confianza
+   - **Contexto**: Señales de la transacción que agravan/mitigan
 
 **FORMATO DE SALIDA (JSON estricto):**
 {{
   "threat_level": 0.75,
-  "explanation": "País de alto riesgo (IR) con merchant en watchlist (M-999). Combinación sugiere amenaza alta."
+  "explanation": "País en blacklist FATF (IR) con confianza 1.0. OSINT confirma alertas de sanciones recientes. Combinación de fuentes oficiales sugiere amenaza alta."
 }}
 
 **IMPORTANTE:**
 - threat_level debe estar entre 0.0 y 1.0
+- Menciona el TIPO de fuente en la explicación (FATF/OSINT/Sanctions)
 - Responde SOLO con el JSON, sin texto adicional
 """
 
 
 @timed_agent("external_threat")
 async def external_threat_agent(state: OrchestratorState) -> dict:
-    """External Threat agent - simulated threat intelligence lookup.
+    """External Threat agent - modular threat intelligence with real providers.
 
-    Simulates external threat intelligence gathering by checking hardcoded
-    threat feeds and using LLM to interpret combined threat signals.
+    Orchestrates multiple threat intelligence providers in parallel:
+    - CountryRiskProvider (FATF lists from JSON)
+    - OSINTSearchProvider (DuckDuckGo web search - optional)
+    - SanctionsProvider (OpenSanctions API - optional)
 
-    NOTE: In production, this would query real threat intelligence APIs.
+    Then uses LLM for nuanced interpretation of combined threat signals.
 
     Args:
         state: Orchestrator state with transaction and signals
@@ -134,12 +97,21 @@ async def external_threat_agent(state: OrchestratorState) -> dict:
         transaction = state["transaction"]
         transaction_signals = state.get("transaction_signals")
 
-        # 1. Lookup in simulated threat feeds
-        threat_sources = _lookup_threat_feeds(transaction, transaction_signals)
+        # 1. Initialize enabled providers based on config
+        providers = _get_enabled_providers()
+        logger.info(
+            "providers_initialized",
+            providers=[p.provider_name for p in providers],
+        )
 
-        # 2. If no threats detected, return empty result
-        if not threat_sources:
-            logger.info("no_threats_detected", transaction_id=transaction.transaction_id)
+        # 2. Execute ALL providers in PARALLEL with asyncio.gather
+        all_sources = await _gather_threat_intel(providers, transaction, transaction_signals)
+
+        # 3. If no threats detected, return empty result
+        if not all_sources:
+            logger.info(
+                "no_threats_detected", transaction_id=transaction.transaction_id
+            )
             return {
                 "threat_intel": ThreatIntelResult(
                     threat_level=0.0,
@@ -147,30 +119,38 @@ async def external_threat_agent(state: OrchestratorState) -> dict:
                 )
             }
 
-        # 3. Calculate deterministic baseline threat level
-        baseline_threat_level = _calculate_baseline_threat_level(threat_sources)
+        # 4. Calculate deterministic baseline from all sources
+        baseline_threat_level = _calculate_baseline_from_sources(all_sources)
+        logger.debug(
+            "baseline_calculated",
+            baseline=baseline_threat_level,
+            sources_count=len(all_sources),
+        )
 
-        # 4. Use LLM for nuanced interpretation
+        # 5. Use LLM for nuanced interpretation
         llm = get_llm()
         llm_threat_level, explanation = await _call_llm_for_threat_analysis(
             llm,
             transaction,
             transaction_signals,
-            threat_sources,
+            all_sources,
         )
 
-        # 5. Use LLM result if available, otherwise fallback to baseline
-        final_threat_level = llm_threat_level if llm_threat_level is not None else baseline_threat_level
+        # 6. Final threat level: LLM if available, otherwise baseline
+        final_threat_level = (
+            llm_threat_level if llm_threat_level is not None else baseline_threat_level
+        )
 
         result = ThreatIntelResult(
             threat_level=final_threat_level,
-            sources=threat_sources,
+            sources=all_sources,
         )
 
         logger.info(
             "external_threat_completed",
             threat_level=final_threat_level,
-            sources_count=len(threat_sources),
+            baseline=baseline_threat_level,
+            sources_count=len(all_sources),
             llm_used=llm_threat_level is not None,
         )
 
@@ -187,134 +167,130 @@ async def external_threat_agent(state: OrchestratorState) -> dict:
         }
 
 
-def _lookup_threat_feeds(
-    transaction: Transaction,
-    transaction_signals: Optional[TransactionSignals],
-) -> list[ThreatSource]:
-    """Lookup transaction attributes in simulated threat feeds.
+def _get_enabled_providers() -> list[ThreatProvider]:
+    """Return list of enabled threat intelligence providers based on config.
 
-    Args:
-        transaction: Transaction to check
-        transaction_signals: Optional contextual signals
+    CountryRiskProvider is always enabled (local JSON, no API required).
+    OSINT and Sanctions providers are enabled based on settings.
 
     Returns:
-        List of ThreatSource objects for detected threats
+        List of enabled ThreatProvider instances
     """
-    sources = []
+    providers: list[ThreatProvider] = []
 
-    # Check country risk
-    country = transaction.country
-    if country in THREAT_FEEDS["high_risk_countries"]:
-        threat = THREAT_FEEDS["high_risk_countries"][country]
-        sources.append(
-            ThreatSource(
-                source_name=f"high_risk_country_{country}",
-                confidence=threat["risk_score"],
-            )
-        )
-        logger.debug(
-            "threat_detected",
-            source="high_risk_country",
-            country=country,
-            reason=threat["reason"],
-        )
-    elif country in THREAT_FEEDS["medium_risk_countries"]:
-        threat = THREAT_FEEDS["medium_risk_countries"][country]
-        sources.append(
-            ThreatSource(
-                source_name=f"medium_risk_country_{country}",
-                confidence=threat["risk_score"],
-            )
-        )
-        logger.debug(
-            "threat_detected",
-            source="medium_risk_country",
-            country=country,
-            reason=threat["reason"],
-        )
+    # CountryRisk always enabled (local, no API)
+    providers.append(CountryRiskProvider())
 
-    # Check merchant watchlist
-    merchant_id = transaction.merchant_id
-    if merchant_id in THREAT_FEEDS["merchant_watchlist"]:
-        threat = THREAT_FEEDS["merchant_watchlist"][merchant_id]
-        sources.append(
-            ThreatSource(
-                source_name=f"merchant_watchlist_{merchant_id}",
-                confidence=threat["risk_score"],
-            )
-        )
-        logger.debug(
-            "threat_detected",
-            source="merchant_watchlist",
-            merchant_id=merchant_id,
-            reason=threat["reason"],
-        )
+    # OSINT enabled via config flag
+    if settings.threat_intel_enable_osint:
+        providers.append(OSINTSearchProvider(max_results=settings.threat_intel_osint_max_results))
 
-    # Check fraud patterns (requires signals)
-    if transaction_signals:
-        # Pattern: web_unknown from foreign country
-        if (
-            transaction_signals.channel_risk == "high"
-            and transaction_signals.is_foreign
-        ):
-            pattern = THREAT_FEEDS["fraud_patterns"]["web_unknown_foreign"]
-            sources.append(
-                ThreatSource(
-                    source_name="fraud_pattern_web_unknown_foreign",
-                    confidence=pattern["risk_score"],
-                )
-            )
+    # Sanctions enabled if config flag AND API key present
+    if settings.threat_intel_enable_sanctions and settings.opensanctions_api_key:
+        providers.append(SanctionsProvider())
 
-        # Pattern: high amount with unknown device
-        if (
-            transaction_signals.amount_ratio > 3.0
-            and transaction_signals.is_unknown_device
-        ):
-            pattern = THREAT_FEEDS["fraud_patterns"]["high_amount_new_device"]
-            sources.append(
-                ThreatSource(
-                    source_name="fraud_pattern_high_amount_new_device",
-                    confidence=pattern["risk_score"],
-                )
-            )
-
-        # Pattern: off-hours from foreign country
-        if transaction_signals.is_off_hours and transaction_signals.is_foreign:
-            pattern = THREAT_FEEDS["fraud_patterns"]["off_hours_foreign"]
-            sources.append(
-                ThreatSource(
-                    source_name="fraud_pattern_off_hours_foreign",
-                    confidence=pattern["risk_score"],
-                )
-            )
-
-    return sources
+    return providers
 
 
-def _calculate_baseline_threat_level(sources: list[ThreatSource]) -> float:
-    """Calculate baseline threat level from sources (deterministic fallback).
+async def _gather_threat_intel(
+    providers: list[ThreatProvider],
+    transaction: Transaction,
+    signals: TransactionSignals | None,
+) -> list[ThreatSource]:
+    """Execute all providers in parallel with timeout per provider.
 
-    Uses weighted average with emphasis on highest confidence sources.
+    Uses asyncio.gather with return_exceptions=True to ensure one provider
+    failure never blocks others.
 
     Args:
-        sources: List of ThreatSource objects
+        providers: List of threat intelligence providers
+        transaction: Transaction to analyze
+        signals: Optional contextual signals
 
     Returns:
-        Threat level between 0.0 and 1.0
+        Combined list of ThreatSource from all successful providers
+    """
+    # Create tasks with 15s timeout per provider
+    tasks = [
+        asyncio.wait_for(
+            provider.lookup(transaction, signals),
+            timeout=15.0,  # Per-provider timeout
+        )
+        for provider in providers
+    ]
+
+    # Execute in parallel, collect exceptions
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Combine results, log failures
+    all_sources = []
+    for provider, result in zip(providers, results):
+        if isinstance(result, Exception):
+            logger.warning(
+                "provider_failed",
+                provider=provider.provider_name,
+                error=str(result),
+                error_type=type(result).__name__,
+            )
+        elif isinstance(result, list):
+            all_sources.extend(result)
+            logger.debug(
+                "provider_success",
+                provider=provider.provider_name,
+                sources_count=len(result),
+            )
+
+    return all_sources
+
+
+def _calculate_baseline_from_sources(sources: list[ThreatSource]) -> float:
+    """Calculate deterministic baseline threat level from all sources.
+
+    Strategy:
+    - Use max confidence as primary signal (highest risk source)
+    - Add 0.1 bonus for each additional source (multi-source corroboration)
+    - Clamp result to [0.0, 1.0]
+
+    Args:
+        sources: List of ThreatSource from all providers
+
+    Returns:
+        Baseline threat level between 0.0 and 1.0
     """
     if not sources:
         return 0.0
 
-    # Use max confidence as primary signal
+    # Primary signal: highest confidence source
     max_confidence = max(s.confidence for s in sources)
 
-    # If multiple sources, increase threat level
+    # Multi-source bonus: +0.1 per additional source (capped)
     multi_source_bonus = 0.1 * (len(sources) - 1) if len(sources) > 1 else 0.0
 
-    # Calculate final level (clamped to 1.0)
+    # Calculate final level (clamp to 1.0)
     threat_level = min(1.0, max_confidence + multi_source_bonus)
 
     return round(threat_level, 2)
+
+
+def _classify_provider_type(source_name: str) -> str:
+    """Classify provider type based on source_name for LLM context.
+
+    Args:
+        source_name: Name of the threat source (e.g., "fatf_blacklist_IR", "osint_web_search")
+
+    Returns:
+        Human-readable provider type: "FATF", "OSINT", or "Sanctions"
+    """
+    source_lower = source_name.lower()
+
+    if any(keyword in source_lower for keyword in ["fatf", "blacklist", "graylist", "elevated_risk"]):
+        return "FATF"
+    elif any(keyword in source_lower for keyword in ["osint", "web_search"]):
+        return "OSINT"
+    elif any(keyword in source_lower for keyword in ["sanctions", "opensanctions"]):
+        return "Sanctions"
+    else:
+        return "Unknown"
 
 
 async def _call_llm_for_threat_analysis(
@@ -334,11 +310,13 @@ async def _call_llm_for_threat_analysis(
     Returns:
         Tuple of (threat_level, explanation). threat_level is None if LLM fails.
     """
-    # Build threat feeds summary
+    # Build threat feeds summary with provider type classification
     threat_feeds_summary_parts = []
     for source in threat_sources:
+        # Classify provider type based on source_name
+        provider_type = _classify_provider_type(source.source_name)
         threat_feeds_summary_parts.append(
-            f"- {source.source_name}: confianza {source.confidence:.2f}"
+            f"- [{provider_type}] {source.source_name}: confianza {source.confidence:.2f}"
         )
     threat_feeds_summary = "\n".join(threat_feeds_summary_parts)
 

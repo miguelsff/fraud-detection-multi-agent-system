@@ -33,5 +33,13 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 
+    # Threat Intelligence APIs
+    opensanctions_api_key: str = ""  # Empty = disabled (graceful skip)
+
+    # Threat Intelligence Feature Flags
+    threat_intel_enable_osint: bool = True
+    threat_intel_enable_sanctions: bool = True
+    threat_intel_osint_max_results: int = 5
+
 
 settings = Settings()

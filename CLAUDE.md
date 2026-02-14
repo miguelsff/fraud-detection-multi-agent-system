@@ -123,3 +123,5 @@ Pages: app/page.tsx (dashboard), app/transactions/, app/hitl/, app/analytics/
 Components: components/{dashboard,transactions,agents,hitl,explanation}/
 API Client: lib/api.ts (fetch wrapper → backend :8000)
 Types: lib/types.ts (mirror de Pydantic schemas del backend)
+
+Sólo debes crear documentación si te solicita explicitamente y en caso se te solicita debes preguntar para confirmar
