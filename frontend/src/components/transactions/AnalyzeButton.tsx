@@ -18,26 +18,93 @@ import { PlusCircle, Loader2 } from "lucide-react";
 import { analyzeTransaction } from "@/lib/api";
 import type { Transaction, CustomerBehavior } from "@/lib/types";
 
-// Example data from synthetic_data.json for pre-filling
-const EXAMPLE_TRANSACTION = {
-  transaction_id: "T-9001",
-  customer_id: "C-501",
-  amount: 1800.00,
-  currency: "PEN",
-  country: "PE",
-  channel: "web",
-  device_id: "D-01",
-  timestamp: new Date().toISOString(),
-  merchant_id: "M-200"
-};
-
-const EXAMPLE_CUSTOMER_BEHAVIOR = {
-  customer_id: "C-501",
-  usual_amount_avg: 500.00,
-  usual_hours: "08:00-22:00",
-  usual_countries: ["PE"],
-  usual_devices: ["D-01", "D-02"]
-};
+// Test scenarios from synthetic_data.json
+const SCENARIOS = {
+  APPROVE: {
+    name: "APPROVE - Normal Transaction",
+    transaction: {
+      transaction_id: "T-1003",
+      customer_id: "C-503",
+      amount: 250.00,
+      currency: "PEN",
+      country: "PE",
+      channel: "web",
+      device_id: "D-03",
+      timestamp: "2025-01-15T14:30:00Z",
+      merchant_id: "M-150"
+    },
+    customerBehavior: {
+      customer_id: "C-503",
+      usual_amount_avg: 500.00,
+      usual_hours: "08:00-22:00",
+      usual_countries: ["PE"],
+      usual_devices: ["D-03", "D-04"]
+    }
+  },
+  CHALLENGE: {
+    name: "CHALLENGE - High Amount + Off Hours",
+    transaction: {
+      transaction_id: "T-1001",
+      customer_id: "C-501",
+      amount: 1800.00,
+      currency: "PEN",
+      country: "PE",
+      channel: "web",
+      device_id: "D-01",
+      timestamp: "2025-01-15T03:15:00Z",
+      merchant_id: "M-200"
+    },
+    customerBehavior: {
+      customer_id: "C-501",
+      usual_amount_avg: 500.00,
+      usual_hours: "08:00-22:00",
+      usual_countries: ["PE"],
+      usual_devices: ["D-01", "D-02"]
+    }
+  },
+  BLOCK: {
+    name: "BLOCK - Multiple Risk Factors",
+    transaction: {
+      transaction_id: "T-1002",
+      customer_id: "C-502",
+      amount: 8500.00,
+      currency: "USD",
+      country: "NG",
+      channel: "mobile",
+      device_id: "D-99",
+      timestamp: "2025-01-15T02:00:00Z",
+      merchant_id: "M-305"
+    },
+    customerBehavior: {
+      customer_id: "C-502",
+      usual_amount_avg: 500.00,
+      usual_hours: "08:00-22:00",
+      usual_countries: ["PE", "CL"],
+      usual_devices: ["D-03"]
+    }
+  },
+  ESCALATE_TO_HUMAN: {
+    name: "ESCALATE - Ambiguous Signals",
+    transaction: {
+      transaction_id: "T-1004",
+      customer_id: "C-504",
+      amount: 2000.00,
+      currency: "USD",
+      country: "CO",
+      channel: "web",
+      device_id: "D-01",
+      timestamp: "2025-01-15T16:00:00Z",
+      merchant_id: "M-280"
+    },
+    customerBehavior: {
+      customer_id: "C-504",
+      usual_amount_avg: 500.00,
+      usual_hours: "08:00-22:00",
+      usual_countries: ["PE"],
+      usual_devices: ["D-01"]
+    }
+  }
+} as const;
 
 export function AnalyzeButton() {
   const router = useRouter();
@@ -46,12 +113,16 @@ export function AnalyzeButton() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<any>(null);
 
-  const [transactionJson, setTransactionJson] = useState(
-    JSON.stringify(EXAMPLE_TRANSACTION, null, 2)
-  );
-  const [customerBehaviorJson, setCustomerBehaviorJson] = useState(
-    JSON.stringify(EXAMPLE_CUSTOMER_BEHAVIOR, null, 2)
-  );
+  const [transactionJson, setTransactionJson] = useState("");
+  const [customerBehaviorJson, setCustomerBehaviorJson] = useState("");
+
+  const loadScenario = (scenarioKey: keyof typeof SCENARIOS) => {
+    const scenario = SCENARIOS[scenarioKey];
+    setTransactionJson(JSON.stringify(scenario.transaction, null, 2));
+    setCustomerBehaviorJson(JSON.stringify(scenario.customerBehavior, null, 2));
+    setError(null); // Clear any previous error
+    setResult(null); // Clear any previous result
+  };
 
   const handleAnalyze = async () => {
     setLoading(true);
@@ -76,12 +147,17 @@ export function AnalyzeButton() {
       const decision = await analyzeTransaction(transaction, customerBehavior);
       setResult(decision);
 
-      // Wait a moment to show result, then redirect
+      // Redirect to detail page and clean up
       setTimeout(() => {
         router.push(`/transactions/${transaction.transaction_id}`);
         router.refresh();
         setOpen(false);
-      }, 2000);
+        // Clean fields for next use
+        setTransactionJson("");
+        setCustomerBehaviorJson("");
+        setResult(null);
+        setError(null);
+      }, 500);
 
     } catch (err) {
       if (err instanceof SyntaxError) {
@@ -119,11 +195,93 @@ export function AnalyzeButton() {
         <DialogHeader>
           <DialogTitle>Analyze New Transaction</DialogTitle>
           <DialogDescription>
-            Submit a transaction for fraud detection analysis. Pre-filled with example data.
+            Submit a transaction for fraud detection analysis. Use quick presets or enter custom JSON.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Scenario Preset Buttons */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Quick Test Scenarios</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => loadScenario("APPROVE")}
+                disabled={loading || !!result}
+                className="justify-start text-left h-auto py-2"
+              >
+                <div className="flex items-center gap-2 w-full">
+                  <div className="w-2 h-2 rounded-full bg-approve flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-xs">APPROVE</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      Normal transaction
+                    </div>
+                  </div>
+                </div>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => loadScenario("CHALLENGE")}
+                disabled={loading || !!result}
+                className="justify-start text-left h-auto py-2"
+              >
+                <div className="flex items-center gap-2 w-full">
+                  <div className="w-2 h-2 rounded-full bg-challenge flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-xs">CHALLENGE</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      High amount + off-hours
+                    </div>
+                  </div>
+                </div>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => loadScenario("BLOCK")}
+                disabled={loading || !!result}
+                className="justify-start text-left h-auto py-2"
+              >
+                <div className="flex items-center gap-2 w-full">
+                  <div className="w-2 h-2 rounded-full bg-block flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-xs">BLOCK</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      Multiple risk factors
+                    </div>
+                  </div>
+                </div>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => loadScenario("ESCALATE_TO_HUMAN")}
+                disabled={loading || !!result}
+                className="justify-start text-left h-auto py-2"
+              >
+                <div className="flex items-center gap-2 w-full">
+                  <div className="w-2 h-2 rounded-full bg-escalate flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-xs">ESCALATE</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      Ambiguous signals
+                    </div>
+                  </div>
+                </div>
+              </Button>
+            </div>
+          </div>
+
           {/* Transaction JSON */}
           <div className="space-y-2">
             <Label htmlFor="transaction">Transaction Data (JSON)</Label>
@@ -155,18 +313,6 @@ export function AnalyzeButton() {
             <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg">
               <p className="font-medium">Error</p>
               <p className="text-sm mt-1">{error}</p>
-            </div>
-          )}
-
-          {/* Success Result */}
-          {result && (
-            <div className="bg-approve/10 border border-approve/20 text-approve px-4 py-3 rounded-lg">
-              <p className="font-medium">Analysis Complete!</p>
-              <div className="text-sm mt-2 space-y-1">
-                <p><strong>Decision:</strong> {result.decision}</p>
-                <p><strong>Confidence:</strong> {(result.confidence * 100).toFixed(1)}%</p>
-                <p className="text-muted-foreground mt-2">Redirecting to detail page...</p>
-              </div>
             </div>
           )}
         </div>

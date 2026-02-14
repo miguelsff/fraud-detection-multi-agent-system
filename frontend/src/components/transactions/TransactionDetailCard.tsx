@@ -76,7 +76,7 @@ export function TransactionDetailCard({
               {/* Amount */}
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Amount</p>
-                <p
+                <div
                   className={cn(
                     "text-sm font-semibold",
                     isAmountHigh && "text-red-600 dark:text-red-400"
@@ -88,13 +88,13 @@ export function TransactionDetailCard({
                       High Amount
                     </Badge>
                   )}
-                </p>
+                </div>
               </div>
 
               {/* Timestamp */}
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Timestamp</p>
-                <p
+                <div
                   className={cn(
                     "text-sm font-semibold",
                     isOffHours && "text-amber-600 dark:text-amber-400"
@@ -109,13 +109,13 @@ export function TransactionDetailCard({
                       Off Hours
                     </Badge>
                   )}
-                </p>
+                </div>
               </div>
 
               {/* Country */}
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Country</p>
-                <p
+                <div
                   className={cn(
                     "text-sm font-semibold",
                     isForeign && "text-amber-600 dark:text-amber-400"
@@ -130,13 +130,13 @@ export function TransactionDetailCard({
                       Foreign
                     </Badge>
                   )}
-                </p>
+                </div>
               </div>
 
               {/* Channel */}
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Channel</p>
-                <p
+                <div
                   className={cn(
                     "text-sm font-semibold capitalize",
                     channelRisk === "high" && "text-red-600 dark:text-red-400",
@@ -158,13 +158,13 @@ export function TransactionDetailCard({
                       Medium Risk
                     </Badge>
                   )}
-                </p>
+                </div>
               </div>
 
               {/* Device ID */}
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Device ID</p>
-                <p
+                <div
                   className={cn(
                     "text-sm font-mono font-semibold",
                     isUnknownDevice && "text-amber-600 dark:text-amber-400"
@@ -179,7 +179,7 @@ export function TransactionDetailCard({
                       Unknown
                     </Badge>
                   )}
-                </p>
+                </div>
               </div>
 
               {/* Merchant ID */}

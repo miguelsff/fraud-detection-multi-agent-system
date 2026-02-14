@@ -10,7 +10,9 @@ The system consists of three containerized services:
 2. **FastAPI Backend** - Python 3.13 + LangGraph multi-agent pipeline
 3. **Next.js Frontend** - React 18 + TypeScript UI
 
-All services are orchestrated via `docker-compose.yml` with health checks and automatic dependency management.
+All services are orchestrated via `docker-compose.prod.yml` with health checks and automatic dependency management.
+
+**Note:** For local development, use `devops/docker-compose.yml` (PostgreSQL only) and run backend/frontend locally with hot-reload. This guide covers **production deployment** with all services containerized.
 
 ---
 

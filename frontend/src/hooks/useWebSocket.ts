@@ -30,6 +30,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectDelayRef = useRef(1000); // Start with 1s
   const shouldConnectRef = useRef(autoConnect);
+  const connectionAttemptsRef = useRef(0);
+  const maxConnectionAttempts = 3; // Stop trying after 3 failed attempts
 
   const connect = useCallback(() => {
     // Don't connect if already connected or connecting
@@ -50,6 +52,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         console.log("[WebSocket] Connected");
         setIsConnected(true);
         reconnectDelayRef.current = 1000; // Reset delay on successful connection
+        connectionAttemptsRef.current = 0; // Reset connection attempts
       };
 
       ws.onmessage = (event) => {
@@ -62,19 +65,37 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         }
       };
 
-      ws.onerror = (error) => {
-        console.error("[WebSocket] Error:", error);
+      ws.onerror = () => {
+        // Don't log WebSocket errors - they're usually connection failures
+        // which are expected when backend is not running.
+        // The onclose handler will provide better context.
       };
 
       ws.onclose = (event) => {
-        console.log("[WebSocket] Disconnected", event.code, event.reason);
         setIsConnected(false);
         wsRef.current = null;
 
+        // Only log if it's not a connection failure (1006 = abnormal closure)
+        if (event.code !== 1006) {
+          console.log("[WebSocket] Disconnected", event.code, event.reason);
+        } else {
+          connectionAttemptsRef.current += 1;
+        }
+
         // Auto-reconnect with exponential backoff if connection was intended
         if (shouldConnectRef.current) {
+          // Stop trying after max attempts to avoid console spam
+          if (connectionAttemptsRef.current >= maxConnectionAttempts) {
+            if (process.env.NODE_ENV === "development") {
+              console.warn(
+                "[WebSocket] Backend not available. Make sure the backend server is running on http://localhost:8000"
+              );
+            }
+            shouldConnectRef.current = false;
+            return;
+          }
+
           const delay = Math.min(reconnectDelayRef.current, maxReconnectDelay);
-          console.log(`[WebSocket] Reconnecting in ${delay}ms...`);
 
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectDelayRef.current = Math.min(reconnectDelayRef.current * 2, maxReconnectDelay);
@@ -104,6 +125,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     }
 
     setIsConnected(false);
+    connectionAttemptsRef.current = 0; // Reset attempts on manual disconnect
   }, []);
 
   // Auto-connect on mount if enabled

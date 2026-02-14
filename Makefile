@@ -1,7 +1,7 @@
 # Makefile for Fraud Detection Multi-Agent System
 # ==================================================
 
-.PHONY: help setup dev test test-unit test-integration ingest seed db-reset ollama all clean \
+.PHONY: help setup dev test test-unit test-integration ingest seed demo db-reset ollama all clean \
         frontend build-frontend docker-all docker-build docker-up docker-down docker-logs
 
 # Default target - show help
@@ -23,6 +23,7 @@ help:
 	@echo "Data & Policies:"
 	@echo "  make ingest           - Ingest fraud policies into ChromaDB"
 	@echo "  make seed             - Seed database with synthetic test data"
+	@echo "  make demo             - Run end-to-end pipeline demonstration"
 	@echo ""
 	@echo "Frontend Build:"
 	@echo "  make build-frontend   - Build Next.js production bundle"
@@ -85,6 +86,11 @@ seed:
 	cd backend && python -m uv run python -m app.services.seed_service
 	@echo "✓ Database seeding complete!"
 
+# Demo: Run end-to-end pipeline demonstration
+demo:
+	@echo "Running end-to-end fraud detection demo..."
+	cd backend && python -m uv run python scripts/demo.py
+
 # Database: Reset PostgreSQL (WARNING: deletes all data)
 db-reset:
 	@echo "WARNING: This will delete all database data!"
@@ -129,10 +135,10 @@ build-frontend:
 	cd frontend && npm run build
 	@echo "✓ Frontend build complete!"
 
-# Docker: Build and start all services
+# Docker: Build and start all services (production deployment)
 docker-all:
-	@echo "Building and starting all Docker services..."
-	docker compose up --build -d
+	@echo "Building and starting all Docker services (production mode)..."
+	docker compose -f docker-compose.prod.yml up --build -d
 	@echo "✓ All services started!"
 	@echo ""
 	@echo "Services available at:"
@@ -145,26 +151,26 @@ docker-all:
 
 # Docker: Build images only
 docker-build:
-	@echo "Building Docker images..."
-	docker compose build
+	@echo "Building Docker images (production)..."
+	docker compose -f docker-compose.prod.yml build
 	@echo "✓ Docker images built!"
 
 # Docker: Start services (without rebuild)
 docker-up:
-	@echo "Starting Docker services..."
-	docker compose up -d
+	@echo "Starting Docker services (production)..."
+	docker compose -f docker-compose.prod.yml up -d
 	@echo "✓ Services started!"
 
 # Docker: Stop all services
 docker-down:
-	@echo "Stopping Docker services..."
-	docker compose down
+	@echo "Stopping Docker services (production)..."
+	docker compose -f docker-compose.prod.yml down
 	@echo "✓ Services stopped!"
 
 # Docker: View logs
 docker-logs:
 	@echo "Showing logs from all services (Ctrl+C to exit)..."
-	docker compose logs -f
+	docker compose -f docker-compose.prod.yml logs -f
 
 # Clean: Remove Python cache and ChromaDB data
 clean:

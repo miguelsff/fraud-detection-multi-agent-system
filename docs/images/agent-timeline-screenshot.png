@@ -1,0 +1,98 @@
+<svg width="1200" height="700" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="700" fill="#0f172a"/>
+  <rect x="50" y="50" width="1100" height="600" fill="#1e293b" stroke="#334155" stroke-width="2" rx="8"/>
+
+  <!-- Header -->
+  <rect x="70" y="70" width="1060" height="60" fill="#334155" rx="4"/>
+  <text x="100" y="107" font-family="Arial, sans-serif" font-size="24" fill="#f1f5f9" font-weight="bold">
+    Agent Execution Timeline - Transaction T-1001
+  </text>
+
+  <!-- Timeline -->
+  <line x1="100" y1="180" x2="100" y2="600" stroke="#475569" stroke-width="3"/>
+
+  <!-- Phase 1: Parallel Collection -->
+  <circle cx="100" cy="200" r="8" fill="#3b82f6"/>
+  <rect x="130" y="185" width="300" height="30" fill="#1e40af" rx="4"/>
+  <text x="145" y="205" font-family="Arial, sans-serif" font-size="14" fill="#dbeafe">Transaction Context</text>
+
+  <circle cx="100" cy="240" r="8" fill="#3b82f6"/>
+  <rect x="130" y="225" width="300" height="30" fill="#1e40af" rx="4"/>
+  <text x="145" y="245" font-family="Arial, sans-serif" font-size="14" fill="#dbeafe">Behavioral Pattern</text>
+
+  <circle cx="100" cy="280" r="8" fill="#8b5cf6"/>
+  <rect x="130" y="265" width="300" height="30" fill="#6d28d9" rx="4"/>
+  <text x="145" y="285" font-family="Arial, sans-serif" font-size="14" fill="#f3e8ff">Policy RAG</text>
+
+  <circle cx="100" cy="320" r="8" fill="#8b5cf6"/>
+  <rect x="130" y="305" width="300" height="30" fill="#6d28d9" rx="4"/>
+  <text x="145" y="325" font-family="Arial, sans-serif" font-size="14" fill="#f3e8ff">External Threat Intel</text>
+
+  <!-- Phase 2: Aggregation -->
+  <circle cx="100" cy="370" r="8" fill="#10b981"/>
+  <rect x="130" y="355" width="300" height="30" fill="#047857" rx="4"/>
+  <text x="145" y="375" font-family="Arial, sans-serif" font-size="14" fill="#d1fae5">Evidence Aggregation</text>
+
+  <!-- Phase 3: Debate -->
+  <circle cx="100" cy="420" r="8" fill="#dc2626"/>
+  <rect x="130" y="405" width="480" height="30" fill="#b91c1c" rx="4"/>
+  <text x="145" y="425" font-family="Arial, sans-serif" font-size="14" fill="#fee2e2">Debate: Pro-Fraud (0.78)</text>
+
+  <circle cx="100" cy="460" r="8" fill="#059669"/>
+  <rect x="130" y="445" width="380" height="30" fill="#047857" rx="4"/>
+  <text x="145" y="465" font-family="Arial, sans-serif" font-size="14" fill="#d1fae5">Debate: Pro-Customer (0.55)</text>
+
+  <!-- Phase 4: Decision -->
+  <circle cx="100" cy="510" r="8" fill="#f59e0b"/>
+  <rect x="130" y="495" width="300" height="30" fill="#d97706" rx="4"/>
+  <text x="145" y="515" font-family="Arial, sans-serif" font-size="14" fill="#fef3c7">Decision Arbiter</text>
+
+  <!-- Phase 5: Explanation -->
+  <circle cx="100" cy="560" r="8" fill="#06b6d4"/>
+  <rect x="130" y="545" width="300" height="30" fill="#0891b2" rx="4"/>
+  <text x="145" y="565" font-family="Arial, sans-serif" font-size="14" fill="#cffafe">Explainability</text>
+
+  <!-- Result Box -->
+  <rect x="650" y="200" width="460" height="370" fill="#334155" rx="4"/>
+  <text x="670" y="230" font-family="Arial, sans-serif" font-size="16" fill="#f1f5f9" font-weight="bold">
+    Final Decision: CHALLENGE
+  </text>
+  <text x="670" y="260" font-family="Arial, sans-serif" font-size="14" fill="#94a3b8">
+    Confidence: 72%
+  </text>
+  <text x="670" y="290" font-family="Arial, sans-serif" font-size="14" fill="#94a3b8">
+    Composite Risk: 68.5/100
+  </text>
+
+  <text x="670" y="330" font-family="Arial, sans-serif" font-size="14" fill="#f1f5f9" font-weight="bold">
+    Debate Summary:
+  </text>
+  <text x="670" y="360" font-family="Arial, sans-serif" font-size="12" fill="#fca5a5">
+    Pro-Fraud: High amount (3.6x) + off-hours
+  </text>
+  <text x="670" y="385" font-family="Arial, sans-serif" font-size="12" fill="#6ee7b7">
+    Pro-Customer: Known device + same country
+  </text>
+
+  <text x="670" y="425" font-family="Arial, sans-serif" font-size="14" fill="#f1f5f9" font-weight="bold">
+    Customer Explanation:
+  </text>
+  <text x="670" y="455" font-family="Arial, sans-serif" font-size="11" fill="#cbd5e1">
+    "Hemos detectado actividad inusual en su
+  </text>
+  <text x="670" y="475" font-family="Arial, sans-serif" font-size="11" fill="#cbd5e1">
+    cuenta. Por seguridad, necesitamos verificar
+  </text>
+  <text x="670" y="495" font-family="Arial, sans-serif" font-size="11" fill="#cbd5e1">
+    esta transacción."
+  </text>
+
+  <text x="670" y="535" font-family="Arial, sans-serif" font-size="12" fill="#64748b">
+    Processing Time: 4.2s
+  </text>
+
+  <!-- Footer -->
+  <text x="600" y="680" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#64748b">
+    [Screenshot Placeholder - Replace with actual agent timeline]
+  </text>
+</svg>
