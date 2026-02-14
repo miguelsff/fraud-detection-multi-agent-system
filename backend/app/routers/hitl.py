@@ -13,7 +13,7 @@ router = APIRouter()
 
 @router.get("/queue")
 async def get_queue(
-    status: str = Query("pending", regex="^(pending|resolved)$"),
+    status: str = Query("pending", pattern="^(pending|resolved)$"),
     db: AsyncSession = Depends(get_db),
 ):
     """Retrieve HITL cases by status."""

@@ -29,7 +29,18 @@
       "Bash(python -m uv sync:*)",
       "Bash(test:*)",
       "Bash(python -m uv run pytest:*)",
-      "Bash(make:*)"
+      "Bash(make:*)",
+      "Bash(npm run build:*)",
+      "Bash(python -m uv run:*)",
+      "Bash(curl:*)",
+      "Bash(python seed_test.py:*)",
+      "Bash(set:*)",
+      "Bash(npm run dev:*)",
+      "Bash(taskkill:*)",
+      "Bash(npx kill-port:*)",
+      "Bash(python:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(npm install:*)"
     ]
   }
 }

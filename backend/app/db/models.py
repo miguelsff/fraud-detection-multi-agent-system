@@ -40,7 +40,7 @@ class TransactionRecord(Base):
     __tablename__ = "transaction_records"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    transaction_id: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+    transaction_id: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     raw_data: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)  # PostgreSQL JSONB
     decision: Mapped[str] = mapped_column(String(20), nullable=False)  # "approve" or "reject"
     confidence: Mapped[float] = mapped_column(Numeric(5, 4), nullable=False)  # 0.0000 - 1.0000
@@ -48,7 +48,6 @@ class TransactionRecord(Base):
         DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
-        index=True,
     )
 
     __table_args__ = (
@@ -81,7 +80,6 @@ class AgentTrace(Base):
         String(100),
         ForeignKey("transaction_records.transaction_id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     agent_name: Mapped[str] = mapped_column(String(100), nullable=False)
     duration_ms: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -92,7 +90,6 @@ class AgentTrace(Base):
         DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
-        index=True,
     )
 
     __table_args__ = (
@@ -124,7 +121,6 @@ class HITLCase(Base):
         String(100),
         ForeignKey("transaction_records.transaction_id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")  # "pending" or "resolved"
     assigned_to: Mapped[str | None] = mapped_column(String(100), nullable=True)
@@ -134,7 +130,6 @@ class HITLCase(Base):
         DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
-        index=True,
     )
 
     __table_args__ = (

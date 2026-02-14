@@ -140,9 +140,12 @@ async def list_transactions(
 
     return [
         {
+            "id": r.id,
             "transaction_id": r.transaction_id,
+            "raw_data": r.raw_data,
             "decision": r.decision,
             "confidence": r.confidence,
+            "analyzed_at": r.created_at.isoformat(),
             "created_at": r.created_at.isoformat(),
         }
         for r in records

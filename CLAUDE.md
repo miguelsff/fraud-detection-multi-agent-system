@@ -24,7 +24,7 @@ Detailed architecture documentation (in Spanish) lives in `.claude/docs/arquitec
 - **LLM**: LangChain + LangChain-Ollama (local dev)
 - **Vector DB**: ChromaDB (embedded, for fraud policy RAG)
 - **Database**: PostgreSQL (via SQLAlchemy async + asyncpg + Alembic migrations)
-- **Frontend**: Next.js 14 + TypeScript + Tailwind (planned)
+- **Frontend**: Next.js 16 + TypeScript + Tailwind + shadcn/ui
 - **Deploy**: Azure Container Apps + Terraform (planned)
 
 ### Key Backend Modules (`backend/app/`)
@@ -68,6 +68,12 @@ docker compose -f devops/docker-compose.yml up -d
 # Run seed & test with synthetic data
 python seed_test.py
 python seed_test.py --parallel  # Run analyses in parallel
+
+# Navigate to frontend
+cd frontend
+
+# Run frontend server
+npm run dev
 ```
 
 ## Testing with Synthetic Data
@@ -103,3 +109,17 @@ GET    /api/v1/hitl/queue                    — HITL review queue
 POST   /api/v1/hitl/{id}/resolve            — Resolve HITL case
 GET    /api/v1/health                        — Health check
 WS     /api/v1/ws/transactions        
+
+## Reglas Críticas Frontend
+1. Server Components por defecto, "use client" SOLO si hay interactividad
+2. TypeScript estricto — NUNCA "any"
+3. API calls via lib/api.ts (fetch wrapper centralizado)
+4. shadcn/ui para TODOS los componentes UI base
+5. Colores decisión: APPROVE=green, CHALLENGE=amber, BLOCK=red, ESCALATE=violet
+
+## Arquitectura Frontend
+Layout: app/layout.tsx (sidebar + header)
+Pages: app/page.tsx (dashboard), app/transactions/, app/hitl/, app/analytics/
+Components: components/{dashboard,transactions,agents,hitl,explanation}/
+API Client: lib/api.ts (fetch wrapper → backend :8000)
+Types: lib/types.ts (mirror de Pydantic schemas del backend)
