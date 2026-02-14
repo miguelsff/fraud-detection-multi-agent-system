@@ -209,16 +209,10 @@ export interface WebSocketEvent {
 // ============================================================================
 
 /**
+ * Re-export constants from constants.ts for backward compatibility.
  * Decision color mapping for UI (as per CLAUDE.md).
- * APPROVE=green, CHALLENGE=amber, BLOCK=red, ESCALATE=violet
- * Hex values for compatibility with recharts and CSS
  */
-export const DECISION_COLORS: Record<DecisionType, string> = {
-  APPROVE: "#22c55e",        // green-600
-  CHALLENGE: "#f59e0b",      // amber-500
-  BLOCK: "#ef4444",          // red-600
-  ESCALATE_TO_HUMAN: "#8b5cf6" // violet-500
-} as const;
+export { DECISION_COLORS } from "./constants";
 
 /**
  * Risk category color mapping for UI.

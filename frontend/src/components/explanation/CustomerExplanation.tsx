@@ -5,11 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Mail, Copy, Check, CheckCircle2 } from "lucide-react";
-import { FraudDecision } from "@/lib/types";
+import { DecisionType } from "@/lib/types";
 
 interface CustomerExplanationProps {
   explanation: string;
-  decision: FraudDecision;
+  decision: {
+    decision: DecisionType;
+    confidence: number;
+    reasoning?: string;
+  };
 }
 
 export function CustomerExplanation({

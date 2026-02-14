@@ -28,7 +28,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import {
-  FraudDecision,
+  DecisionType,
   PolicyMatchResult,
   AggregatedEvidence,
   AgentTraceEntry,
@@ -36,9 +36,13 @@ import {
 
 interface AuditExplanationProps {
   explanation: string;
-  decision: FraudDecision;
-  policyMatches?: PolicyMatchResult;
-  evidence?: AggregatedEvidence;
+  decision: {
+    decision: DecisionType;
+    confidence: number;
+    reasoning?: string;
+  };
+  policyMatches?: PolicyMatchResult | null;
+  evidence?: AggregatedEvidence | null;
   trace?: AgentTraceEntry[];
 }
 
@@ -66,7 +70,7 @@ ${explanation}
 
 ${policyMatches && policyMatches.matches.length > 0 ? `
 POLICIES APPLIED:
-${policyMatches.matches.map((m, i) => `${i + 1}. ${m.policy_id} (Score: ${m.score})`).join('\n')}
+${policyMatches.matches.map((m, i) => `${i + 1}. ${m.policy_id} (Score: ${m.relevance_score})`).join('\n')}
 ` : ''}
 
 ${evidence && evidence.all_signals.length > 0 ? `
@@ -169,18 +173,8 @@ ${trace.map(t => `- ${t.agent_name}: ${t.duration_ms}ms [${t.status}]`).join('\n
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-muted-foreground">
-                          Score: {match.score.toFixed(2)}
+                          Score: {match.relevance_score.toFixed(2)}
                         </span>
-                        {match.external_link && (
-                          <a
-                            href={match.external_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-500 hover:text-blue-600"
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        )}
                       </div>
                     </div>
                   ))}

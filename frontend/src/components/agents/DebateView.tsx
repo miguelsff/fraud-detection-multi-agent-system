@@ -13,12 +13,16 @@ import {
   Minus,
   Gavel,
 } from "lucide-react";
-import { DebateArguments, FraudDecision } from "@/lib/types";
+import { DebateArguments, DecisionType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface DebateViewProps {
   debate: DebateArguments;
-  decision: FraudDecision;
+  decision: {
+    decision: DecisionType;
+    confidence: number;
+    reasoning?: string;
+  };
 }
 
 export function DebateView({ debate, decision }: DebateViewProps) {

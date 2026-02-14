@@ -1,10 +1,9 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { MobileSidebar } from "./MobileSidebar";
+import { AnalyzeButton } from "@/components/transactions/AnalyzeButton";
 import { useSystemHealth } from "@/hooks/useSystemHealth";
 
 const BREADCRUMBS: Record<string, string> = {
@@ -52,14 +51,7 @@ export function Header() {
         </Badge>
 
         {/* Analyze New Button */}
-        <Button
-          size="sm"
-          className="gap-2"
-          onClick={() => alert("Analyze New Transaction modal - Coming soon!")}
-        >
-          <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">Analyze New</span>
-        </Button>
+        <AnalyzeButton />
       </div>
     </header>
   );

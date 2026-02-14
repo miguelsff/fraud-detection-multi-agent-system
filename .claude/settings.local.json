@@ -43,7 +43,10 @@
       "Bash(npm install:*)",
       "Bash($env:PYTHONIOENCODING=\"utf-8\")",
       "Bash(Select-Object -First 200)",
-      "Bash(PYTHONIOENCODING=utf-8 python -m uv run:*)"
+      "Bash(PYTHONIOENCODING=utf-8 python -m uv run:*)",
+      "Bash(timeout 3 cmd:*)",
+      "Bash(cmd /c \"type C:\\\\Users\\\\USER\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--trabajos-miguel-ai-developer-fraud-detection-multi-agent-system\\\\tasks\\\\b874c61.output\")",
+      "Bash(cmd /c \"type C:\\\\Users\\\\USER\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--trabajos-miguel-ai-developer-fraud-detection-multi-agent-system\\\\tasks\\\\bc431bd.output | findstr /C:error /C:Error /C:✓\")"
     ]
   }
 }

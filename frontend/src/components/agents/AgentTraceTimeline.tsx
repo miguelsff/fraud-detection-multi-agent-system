@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,12 +18,19 @@ import {
   Scale,
   FileText,
   Zap,
+  Loader2,
 } from "lucide-react";
-import { AgentTraceEntry } from "@/lib/types";
+import { AgentTraceEntry, WebSocketEvent } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 interface AgentTraceTimelineProps {
   trace: AgentTraceEntry[];
+  liveEvents?: WebSocketEvent[];
+}
+
+interface AgentState {
+  status: "running" | "completed" | "idle";
+  justCompleted?: boolean;
 }
 
 const statusConfig = {
@@ -46,6 +53,11 @@ const statusConfig = {
     color: "bg-gray-400",
     dotColor: "bg-gray-400",
     label: "Skipped",
+  },
+  running: {
+    color: "bg-blue-500",
+    dotColor: "bg-blue-500",
+    label: "Running",
   },
 };
 
@@ -94,19 +106,27 @@ function groupByPhase(trace: AgentTraceEntry[]): PhaseGroup[] {
 
 function AgentTraceItem({
   entry,
-  isLast
+  isLast,
+  agentState
 }: {
   entry: AgentTraceEntry;
   isLast: boolean;
+  agentState?: AgentState;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const status = (entry.status as keyof typeof statusConfig) || "success";
+  const isRunning = agentState?.status === "running";
+  const justCompleted = agentState?.justCompleted;
+
+  const status = isRunning ? "running" : (entry.status as keyof typeof statusConfig) || "success";
   const config = statusConfig[status];
   const agentInfo = agentConfig[entry.agent_name];
   const Icon = agentInfo?.icon || FileText;
 
   return (
-    <div className="relative">
+    <div className={cn(
+      "relative",
+      justCompleted && "animate-in fade-in-50 duration-500"
+    )}>
       {/* Timeline connector line */}
       {!isLast && (
         <div className="absolute left-4 top-10 bottom-0 w-0.5 bg-border" />
@@ -118,10 +138,15 @@ function AgentTraceItem({
         <div className="relative flex-shrink-0">
           <div className={cn(
             "h-8 w-8 rounded-full flex items-center justify-center",
-            "border-2 border-background shadow-sm",
-            config.dotColor
+            "border-2 border-background shadow-sm transition-all",
+            config.dotColor,
+            isRunning && "animate-pulse"
           )}>
-            <Icon className="h-4 w-4 text-white" />
+            {isRunning ? (
+              <Loader2 className="h-4 w-4 text-white animate-spin" />
+            ) : (
+              <Icon className="h-4 w-4 text-white" />
+            )}
           </div>
         </div>
 
@@ -213,10 +238,12 @@ function AgentTraceItem({
 
 function PhaseSection({
   phaseGroup,
-  isLast
+  isLast,
+  agentStates
 }: {
   phaseGroup: PhaseGroup;
   isLast: boolean;
+  agentStates: Map<string, AgentState>;
 }) {
   const phaseInfo = phaseConfig.find(p => p.id === phaseGroup.phase);
   const phaseName = phaseInfo?.name || `Fase ${phaseGroup.phase}`;
@@ -251,6 +278,7 @@ function PhaseSection({
             key={`${entry.agent_name}-${idx}`}
             entry={entry}
             isLast={isLast && idx === phaseGroup.entries.length - 1}
+            agentState={agentStates.get(entry.agent_name)}
           />
         ))}
       </div>
@@ -258,12 +286,51 @@ function PhaseSection({
   );
 }
 
-export function AgentTraceTimeline({ trace }: AgentTraceTimelineProps) {
+export function AgentTraceTimeline({ trace, liveEvents = [] }: AgentTraceTimelineProps) {
+  // Calculate agent states from live events
+  const agentStates = useMemo(() => {
+    const states = new Map<string, AgentState>();
+    const completedRecently = new Set<string>();
+
+    // Track which agents are running or just completed
+    liveEvents.forEach((event) => {
+      if (event.event === "agent_started" && event.agent) {
+        states.set(event.agent, { status: "running" });
+      } else if (event.event === "agent_completed" && event.agent) {
+        // Check if this was recently completed (within last 2 seconds)
+        const eventTime = new Date(event.timestamp).getTime();
+        const now = Date.now();
+        const justCompleted = (now - eventTime) < 2000;
+
+        states.set(event.agent, {
+          status: "completed",
+          justCompleted
+        });
+
+        if (justCompleted) {
+          completedRecently.add(event.agent);
+        }
+      }
+    });
+
+    return states;
+  }, [liveEvents]);
+
+  const hasLiveUpdates = liveEvents.length > 0;
+
   if (!trace || trace.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Agent Execution Trace</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Agent Execution Trace</CardTitle>
+            {hasLiveUpdates && (
+              <Badge variant="outline" className="bg-blue-500/10 text-blue-700 border-blue-500/20">
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                Live
+              </Badge>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -287,7 +354,15 @@ export function AgentTraceTimeline({ trace }: AgentTraceTimelineProps) {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Agent Execution Trace</CardTitle>
+          <div className="flex items-center gap-2">
+            <CardTitle>Agent Execution Trace</CardTitle>
+            {hasLiveUpdates && (
+              <Badge variant="outline" className="bg-blue-500/10 text-blue-700 border-blue-500/20 animate-pulse">
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                Live
+              </Badge>
+            )}
+          </div>
           <div className="flex items-center gap-2 text-sm font-medium">
             <Clock className="h-4 w-4 text-muted-foreground" />
             <span className="text-muted-foreground">Total:</span>
@@ -301,6 +376,7 @@ export function AgentTraceTimeline({ trace }: AgentTraceTimelineProps) {
             key={group.phase}
             phaseGroup={group}
             isLast={idx === phaseGroups.length - 1}
+            agentStates={agentStates}
           />
         ))}
       </CardContent>

@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: fraud-db
+    environment:
+      POSTGRES_USER: fraud_user
+      POSTGRES_PASSWORD: fraud_pass_dev
+      POSTGRES_DB: fraud_detection
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fraud_user -d fraud_detection"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - fraud-network
+
+  # Backend API (FastAPI)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fraud-backend
+    environment:
+      # Database
+      DATABASE_URL: postgresql+asyncpg://fraud_user:fraud_pass_dev@postgres:5432/fraud_detection
+
+      # LLM Config (Ollama - adjust as needed)
+      LLM_MODEL: llama3.2:3b
+      LLM_BASE_URL: http://host.docker.internal:11434
+
+      # App Config
+      ENVIRONMENT: production
+      LOG_LEVEL: info
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - fraud-network
+    # Uncomment for hot-reload during development
+    # volumes:
+    #   - ./backend/app:/app/app
+
+  # Frontend (Next.js)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fraud-frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_WS_URL: ws://localhost:8000
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - fraud-network
+
+volumes:
+  pgdata:
+    driver: local
+
+networks:
+  fraud-network:
+    driver: bridge
