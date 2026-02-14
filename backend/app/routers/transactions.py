@@ -79,7 +79,7 @@ async def get_result(
     transaction_id: str,
     db: AsyncSession = Depends(get_db),
 ):
-    """Retrieve analysis result from database."""
+    """Retrieve complete analysis result from database."""
     stmt = select(TransactionRecord).where(TransactionRecord.transaction_id == transaction_id)
     result = await db.execute(stmt)
     record = result.scalar_one_or_none()
@@ -87,12 +87,23 @@ async def get_result(
     if not record:
         raise HTTPException(status_code=404, detail="Transaction not found")
 
+    # Parse analysis_state (may be None for old records)
+    state = record.analysis_state or {}
+
     return {
         "transaction_id": record.transaction_id,
-        "raw_data": record.raw_data,
+        "transaction": record.raw_data,
+        "customer_behavior": state.get("customer_behavior"),
+        "transaction_signals": state.get("transaction_signals"),
+        "behavioral_signals": state.get("behavioral_signals"),
+        "policy_matches": state.get("policy_matches"),
+        "threat_intel": state.get("threat_intel"),
+        "evidence": state.get("evidence"),
+        "debate": state.get("debate"),
+        "explanation": state.get("explanation"),
         "decision": record.decision,
-        "confidence": record.confidence,
-        "created_at": record.created_at.isoformat(),
+        "confidence": float(record.confidence),
+        "analyzed_at": record.created_at.isoformat(),
     }
 
 

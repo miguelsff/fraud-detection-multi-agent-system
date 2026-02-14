@@ -40,7 +40,10 @@
       "Bash(npx kill-port:*)",
       "Bash(python:*)",
       "Bash(npx shadcn@latest add:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash($env:PYTHONIOENCODING=\"utf-8\")",
+      "Bash(Select-Object -First 200)",
+      "Bash(PYTHONIOENCODING=utf-8 python -m uv run:*)"
     ]
   }
 }

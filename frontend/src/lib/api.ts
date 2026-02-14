@@ -8,6 +8,7 @@ import {
   CustomerBehavior,
   FraudDecision,
   TransactionRecord,
+  TransactionAnalysisDetail,
   AgentTraceEntry,
   HITLCase,
   AnalyticsSummary,
@@ -129,13 +130,13 @@ export async function getTransactions(
 }
 
 /**
- * Get analysis result for a specific transaction.
+ * Get complete analysis detail for a specific transaction.
  * GET /api/v1/transactions/{id}/result
  */
-export async function getTransactionResult(
+export async function getTransactionDetail(
   transactionId: string
-): Promise<TransactionRecord> {
-  return fetchAPI<TransactionRecord>(
+): Promise<TransactionAnalysisDetail> {
+  return fetchAPI<TransactionAnalysisDetail>(
     `/api/v1/transactions/${transactionId}/result`
   );
 }

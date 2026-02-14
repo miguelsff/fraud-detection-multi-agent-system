@@ -10,7 +10,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from ..models import Transaction, CustomerBehavior, FraudDecision
 from ..agents.orchestrator import analyze_transaction
-from ..db.session import async_session_maker
+from ..db.engine import async_session as async_session_maker
 from ..utils.logger import get_logger
 
 logger = get_logger(__name__)

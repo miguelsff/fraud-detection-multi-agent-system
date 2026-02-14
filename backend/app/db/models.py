@@ -44,6 +44,14 @@ class TransactionRecord(Base):
     raw_data: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)  # PostgreSQL JSONB
     decision: Mapped[str] = mapped_column(String(20), nullable=False)  # "approve" or "reject"
     confidence: Mapped[float] = mapped_column(Numeric(5, 4), nullable=False)  # 0.0000 - 1.0000
+
+    # NEW: Store complete analysis state as JSONB
+    analysis_state: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON,
+        nullable=True,
+        comment="Complete OrchestratorState with all agent outputs",
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

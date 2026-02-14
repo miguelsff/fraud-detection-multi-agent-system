@@ -171,6 +171,26 @@ export interface AnalyticsSummary {
   escalation_rate: number;
 }
 
+/**
+ * Complete transaction analysis for detail page.
+ * Returned by enhanced GET /api/v1/transactions/{id}/result
+ */
+export interface TransactionAnalysisDetail {
+  transaction_id: string;
+  transaction: Transaction;
+  customer_behavior: CustomerBehavior | null;
+  transaction_signals: TransactionSignals | null;
+  behavioral_signals: BehavioralSignals | null;
+  policy_matches: PolicyMatchResult | null;
+  threat_intel: ThreatIntelResult | null;
+  evidence: AggregatedEvidence | null;
+  debate: DebateArguments | null;
+  explanation: ExplanationResult | null;
+  decision: DecisionType;
+  confidence: number;
+  analyzed_at: string;
+}
+
 // ============================================================================
 // WebSocket Models
 // ============================================================================

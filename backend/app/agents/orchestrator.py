@@ -180,12 +180,57 @@ async def persist_audit(state: OrchestratorState, config: RunnableConfig) -> dic
         transaction = state["transaction"]
         decision: FraudDecision = state["decision"]
 
-        # Create TransactionRecord
+        # Build analysis_state from OrchestratorState
+        analysis_state = {
+            "customer_behavior": (
+                state["customer_behavior"].model_dump(mode="json")
+                if state.get("customer_behavior")
+                else None
+            ),
+            "transaction_signals": (
+                state["transaction_signals"].model_dump(mode="json")
+                if state.get("transaction_signals")
+                else None
+            ),
+            "behavioral_signals": (
+                state["behavioral_signals"].model_dump(mode="json")
+                if state.get("behavioral_signals")
+                else None
+            ),
+            "policy_matches": (
+                state["policy_matches"].model_dump(mode="json")
+                if state.get("policy_matches")
+                else None
+            ),
+            "threat_intel": (
+                state["threat_intel"].model_dump(mode="json")
+                if state.get("threat_intel")
+                else None
+            ),
+            "evidence": (
+                state["evidence"].model_dump(mode="json")
+                if state.get("evidence")
+                else None
+            ),
+            "debate": (
+                state["debate"].model_dump(mode="json")
+                if state.get("debate")
+                else None
+            ),
+            "explanation": (
+                state["explanation"].model_dump(mode="json")
+                if state.get("explanation")
+                else None
+            ),
+        }
+
+        # Create TransactionRecord with analysis_state
         record = TransactionRecord(
             transaction_id=transaction.transaction_id,
             raw_data=transaction.model_dump(mode="json"),
             decision=decision.decision,
             confidence=float(decision.confidence),
+            analysis_state=analysis_state,
         )
         db_session.add(record)
         await db_session.flush()
