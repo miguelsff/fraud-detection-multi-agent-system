@@ -1,11 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 import {
   DecisionType,
   AggregatedEvidence,
   TransactionSignals,
+  HITLResolution,
 } from "@/lib/types";
 
 interface DecisionCardProps {
@@ -13,6 +14,7 @@ interface DecisionCardProps {
   confidence: number;
   evidence: AggregatedEvidence | null;
   signals: TransactionSignals | null;
+  hitl?: HITLResolution | null;
 }
 
 const decisionConfig = {
@@ -41,11 +43,26 @@ const riskCategoryConfig = {
   low: "bg-green-500/10 text-green-700 border-green-500/20",
 };
 
+function parseHumanDecision(resolution: string): string {
+  const decision = resolution.split(":")[0]?.trim();
+  return decision === "APPROVE" ? "Aprobado" : decision === "BLOCK" ? "Bloqueado" : decision;
+}
+
+function parseHumanReason(resolution: string): string {
+  const idx = resolution.indexOf(":");
+  return idx >= 0 ? resolution.substring(idx + 1).trim() : "";
+}
+
+function isHumanApprove(resolution: string): boolean {
+  return resolution.split(":")[0]?.trim() === "APPROVE";
+}
+
 export function DecisionCard({
   decision,
   confidence,
   evidence,
   signals,
+  hitl,
 }: DecisionCardProps) {
   const config = decisionConfig[decision];
   const confidencePercent = Math.round(confidence * 100);
@@ -69,8 +86,44 @@ export function DecisionCard({
           </Badge>
         </div>
 
-        {/* Escalation Alert */}
-        {decision === "ESCALATE_TO_HUMAN" && (
+        {/* HITL Resolution Section */}
+        {decision === "ESCALATE_TO_HUMAN" && hitl?.status === "resolved" && hitl.resolution && (
+          <div
+            className={`p-3 rounded-md border ${
+              isHumanApprove(hitl.resolution)
+                ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900"
+                : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900"
+            }`}
+          >
+            <div className="flex items-center gap-2 text-sm font-medium">
+              {isHumanApprove(hitl.resolution) ? (
+                <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+              ) : (
+                <XCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+              )}
+              <span
+                className={
+                  isHumanApprove(hitl.resolution) ? "text-green-700" : "text-red-700"
+                }
+              >
+                Resuelto: {parseHumanDecision(hitl.resolution)}
+              </span>
+            </div>
+            {parseHumanReason(hitl.resolution) && (
+              <p className="text-xs text-muted-foreground mt-1.5 ml-6">
+                {parseHumanReason(hitl.resolution)}
+              </p>
+            )}
+            {hitl.resolved_at && (
+              <p className="text-xs text-muted-foreground mt-1 ml-6">
+                {new Date(hitl.resolved_at).toLocaleString("es-ES")}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Pending HITL Alert */}
+        {decision === "ESCALATE_TO_HUMAN" && (!hitl || hitl.status === "pending") && (
           <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/20 p-3 rounded-md border border-amber-200 dark:border-amber-900">
             <AlertTriangle className="h-4 w-4 flex-shrink-0" />
             <span>Pendiente de revisión humana</span>

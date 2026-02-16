@@ -4,11 +4,11 @@ import operator
 from datetime import UTC, datetime
 from typing import Annotated, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import TypedDict
 
-from .decision import ExplanationResult, FraudDecision
 from .debate import DebateArguments
+from .decision import ExplanationResult, FraudDecision
 from .evidence import AggregatedEvidence, PolicyMatchResult, ThreatIntelResult
 from .signals import BehavioralSignals, TransactionSignals
 from .transaction import CustomerBehavior, Transaction
@@ -22,17 +22,39 @@ class AgentTraceEntry(BaseModel):
     duration_ms: float = Field(ge=0)
     input_summary: str
     output_summary: str
-    status: Literal["success", "error", "timeout", "skipped"]
+    status: Literal["success", "error", "timeout", "skipped", "fallback"]
+
+    # LLM interaction fields (populated only for LLM-based agents)
+    llm_prompt: Optional[str] = None
+    llm_response_raw: Optional[str] = None
+    llm_model: Optional[str] = None
+    llm_temperature: Optional[float] = None
+    llm_tokens_used: Optional[int] = None
+
+    # RAG query fields (populated only for PolicyRAG agent)
+    rag_query: Optional[str] = None
+    rag_scores: Optional[dict[str, float]] = None
+
+    # Error handling fields
+    fallback_reason: Optional[str] = None
+    error_details: Optional[str] = None
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "agent_name": "transaction_context",
+                "agent_name": "policy_rag",
                 "timestamp": "2025-01-15T03:15:01Z",
-                "duration_ms": 12.5,
-                "input_summary": "Transaction T-1001, amount=1800.00 PEN",
-                "output_summary": "6 signals generated, 2 flags raised",
+                "duration_ms": 125.5,
+                "input_summary": '{"transaction_id": "T-1001", "amount": 1800.00}',
+                "output_summary": "3 policy matches found",
                 "status": "success",
+                "llm_prompt": "Analyze this transaction for fraud...",
+                "llm_response_raw": "Based on the analysis...",
+                "llm_model": "llama3.2",
+                "llm_temperature": 0.0,
+                "llm_tokens_used": 450,
+                "rag_query": "high amount off-hours transaction",
+                "rag_scores": {"chunk_001": 0.92, "chunk_045": 0.87},
             }
         }
     )

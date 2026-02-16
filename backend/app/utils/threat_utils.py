@@ -8,8 +8,8 @@ import re
 from typing import Optional
 
 from app.models import ThreatSource
-from app.utils.logger import get_logger
 from app.utils.llm_utils import clamp_float, parse_json_response
+from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -40,7 +40,9 @@ def classify_provider_type(source_name: str) -> str:
     """
     source_lower = source_name.lower()
 
-    if any(keyword in source_lower for keyword in ["fatf", "blacklist", "graylist", "elevated_risk"]):
+    if any(
+        keyword in source_lower for keyword in ["fatf", "blacklist", "graylist", "elevated_risk"]
+    ):
         return "FATF"
     elif any(keyword in source_lower for keyword in ["osint", "web_search"]):
         return "OSINT"

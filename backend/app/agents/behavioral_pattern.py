@@ -10,11 +10,11 @@ Outputs:
 - velocity_alert: Flag for high-velocity transactions
 """
 
+from ..constants import AMOUNT_THRESHOLDS, BEHAVIORAL_WEIGHTS
 from ..models import BehavioralSignals, OrchestratorState
 from ..utils.logger import get_logger
-from ..utils.timing import timed_agent
-from ..constants import AMOUNT_THRESHOLDS, BEHAVIORAL_WEIGHTS
 from ..utils.shared_utils import is_time_in_range, parse_usual_hours
+from ..utils.timing import timed_agent
 
 logger = get_logger(__name__)
 
@@ -150,15 +150,23 @@ async def behavioral_pattern_agent(state: OrchestratorState) -> dict:
 
         if is_off_hours:
             deviation_score += BEHAVIORAL_WEIGHTS.off_hours
-            logger.debug("deviation_factor_added", factor="off_hours", value=BEHAVIORAL_WEIGHTS.off_hours)
+            logger.debug(
+                "deviation_factor_added", factor="off_hours", value=BEHAVIORAL_WEIGHTS.off_hours
+            )
 
         if is_foreign:
             deviation_score += BEHAVIORAL_WEIGHTS.foreign_country
-            logger.debug("deviation_factor_added", factor="foreign_country", value=BEHAVIORAL_WEIGHTS.foreign_country)
+            logger.debug(
+                "deviation_factor_added",
+                factor="foreign_country",
+                value=BEHAVIORAL_WEIGHTS.foreign_country,
+            )
 
         if is_new_device:
             deviation_score += BEHAVIORAL_WEIGHTS.new_device
-            logger.debug("deviation_factor_added", factor="new_device", value=BEHAVIORAL_WEIGHTS.new_device)
+            logger.debug(
+                "deviation_factor_added", factor="new_device", value=BEHAVIORAL_WEIGHTS.new_device
+            )
 
         # Clamp to [0.0, 1.0] and round to avoid floating-point precision issues
         deviation_score = round(max(0.0, min(1.0, deviation_score)), 2)

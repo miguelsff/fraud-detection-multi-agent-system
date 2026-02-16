@@ -50,8 +50,8 @@ class SafetyOverrides(BaseModel):
 class AgentTimeouts(BaseModel):
     """Timeout values in seconds for async operations."""
 
-    llm_call: float = 30.0
-    pipeline: float = 60.0
+    llm_call: float = 180.0  # 3 minutes
+    pipeline: float = 240.0  # 4 minutes (increased to accommodate longer LLM calls)
     provider_lookup: float = 15.0
 
 

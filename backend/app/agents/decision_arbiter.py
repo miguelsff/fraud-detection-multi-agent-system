@@ -14,17 +14,15 @@ from typing import Optional
 
 from langchain_ollama import ChatOllama
 
+from ..constants import AGENT_TIMEOUTS
 from ..dependencies import get_llm
 from ..models import (
     AggregatedEvidence,
     DebateArguments,
-    DecisionType,
     FraudDecision,
     OrchestratorState,
 )
-from ..utils.logger import get_logger
-from ..utils.timing import timed_agent
-from ..constants import AGENT_TIMEOUTS
+from ..prompts.decision import DECISION_ARBITER_PROMPT
 from ..utils.decision_utils import (
     apply_safety_overrides,
     build_citations_external,
@@ -34,8 +32,8 @@ from ..utils.decision_utils import (
     generate_fallback_decision,
 )
 from ..utils.llm_utils import clamp_float, parse_json_response
-
-from ..prompts.decision import DECISION_ARBITER_PROMPT
+from ..utils.logger import get_logger
+from ..utils.timing import timed_agent
 
 logger = get_logger(__name__)
 
@@ -47,7 +45,9 @@ VALID_DECISIONS = {"APPROVE", "CHALLENGE", "BLOCK", "ESCALATE_TO_HUMAN"}
 # ============================================================================
 
 
-def _parse_decision_response(response_text: str) -> tuple[Optional[str], Optional[float], Optional[str]]:
+def _parse_decision_response(
+    response_text: str,
+) -> tuple[Optional[str], Optional[float], Optional[str]]:
     """Parse LLM response to extract decision, confidence, and reasoning.
 
     Two-stage parsing: JSON first, regex fallback.
@@ -71,14 +71,19 @@ def _parse_decision_response(response_text: str) -> tuple[Optional[str], Optiona
     try:
         decision_match = re.search(
             r'"?decision"?\s*:\s*"?(APPROVE|CHALLENGE|BLOCK|ESCALATE_TO_HUMAN)"?',
-            response_text, re.IGNORECASE,
+            response_text,
+            re.IGNORECASE,
         )
         decision = decision_match.group(1).upper() if decision_match else None
 
-        confidence_match = re.search(r'"?confidence"?\s*:\s*(0\.\d+|1\.0|0|1)', response_text, re.IGNORECASE)
+        confidence_match = re.search(
+            r'"?confidence"?\s*:\s*(0\.\d+|1\.0|0|1)', response_text, re.IGNORECASE
+        )
         confidence = clamp_float(float(confidence_match.group(1))) if confidence_match else None
 
-        reasoning_match = re.search(r'"?reasoning"?\s*:\s*"([^"]+)"', response_text, re.IGNORECASE | re.DOTALL)
+        reasoning_match = re.search(
+            r'"?reasoning"?\s*:\s*"([^"]+)"', response_text, re.IGNORECASE | re.DOTALL
+        )
         reasoning = reasoning_match.group(1) if reasoning_match else None
 
         if decision and confidence is not None:
@@ -100,8 +105,12 @@ async def _call_llm_for_decision(
     llm: ChatOllama,
     evidence: AggregatedEvidence,
     debate: DebateArguments,
-) -> tuple[Optional[str], Optional[float], Optional[str]]:
-    """Call LLM for decision making with timeout."""
+) -> tuple[Optional[str], Optional[float], Optional[str], dict]:
+    """Call LLM for decision making with timeout.
+
+    Returns:
+        Tuple of (decision, confidence, reasoning, llm_trace_metadata)
+    """
     prompt = DECISION_ARBITER_PROMPT.format(
         composite_risk_score=evidence.composite_risk_score,
         risk_category=evidence.risk_category,
@@ -109,22 +118,46 @@ async def _call_llm_for_decision(
         all_citations="\n- ".join(evidence.all_citations) if evidence.all_citations else "ninguna",
         pro_fraud_confidence=debate.pro_fraud_confidence,
         pro_fraud_argument=debate.pro_fraud_argument,
-        pro_fraud_evidence=", ".join(debate.pro_fraud_evidence) if debate.pro_fraud_evidence else "ninguna",
+        pro_fraud_evidence=", ".join(debate.pro_fraud_evidence)
+        if debate.pro_fraud_evidence
+        else "ninguna",
         pro_customer_confidence=debate.pro_customer_confidence,
         pro_customer_argument=debate.pro_customer_argument,
-        pro_customer_evidence=", ".join(debate.pro_customer_evidence) if debate.pro_customer_evidence else "ninguna",
+        pro_customer_evidence=", ".join(debate.pro_customer_evidence)
+        if debate.pro_customer_evidence
+        else "ninguna",
         decision_type="una de: APPROVE, CHALLENGE, BLOCK, ESCALATE_TO_HUMAN",
     )
 
+    # Initialize LLM trace metadata
+    llm_trace = {
+        "llm_prompt": prompt,
+        "llm_model": llm.model,
+        "llm_temperature": 0.0,
+    }
+
     try:
         response = await asyncio.wait_for(llm.ainvoke(prompt), timeout=AGENT_TIMEOUTS.llm_call)
-        return _parse_decision_response(response.content)
+
+        # Capture raw response
+        llm_trace["llm_response_raw"] = response.content
+
+        # Capture token usage if available
+        if hasattr(response, "response_metadata"):
+            usage = response.response_metadata.get("usage", {})
+            llm_trace["llm_tokens_used"] = usage.get("total_tokens")
+
+        decision, confidence, reasoning = _parse_decision_response(response.content)
+        return decision, confidence, reasoning, llm_trace
+
     except asyncio.TimeoutError:
         logger.error("llm_timeout_decision", timeout_seconds=AGENT_TIMEOUTS.llm_call)
-        return None, None, None
+        llm_trace["llm_response_raw"] = f"TIMEOUT after {AGENT_TIMEOUTS.llm_call}s"
+        return None, None, None, llm_trace
     except Exception as e:
         logger.error("llm_call_failed_decision", error=str(e))
-        return None, None, None
+        llm_trace["llm_response_raw"] = f"ERROR: {str(e)}"
+        return None, None, None, llm_trace
 
 
 # ============================================================================
@@ -153,14 +186,21 @@ async def decision_arbiter_agent(state: OrchestratorState) -> dict:
             debate = _create_minimal_debate()
 
         llm = get_llm()
-        decision, confidence, reasoning = await _call_llm_for_decision(llm, evidence, debate)
+        decision, confidence, reasoning, llm_trace = await _call_llm_for_decision(
+            llm, evidence, debate
+        )
 
         if not decision or confidence is None:
             logger.warning("decision_arbiter_llm_failed_using_fallback")
             decision, confidence, reasoning = generate_fallback_decision(evidence)
+            # Mark fallback in trace
+            llm_trace["fallback_reason"] = "llm_failed_using_deterministic_fallback"
 
         decision, confidence, reasoning = apply_safety_overrides(
-            decision, confidence, reasoning, evidence.composite_risk_score,
+            decision,
+            confidence,
+            reasoning,
+            evidence.composite_risk_score,
         )
 
         fraud_decision = FraudDecision(
@@ -171,18 +211,27 @@ async def decision_arbiter_agent(state: OrchestratorState) -> dict:
             citations_internal=build_citations_internal(evidence),
             citations_external=build_citations_external(evidence),
             explanation_customer=generate_customer_explanation(decision),
-            explanation_audit=generate_audit_explanation(decision, confidence, reasoning, evidence, debate),
+            explanation_audit=generate_audit_explanation(
+                decision, confidence, reasoning, evidence, debate
+            ),
             agent_trace=_extract_agent_trace(state),
         )
 
         logger.info(
             "decision_arbiter_completed",
-            decision=decision, confidence=confidence,
+            decision=decision,
+            confidence=confidence,
             composite_score=evidence.composite_risk_score,
             risk_category=evidence.risk_category,
         )
 
-        return {"decision": fraud_decision}
+        result = {"decision": fraud_decision}
+        if llm_trace.get("llm_prompt"):
+            result["_llm_trace"] = llm_trace
+        if llm_trace.get("fallback_reason"):
+            result["_error_trace"] = {"fallback_reason": llm_trace["fallback_reason"]}
+
+        return result
 
     except Exception as e:
         logger.error("decision_arbiter_error", error=str(e), exc_info=True)
@@ -216,7 +265,9 @@ def _extract_agent_trace(state: OrchestratorState) -> list[str]:
 
 def _build_error_decision(transaction_id: str, error_message: str) -> dict:
     """Build error decision when agent fails critically."""
-    logger.error("decision_arbiter_critical_error", transaction_id=transaction_id, error=error_message)
+    logger.error(
+        "decision_arbiter_critical_error", transaction_id=transaction_id, error=error_message
+    )
 
     error_decision = FraudDecision(
         transaction_id=transaction_id,

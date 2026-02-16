@@ -6,8 +6,8 @@ Policies are stored as individual markdown files and synchronized with ChromaDB 
 """
 
 from typing import Literal
-from pydantic import BaseModel, Field
 
+from pydantic import BaseModel, Field
 
 # Type literals for policy fields
 PolicyAction = Literal["APPROVE", "CHALLENGE", "BLOCK", "ESCALATE_TO_HUMAN"]
@@ -20,35 +20,23 @@ class PolicyBase(BaseModel):
     policy_id: str = Field(
         pattern=r"^FP-\d{2}$",
         description="Policy ID in format FP-XX (e.g., FP-01, FP-15)",
-        examples=["FP-01", "FP-15"]
+        examples=["FP-01", "FP-15"],
     )
-    title: str = Field(
-        min_length=5,
-        max_length=200,
-        description="Policy title"
-    )
-    description: str = Field(
-        min_length=10,
-        description="Detailed policy description"
-    )
+    title: str = Field(min_length=5, max_length=200, description="Policy title")
+    description: str = Field(min_length=10, description="Detailed policy description")
     criteria: list[str] = Field(
-        min_length=1,
-        description="List of triggering conditions for this policy"
+        min_length=1, description="List of triggering conditions for this policy"
     )
-    thresholds: list[str] = Field(
-        min_length=1,
-        description="List of numeric thresholds and limits"
-    )
+    thresholds: list[str] = Field(min_length=1, description="List of numeric thresholds and limits")
     action_recommended: PolicyAction = Field(
         description="Recommended action when policy is triggered"
     )
-    severity: PolicySeverity = Field(
-        description="Severity level of the policy violation"
-    )
+    severity: PolicySeverity = Field(description="Severity level of the policy violation")
 
 
 class PolicyCreate(PolicyBase):
     """Model for creating a new policy."""
+
     pass
 
 
@@ -66,6 +54,4 @@ class PolicyUpdate(BaseModel):
 class PolicyResponse(PolicyBase):
     """Model for policy responses with file metadata."""
 
-    file_path: str = Field(
-        description="Relative path to the markdown file"
-    )
+    file_path: str = Field(description="Relative path to the markdown file")

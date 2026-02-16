@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 
-from app.models import Transaction, TransactionSignals, ThreatSource
+from app.models import ThreatSource, Transaction, TransactionSignals
 
 
 class ThreatProvider(ABC):

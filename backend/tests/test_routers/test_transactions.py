@@ -104,12 +104,14 @@ async def test_get_result_success(mock_db_session, test_client):
     mock_record.created_at = datetime.now(timezone.utc)
 
     # scalar_one_or_none is a synchronous method on the Result object.
-    # We must return a MagicMock (synchronous) from the awaited execute call.
-    mock_result = Mock()
-    mock_result.scalar_one_or_none.return_value = mock_record
-    
-    # mock_db_session.execute is an AsyncMock, checking return_value.
-    mock_db_session.execute.return_value = mock_result
+    # First execute returns TransactionRecord, second returns HITLCase (None).
+    mock_tx_result = Mock()
+    mock_tx_result.scalar_one_or_none.return_value = mock_record
+
+    mock_hitl_result = Mock()
+    mock_hitl_result.scalar_one_or_none.return_value = None
+
+    mock_db_session.execute.side_effect = [mock_tx_result, mock_hitl_result]
 
     app.dependency_overrides[get_db] = lambda: mock_db_session
 
@@ -123,6 +125,7 @@ async def test_get_result_success(mock_db_session, test_client):
     assert data["transaction_id"] == "T-001"
     assert data["decision"] == "APPROVE"
     assert data["confidence"] == 0.95
+    assert data["hitl"] is None
 
 
 @pytest.mark.asyncio

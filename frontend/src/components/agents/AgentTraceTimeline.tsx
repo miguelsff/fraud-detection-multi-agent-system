@@ -4,6 +4,8 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
 import {
   ChevronDown,
   ChevronUp,
@@ -19,9 +21,13 @@ import {
   FileText,
   Zap,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { AgentTraceEntry, WebSocketEvent } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { LLMInteractionViewer } from "./LLMInteractionViewer";
+import { RAGQueryViewer } from "./RAGQueryViewer";
+import { JsonViewer } from "@/components/ui/JsonViewer";
 
 interface AgentTraceTimelineProps {
   trace: AgentTraceEntry[];
@@ -53,6 +59,11 @@ const statusConfig = {
     color: "bg-gray-400",
     dotColor: "bg-gray-400",
     label: "Skipped",
+  },
+  fallback: {
+    color: "bg-orange-500",
+    dotColor: "bg-orange-500",
+    label: "Fallback",
   },
   running: {
     color: "bg-blue-500",
@@ -166,7 +177,8 @@ function AgentTraceItem({
                     status === "success" && "bg-green-500/10 text-green-700 border-green-500/20",
                     status === "error" && "bg-red-500/10 text-red-700 border-red-500/20",
                     status === "timeout" && "bg-amber-500/10 text-amber-700 border-amber-500/20",
-                    status === "skipped" && "bg-gray-500/10 text-gray-700 border-gray-500/20"
+                    status === "skipped" && "bg-gray-500/10 text-gray-700 border-gray-500/20",
+                    status === "fallback" && "bg-orange-500/10 text-orange-700 border-orange-500/20"
                   )}
                 >
                   {config.label}
@@ -202,28 +214,86 @@ function AgentTraceItem({
 
                 <div className={cn(
                   "space-y-3 overflow-hidden transition-all duration-200",
-                  isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+                  isExpanded ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
                 )}>
-                  <div className="bg-muted/50 p-3 rounded-md text-xs space-y-3">
+                  <div className="space-y-3">
+                    {/* Input Summary */}
                     {entry.input_summary && (
                       <div>
-                        <p className="font-medium mb-1.5 text-muted-foreground uppercase tracking-wide">
-                          Input
-                        </p>
-                        <p className="text-foreground/80 leading-relaxed">
-                          {entry.input_summary}
-                        </p>
+                        <Label className="text-xs text-muted-foreground">Input</Label>
+                        <div className="mt-1.5 bg-muted/50 p-3 rounded-md">
+                          {(() => {
+                            try {
+                              const parsed = JSON.parse(entry.input_summary);
+                              return <JsonViewer data={parsed} />;
+                            } catch {
+                              return (
+                                <p className="text-xs text-foreground/80">
+                                  {entry.input_summary}
+                                </p>
+                              );
+                            }
+                          })()}
+                        </div>
                       </div>
                     )}
+
+                    {/* Output Summary */}
                     {entry.output_summary && (
                       <div>
-                        <p className="font-medium mb-1.5 text-muted-foreground uppercase tracking-wide">
-                          Output
-                        </p>
-                        <p className="text-foreground/80 leading-relaxed">
-                          {entry.output_summary}
-                        </p>
+                        <Label className="text-xs text-muted-foreground">Output</Label>
+                        <div className="mt-1.5 bg-muted/50 p-3 rounded-md">
+                          {(() => {
+                            try {
+                              const parsed = JSON.parse(entry.output_summary);
+                              return <JsonViewer data={parsed} />;
+                            } catch {
+                              return (
+                                <p className="text-xs text-foreground/80">
+                                  {entry.output_summary}
+                                </p>
+                              );
+                            }
+                          })()}
+                        </div>
                       </div>
+                    )}
+
+                    {/* LLM Interaction Viewer */}
+                    <LLMInteractionViewer
+                      prompt={entry.llm_prompt}
+                      response={entry.llm_response_raw}
+                      model={entry.llm_model}
+                      temperature={entry.llm_temperature}
+                      tokens={entry.llm_tokens_used}
+                    />
+
+                    {/* RAG Query Viewer */}
+                    <RAGQueryViewer
+                      query={entry.rag_query}
+                      scores={entry.rag_scores}
+                    />
+
+                    {/* Fallback Indicator */}
+                    {entry.fallback_reason && (
+                      <Alert variant="default" className="border-orange-500/20 bg-orange-50/50">
+                        <AlertCircle className="h-4 w-4 text-orange-600" />
+                        <AlertTitle className="text-orange-800">Fallback Activado</AlertTitle>
+                        <AlertDescription className="text-orange-700">
+                          {entry.fallback_reason}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    {/* Error Details */}
+                    {entry.error_details && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Error</AlertTitle>
+                        <AlertDescription className="font-mono text-xs">
+                          {entry.error_details}
+                        </AlertDescription>
+                      </Alert>
                     )}
                   </div>
                 </div>

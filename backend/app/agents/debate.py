@@ -7,17 +7,17 @@ This module implements Phase 3 of the fraud detection pipeline:
 Both agents execute in parallel and provide balanced perspectives for the Decision Arbiter.
 """
 
+from app.prompts.debate import PRO_CUSTOMER_PROMPT, PRO_FRAUD_PROMPT
+
 from ..dependencies import get_llm
 from ..models import OrchestratorState
-from ..utils.logger import get_logger
-from ..utils.timing import timed_agent
 from ..utils.debate_utils import (
     call_debate_llm,
     generate_fallback_pro_customer,
     generate_fallback_pro_fraud,
 )
-
-from app.prompts.debate import PRO_CUSTOMER_PROMPT, PRO_FRAUD_PROMPT
+from ..utils.logger import get_logger
+from ..utils.timing import timed_agent
 
 logger = get_logger(__name__)
 
@@ -42,18 +42,27 @@ async def debate_pro_fraud_agent(state: OrchestratorState) -> dict:
             }
 
         llm = get_llm()
-        argument, confidence, evidence_cited = await call_debate_llm(llm, evidence, PRO_FRAUD_PROMPT)
+        argument, confidence, evidence_cited, llm_trace = await call_debate_llm(
+            llm, evidence, PRO_FRAUD_PROMPT
+        )
 
         if argument and confidence is not None:
-            logger.info("debate_pro_fraud_completed", confidence=confidence, evidence_count=len(evidence_cited))
+            logger.info(
+                "debate_pro_fraud_completed",
+                confidence=confidence,
+                evidence_count=len(evidence_cited),
+            )
             return {
                 "pro_fraud_argument": argument,
                 "pro_fraud_confidence": confidence,
                 "pro_fraud_evidence": evidence_cited,
+                "_llm_trace": llm_trace,
             }
 
         logger.warning("pro_fraud_llm_failed_using_fallback")
-        return generate_fallback_pro_fraud(evidence)
+        fallback = generate_fallback_pro_fraud(evidence)
+        fallback["_error_trace"] = {"fallback_reason": "llm_failed_using_deterministic_fallback"}
+        return fallback
 
     except Exception as e:
         logger.error("debate_pro_fraud_error", error=str(e), exc_info=True)
@@ -61,6 +70,7 @@ async def debate_pro_fraud_agent(state: OrchestratorState) -> dict:
             "pro_fraud_argument": "Error en generación de argumento. Análisis manual requerido.",
             "pro_fraud_confidence": 0.50,
             "pro_fraud_evidence": ["error_occurred"],
+            "_error_trace": {"error_details": str(e)},
         }
 
 
@@ -79,18 +89,27 @@ async def debate_pro_customer_agent(state: OrchestratorState) -> dict:
             }
 
         llm = get_llm()
-        argument, confidence, evidence_cited = await call_debate_llm(llm, evidence, PRO_CUSTOMER_PROMPT)
+        argument, confidence, evidence_cited, llm_trace = await call_debate_llm(
+            llm, evidence, PRO_CUSTOMER_PROMPT
+        )
 
         if argument and confidence is not None:
-            logger.info("debate_pro_customer_completed", confidence=confidence, evidence_count=len(evidence_cited))
+            logger.info(
+                "debate_pro_customer_completed",
+                confidence=confidence,
+                evidence_count=len(evidence_cited),
+            )
             return {
                 "pro_customer_argument": argument,
                 "pro_customer_confidence": confidence,
                 "pro_customer_evidence": evidence_cited,
+                "_llm_trace": llm_trace,
             }
 
         logger.warning("pro_customer_llm_failed_using_fallback")
-        return generate_fallback_pro_customer(evidence)
+        fallback = generate_fallback_pro_customer(evidence)
+        fallback["_error_trace"] = {"fallback_reason": "llm_failed_using_deterministic_fallback"}
+        return fallback
 
     except Exception as e:
         logger.error("debate_pro_customer_error", error=str(e), exc_info=True)
@@ -98,4 +117,5 @@ async def debate_pro_customer_agent(state: OrchestratorState) -> dict:
             "pro_customer_argument": "Error en generación de argumento. Análisis manual requerido.",
             "pro_customer_confidence": 0.50,
             "pro_customer_evidence": ["error_occurred"],
+            "_error_trace": {"error_details": str(e)},
         }

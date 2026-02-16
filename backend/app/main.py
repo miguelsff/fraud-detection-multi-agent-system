@@ -1,16 +1,17 @@
 """FastAPI application entrypoint."""
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .config import settings
 from .db.engine import init_db
-from .utils.logger import get_logger, setup_logging
 from .routers import health, hitl, policies, transactions, websocket
+from .utils.logger import get_logger, setup_logging
 
 logger = get_logger(__name__)
 

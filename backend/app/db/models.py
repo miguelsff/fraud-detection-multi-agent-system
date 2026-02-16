@@ -75,9 +75,18 @@ class AgentTrace(Base):
         transaction_id: Reference to parent transaction
         agent_name: Name of the agent (e.g., "PatternAnalyzer", "RiskScorer")
         duration_ms: Execution time in milliseconds
-        input_summary: Brief summary of agent input
+        input_summary: Brief summary of agent input (now JSON with specific values)
         output_summary: Brief summary of agent output
-        status: Execution status ("success", "error", "timeout")
+        status: Execution status ("success", "error", "timeout", "skipped", "fallback")
+        llm_prompt: Exact prompt sent to LLM (null for non-LLM agents)
+        llm_response_raw: Raw LLM response before parsing (null for non-LLM agents)
+        llm_model: LLM model used (e.g., "llama3.2", "gpt-4")
+        llm_temperature: Temperature parameter used
+        llm_tokens_used: Total tokens consumed in LLM call
+        rag_query: Query sent to ChromaDB (null for non-RAG agents)
+        rag_scores: Retrieval scores as JSONB (null for non-RAG agents)
+        fallback_reason: Reason for fallback (e.g., "llm_timeout_30s")
+        error_details: Detailed error message or stacktrace
         created_at: Timestamp when trace was created
     """
 
@@ -93,7 +102,23 @@ class AgentTrace(Base):
     duration_ms: Mapped[int] = mapped_column(Integer, nullable=False)
     input_summary: Mapped[str] = mapped_column(Text, nullable=True)
     output_summary: Mapped[str] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(String(20), nullable=False)  # "success", "error", "timeout"
+    status: Mapped[str] = mapped_column(String(20), nullable=False)  # "success", "error", "timeout", "skipped", "fallback"
+
+    # LLM interaction fields (nullable for non-LLM agents)
+    llm_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    llm_response_raw: Mapped[str | None] = mapped_column(Text, nullable=True)
+    llm_model: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    llm_temperature: Mapped[float | None] = mapped_column(Numeric(3, 2), nullable=True)
+    llm_tokens_used: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # RAG query fields (nullable for non-RAG agents)
+    rag_query: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rag_scores: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+
+    # Error handling fields
+    fallback_reason: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    error_details: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -130,7 +155,9 @@ class HITLCase(Base):
         ForeignKey("transaction_records.transaction_id", ondelete="CASCADE"),
         nullable=False,
     )
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")  # "pending" or "resolved"
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pending"
+    )  # "pending" or "resolved"
     assigned_to: Mapped[str | None] = mapped_column(String(100), nullable=True)
     resolution: Mapped[str | None] = mapped_column(Text, nullable=True)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -147,4 +174,6 @@ class HITLCase(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<HITLCase(id={self.id}, transaction_id={self.transaction_id}, status={self.status})>"
+        return (
+            f"<HITLCase(id={self.id}, transaction_id={self.transaction_id}, status={self.status})>"
+        )

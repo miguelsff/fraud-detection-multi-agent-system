@@ -15,8 +15,16 @@ from typing import Optional
 from langchain_ollama import ChatOllama
 
 from ..config import settings
+from ..constants import AGENT_TIMEOUTS
 from ..dependencies import get_llm
-from ..models import OrchestratorState, ThreatIntelResult, ThreatSource, Transaction, TransactionSignals
+from ..models import (
+    OrchestratorState,
+    ThreatIntelResult,
+    ThreatSource,
+    Transaction,
+    TransactionSignals,
+)
+from ..prompts.threat import THREAT_ANALYSIS_PROMPT
 from ..services.threat_intel import (
     CountryRiskProvider,
     OSINTSearchProvider,
@@ -24,11 +32,12 @@ from ..services.threat_intel import (
     ThreatProvider,
 )
 from ..utils.logger import get_logger
+from ..utils.threat_utils import (
+    calculate_baseline_from_sources,
+    classify_provider_type,
+    parse_threat_analysis,
+)
 from ..utils.timing import timed_agent
-from ..constants import AGENT_TIMEOUTS
-from ..utils.threat_utils import calculate_baseline_from_sources, classify_provider_type, parse_threat_analysis
-
-from ..prompts.threat import THREAT_ANALYSIS_PROMPT
 
 logger = get_logger(__name__)
 
@@ -51,21 +60,31 @@ async def external_threat_agent(state: OrchestratorState) -> dict:
             return {"threat_intel": ThreatIntelResult(threat_level=0.0, sources=[])}
 
         baseline_threat_level = calculate_baseline_from_sources(all_sources)
-        logger.debug("baseline_calculated", baseline=baseline_threat_level, sources_count=len(all_sources))
+        logger.debug(
+            "baseline_calculated", baseline=baseline_threat_level, sources_count=len(all_sources)
+        )
 
         llm = get_llm()
         llm_threat_level, explanation = await _call_llm_for_threat_analysis(
-            llm, transaction, transaction_signals, all_sources, behavioral_signals,
+            llm,
+            transaction,
+            transaction_signals,
+            all_sources,
+            behavioral_signals,
         )
 
-        final_threat_level = llm_threat_level if llm_threat_level is not None else baseline_threat_level
+        final_threat_level = (
+            llm_threat_level if llm_threat_level is not None else baseline_threat_level
+        )
 
         result = ThreatIntelResult(threat_level=final_threat_level, sources=all_sources)
 
         logger.info(
             "external_threat_completed",
-            threat_level=final_threat_level, baseline=baseline_threat_level,
-            sources_count=len(all_sources), llm_used=llm_threat_level is not None,
+            threat_level=final_threat_level,
+            baseline=baseline_threat_level,
+            sources_count=len(all_sources),
+            llm_used=llm_threat_level is not None,
         )
 
         return {"threat_intel": result}
@@ -95,7 +114,9 @@ async def _gather_threat_intel(
 ) -> list[ThreatSource]:
     """Execute all providers in parallel with timeout per provider."""
     tasks = [
-        asyncio.wait_for(provider.lookup(transaction, signals), timeout=AGENT_TIMEOUTS.provider_lookup)
+        asyncio.wait_for(
+            provider.lookup(transaction, signals), timeout=AGENT_TIMEOUTS.provider_lookup
+        )
         for provider in providers
     ]
 
@@ -104,10 +125,17 @@ async def _gather_threat_intel(
     all_sources = []
     for provider, result in zip(providers, results):
         if isinstance(result, Exception):
-            logger.warning("provider_failed", provider=provider.provider_name, error=str(result), error_type=type(result).__name__)
+            logger.warning(
+                "provider_failed",
+                provider=provider.provider_name,
+                error=str(result),
+                error_type=type(result).__name__,
+            )
         elif isinstance(result, list):
             all_sources.extend(result)
-            logger.debug("provider_success", provider=provider.provider_name, sources_count=len(result))
+            logger.debug(
+                "provider_success", provider=provider.provider_name, sources_count=len(result)
+            )
 
     return all_sources
 

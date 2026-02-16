@@ -122,7 +122,7 @@ export interface ExplanationResult {
 // Trace Models (backend/app/models/trace.py)
 // ============================================================================
 
-export type AgentStatus = "success" | "error" | "timeout" | "skipped";
+export type AgentStatus = "success" | "error" | "timeout" | "skipped" | "fallback";
 
 export interface AgentTraceEntry {
   agent_name: string;
@@ -131,6 +131,21 @@ export interface AgentTraceEntry {
   input_summary: string;
   output_summary: string;
   status: AgentStatus;
+
+  // LLM interaction fields (populated only for LLM-based agents)
+  llm_prompt?: string | null;
+  llm_response_raw?: string | null;
+  llm_model?: string | null;
+  llm_temperature?: number | null;
+  llm_tokens_used?: number | null;
+
+  // RAG query fields (populated only for PolicyRAG agent)
+  rag_query?: string | null;
+  rag_scores?: Record<string, number> | null;
+
+  // Error handling fields
+  fallback_reason?: string | null;
+  error_details?: string | null;
 }
 
 // ============================================================================
@@ -157,6 +172,13 @@ export interface HITLCase {
   resolution: string | null;
   resolved_at: string | null; // ISO 8601 datetime string
   created_at: string; // ISO 8601 datetime string
+}
+
+export interface HITLResolution {
+  case_id: number;
+  status: HITLStatus;
+  resolution: string | null;
+  resolved_at: string | null; // ISO 8601 datetime string
 }
 
 // ============================================================================
@@ -189,6 +211,7 @@ export interface TransactionAnalysisDetail {
   decision: DecisionType;
   confidence: number;
   analyzed_at: string;
+  hitl: HITLResolution | null;
 }
 
 // ============================================================================

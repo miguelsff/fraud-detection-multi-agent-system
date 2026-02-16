@@ -48,7 +48,11 @@
       "Bash(cmd /c \"type C:\\\\Users\\\\USER\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--trabajos-miguel-ai-developer-fraud-detection-multi-agent-system\\\\tasks\\\\b874c61.output\")",
       "Bash(cmd /c \"type C:\\\\Users\\\\USER\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\D--trabajos-miguel-ai-developer-fraud-detection-multi-agent-system\\\\tasks\\\\bc431bd.output | findstr /C:error /C:Error /C:✓\")",
       "Bash(chmod:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(wc:*)",
+      "Bash(git -C /d/trabajos-miguel/ai-developer/fraud-detection-multi-agent-system log --oneline --all)",
+      "Bash(git -C /d/trabajos-miguel/ai-developer/fraud-detection-multi-agent-system show --stat HEAD)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

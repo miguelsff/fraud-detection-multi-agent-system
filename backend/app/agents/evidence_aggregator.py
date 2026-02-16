@@ -13,6 +13,7 @@ for missing inputs (e.g., if an upstream agent failed).
 
 from typing import Optional
 
+from ..constants import EVIDENCE_WEIGHTS, MAX_POLICIES, RISK_THRESHOLDS
 from ..models import (
     AggregatedEvidence,
     BehavioralSignals,
@@ -24,7 +25,6 @@ from ..models import (
 )
 from ..utils.logger import get_logger
 from ..utils.timing import timed_agent
-from ..constants import EVIDENCE_WEIGHTS, MAX_POLICIES, RISK_THRESHOLDS
 
 logger = get_logger(__name__)
 
@@ -139,9 +139,7 @@ def _calculate_composite_score(
     # Extract normalized scores from each source (with None-safe defaults)
 
     # 1. Behavioral score (already normalized 0.0-1.0)
-    behavioral_score = (
-        behavioral_signals.deviation_score if behavioral_signals else 0.0
-    )
+    behavioral_score = behavioral_signals.deviation_score if behavioral_signals else 0.0
 
     # 2. Policy score (normalize by max policies)
     if policy_matches and policy_matches.matches:

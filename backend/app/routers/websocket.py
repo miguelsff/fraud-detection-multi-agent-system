@@ -1,10 +1,11 @@
 """WebSocket and Analytics endpoints."""
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
+
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..db.models import AgentTrace, TransactionRecord
 from ..dependencies import get_db
-from ..db.models import TransactionRecord, AgentTrace
 from ..utils.logger import get_logger
 
 router = APIRouter()
@@ -71,9 +72,8 @@ async def get_analytics(db: AsyncSession = Depends(get_db)):
     total = (await db.execute(total_stmt)).scalar_one()
 
     # Decisions breakdown
-    decisions_stmt = (
-        select(TransactionRecord.decision, func.count(TransactionRecord.id))
-        .group_by(TransactionRecord.decision)
+    decisions_stmt = select(TransactionRecord.decision, func.count(TransactionRecord.id)).group_by(
+        TransactionRecord.decision
     )
     decisions_result = await db.execute(decisions_stmt)
     decisions_breakdown = {row[0]: row[1] for row in decisions_result.all()}

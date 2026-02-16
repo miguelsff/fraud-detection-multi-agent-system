@@ -1,7 +1,7 @@
 # Arquitectura del Sistema Multi-Agente de Detección de Fraude
 
-**Última actualización**: 2026-02-14
-**Refleja commit**: 59eaff0 (HITL queue, analytics, websocket — frontend complete)
+**Última actualización**: 2026-02-16
+**Refleja commit**: b781347 (Policy CRUD, Threat Intel real, Prompts extraídos, Constantes centralizadas)
 **Actualizar este documento cuando**: Se cambien versiones de tech stack, se agreguen nuevos agentes, o se modifique arquitectura core
 
 ## 1. Visión General
@@ -13,9 +13,14 @@ El sistema implementa un pipeline de **8 agentes especializados** orquestados me
 - ✅ HITL (Human-in-the-Loop) queue con resolución manual
 - ✅ Analytics dashboard con métricas en tiempo real
 - ✅ WebSocket para actualizaciones en vivo
-- ✅ Frontend completo con 43 componentes React
+- ✅ Frontend completo con 51 componentes React y 6 páginas
 - ✅ PostgreSQL async con Alembic migrations
 - ✅ ChromaDB para RAG de políticas internas
+- ✅ Policy CRUD (gestión de políticas con sincronización ChromaDB)
+- ✅ Threat Intelligence real (FATF + OSINT + Sanctions providers)
+- ✅ Prompts extraídos a módulo dedicado (`app/prompts/`)
+- ✅ Constantes centralizadas en modelos Pydantic (`constants.py`)
+- ✅ Jerarquía de excepciones custom (`exceptions.py`)
 - ✅ Estructured logging con structlog
 - ✅ Datos sintéticos para testing (6 transacciones)
 - ✅ Scripts de demostración end-to-end
@@ -28,7 +33,7 @@ El sistema implementa un pipeline de **8 agentes especializados** orquestados me
 | **Backend** | FastAPI + Python 3.13 + uv | Async nativo, Pydantic v2 integrado, OpenAPI auto-generado, WebSockets, package manager ultrarrápido |
 | **Frontend** | Next.js 16 + TypeScript + Tailwind + shadcn/ui | SSR/SSG, App Router, React Server Components, componentes copiables sin vendor lock-in |
 | **Vector DB** | ChromaDB (embedded) | Lightweight, embebible, ideal para el volumen de políticas internas, persistencia automática |
-| **LLM** | Ollama (llama3.1:8b local) / Azure OpenAI (prod) | Desarrollo local sin costos, Azure OpenAI planeado para despliegue en cloud |
+| **LLM** | Ollama (qwen3:30b local) / Azure OpenAI (prod) | Desarrollo local sin costos, Azure OpenAI planeado para despliegue en cloud |
 | **Base de datos** | PostgreSQL 16 (async via asyncpg) | Audit trail persistente, SQLAlchemy async, Alembic migrations, soporte tanto local como cloud |
 | **Logging** | structlog | Logs estructurados JSON, contexto automático, ideal para observabilidad |
 | **Deploy** | Docker Compose (local) / Azure Container Apps (planeado) | Containerización con 3 servicios (postgres, backend, frontend), Azure planeado para producción |
@@ -48,6 +53,7 @@ graph TB
         HQ[HITL Queue<br/>Human Review]
         EP[Explanation Panel<br/>Customer + Audit]
         AN[Analytics Dashboard<br/>Metrics + Trends]
+        PL[Policy Management<br/>CRUD + Reingest]
     end
 
     subgraph "API Gateway — FastAPI"
@@ -89,7 +95,7 @@ graph TB
         SYN[(Synthetic Data<br/>6 transacciones)]
     end
 
-    UI & AN --> API
+    UI & AN & PL --> API
     TL & AT & HQ & EP --> API
     API --> ORC
     ORC --> TCA & BPA & PRA & ETA
@@ -101,7 +107,7 @@ graph TB
     API --> WS --> UI
 
     PRA -.-> CDB
-    ETA -.->|DuckDuckGo| EXT[Web Search<br/>Whitelisted]
+    ETA -.->|FATF · OSINT · Sanctions| EXT[Threat Intel<br/>Multi-Provider]
     ORC -.->|structlog| SQL
     API -.-> SYN
 ```
@@ -246,57 +252,60 @@ from langgraph.graph import END, START, StateGraph
 from ..models import OrchestratorState
 
 # Crear grafo con estado tipado
-workflow = StateGraph(OrchestratorState)
+builder = StateGraph(OrchestratorState)
 
 # Agregar nodos (cada nodo es una función async)
-workflow.add_node("validate_input", validate_input)
-workflow.add_node("phase1_parallel", phase1_parallel)  # Transaction, Policy, Threat
-workflow.add_node("behavioral_pattern", behavioral_pattern_agent)
-workflow.add_node("evidence_aggregation", evidence_aggregation_agent)
-workflow.add_node("debate_parallel", debate_parallel)  # Pro-Fraud + Pro-Customer
-workflow.add_node("decision_arbiter", decision_arbiter_agent)
-workflow.add_node("explainability", explainability_agent)
-workflow.add_node("persist_audit", persist_audit)
-workflow.add_node("hitl_queue", hitl_queue)
-workflow.add_node("respond", respond)
+builder.add_node("validate_input", validate_input)
+builder.add_node("phase1_parallel", phase1_parallel)  # 4 agentes en paralelo
+builder.add_node("evidence_aggregation", evidence_aggregation_node)
+builder.add_node("debate_parallel", debate_parallel)  # Pro-Fraud + Pro-Customer
+builder.add_node("decision_arbiter", decision_arbiter_node)
+builder.add_node("explainability", explainability_node)
+builder.add_node("persist_audit", persist_audit)
+builder.add_node("hitl_queue", hitl_queue)
+builder.add_node("respond", respond)
 
 # Definir edges
-workflow.add_edge(START, "validate_input")
-workflow.add_edge("validate_input", "phase1_parallel")
-workflow.add_edge("phase1_parallel", "behavioral_pattern")
-workflow.add_edge("behavioral_pattern", "evidence_aggregation")
-workflow.add_edge("evidence_aggregation", "debate_parallel")
-workflow.add_edge("debate_parallel", "decision_arbiter")
-workflow.add_edge("decision_arbiter", "explainability")
-workflow.add_edge("explainability", "persist_audit")
+builder.add_edge(START, "validate_input")
+builder.add_conditional_edges(
+    "validate_input",
+    route_after_validation,
+    {"continue": "phase1_parallel", "error": "respond"},
+)
+builder.add_edge("phase1_parallel", "evidence_aggregation")
+builder.add_edge("evidence_aggregation", "debate_parallel")
+builder.add_edge("debate_parallel", "decision_arbiter")
+builder.add_edge("decision_arbiter", "explainability")
+builder.add_edge("explainability", "persist_audit")
 
 # Routing condicional basado en decisión
-workflow.add_conditional_edges(
+builder.add_conditional_edges(
     "persist_audit",
-    lambda state: "hitl" if state["decision"].decision == "ESCALATE_TO_HUMAN" else "respond",
-    {"hitl": "hitl_queue", "respond": "respond"}
+    route_decision,
+    {"hitl_queue": "hitl_queue", "respond": "respond"},
 )
 
-workflow.add_edge("hitl_queue", "respond")
-workflow.add_edge("respond", END)
+builder.add_edge("hitl_queue", "respond")
+builder.add_edge("respond", END)
 
 # Compilar grafo
-graph = workflow.compile()
+graph = builder.compile()
 ```
 
 **Paralelismo con `asyncio.gather()`**:
 
 ```python
 async def phase1_parallel(state: OrchestratorState) -> dict:
-    """Ejecutar 3 agentes en paralelo con manejo de errores."""
+    """Ejecutar 4 agentes en paralelo con manejo de errores."""
     results = await asyncio.gather(
         transaction_context_agent(state),
+        behavioral_pattern_agent(state),
         policy_rag_agent(state),
         external_threat_agent(state),
-        return_exceptions=True  # No detener si uno falla
+        return_exceptions=True,  # No detener si uno falla
     )
 
-    # Mergear resultados (LangGraph hace merge automático)
+    # Mergear resultados al estado compartido
     merged = {}
     for result in results:
         if isinstance(result, dict):
@@ -375,7 +384,6 @@ classDiagram
 
     class TransactionSignals {
         +float amount_ratio
-        +bool is_off_hours
         +bool is_foreign
         +bool is_unknown_device
         +str channel_risk
@@ -435,6 +443,22 @@ classDiagram
         +str status
     }
 
+    class ExplanationResult {
+        +str customer_explanation
+        +str audit_explanation
+    }
+
+    class PolicyResponse {
+        +str policy_id
+        +str title
+        +str description
+        +list~str~ criteria
+        +list~str~ thresholds
+        +PolicyAction action_recommended
+        +PolicySeverity severity
+        +str file_path
+    }
+
     OrchestratorState --> Transaction
     OrchestratorState --> CustomerBehavior
     OrchestratorState --> TransactionSignals
@@ -487,12 +511,14 @@ graph LR
 | **Transaction Context** | `transaction`, `customer_behavior` | `transaction_signals` | Determinístico | Instantáneo |
 | **Behavioral Pattern** | `transaction`, `customer_behavior` | `behavioral_signals` | Determinístico | Instantáneo |
 | **Policy RAG** | `transaction`, `transaction_signals`, `behavioral_signals` | `policy_matches` | LLM + RAG | 30s |
-| **External Threat** | `transaction`, `transaction_signals`, `behavioral_signals` | `threat_intel` | LLM + Web Search | 30s |
+| **External Threat** | `transaction`, `transaction_signals`, `behavioral_signals` | `threat_intel` | LLM + Multi-Provider (FATF, OSINT, Sanctions) | 30s |
 | **Evidence Aggregation** | `transaction_signals`, `behavioral_signals`, `policy_matches`, `threat_intel` | `evidence` | Determinístico | <100ms |
 | **Debate Pro-Fraud** | `evidence` | `debate.pro_fraud_*` | LLM | 30s |
 | **Debate Pro-Customer** | `evidence` | `debate.pro_customer_*` | LLM | 30s |
 | **Decision Arbiter** | `evidence`, `debate` | `decision` | LLM | 30s |
 | **Explainability** | `decision`, `evidence`, `policy_matches`, `debate` | `explanation` | LLM | 30s |
+
+> **Nota sobre `off_hours`**: `BehavioralPattern` es el dueño exclusivo de la detección de transacciones fuera de horario. Lo reporta como `"off_hours_transaction"` en `behavioral_signals.anomalies[]`. Los agentes `PolicyRAG` y `ExternalThreat` leen este dato desde `behavioral_signals.anomalies`, no desde `transaction_signals`.
 
 ### 6.3 Fan-Out / Fan-In para Paralelismo
 
@@ -523,7 +549,98 @@ sequenceDiagram
     EAA-->>-O: aggregated evidence
 ```
 
-### 6.4 Mecanismos de Resiliencia Implementados
+### 6.4 Arquitectura de Threat Intelligence (Multi-Provider)
+
+El agente `ExternalThreat` delega la recolección de inteligencia a un sistema de providers intercambiables, orquestados por `ThreatIntelManager`.
+
+#### Interfaz Base
+
+**Archivo**: `backend/app/services/threat_intel/base.py`
+
+```python
+class ThreatProvider(ABC):
+    """Abstract base class for all threat intelligence providers."""
+
+    @property
+    @abstractmethod
+    def provider_name(self) -> str:
+        """Unique name for this provider (used in logs and traces)."""
+
+    @abstractmethod
+    async def lookup(
+        self,
+        transaction: Transaction,
+        signals: TransactionSignals | None = None,
+    ) -> list[ThreatSource]:
+        """Lookup threats. Returns empty list on failure (never raises)."""
+```
+
+#### Providers Implementados
+
+| Provider | Clase | Fuente de Datos | Señal Principal |
+|----------|-------|-----------------|-----------------|
+| **Country Risk** | `CountryRiskProvider` | Lista FATF de jurisdicciones de alto riesgo | Riesgo geográfico del país de la transacción |
+| **OSINT Search** | `OSINTSearchProvider` | DuckDuckGo search (merchant + fraud patterns) | Reportes públicos de fraude asociados al merchant |
+| **Sanctions** | `SanctionsProvider` | OpenSanctions API | Coincidencia con listas de sanciones internacionales |
+
+#### Orquestación con Fan-Out Paralelo
+
+**Archivo**: `backend/app/services/threat_intel/manager.py`
+
+```mermaid
+graph LR
+    EA[ExternalThreat Agent] --> TIM[ThreatIntelManager]
+
+    TIM --> CR[CountryRiskProvider<br/>FATF Lists]
+    TIM --> OS[OSINTSearchProvider<br/>DuckDuckGo]
+    TIM --> SC[SanctionsProvider<br/>OpenSanctions]
+
+    CR --> AGG[Aggregator]
+    OS --> AGG
+    SC --> AGG
+
+    AGG --> TIR[ThreatIntelResult<br/>threat_level + sources]
+
+    style TIM fill:#8b5cf6,color:#fff
+    style AGG fill:#f59e0b,color:#000
+```
+
+**Ejecución paralela**:
+```python
+class ThreatIntelManager:
+    def __init__(self):
+        self._providers: list[ThreatProvider] = [
+            CountryRiskProvider(),
+            OSINTSearchProvider(),
+            SanctionsProvider(),
+        ]
+
+    async def analyze(self, transaction, signals) -> ThreatIntelResult:
+        tasks = [p.lookup(transaction, signals) for p in self._providers]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        # Combine sources, handle exceptions per-provider
+        all_sources = [...]
+        threat_level = self._calculate_threat_level(all_sources)
+        return ThreatIntelResult(threat_level=threat_level, sources=all_sources)
+```
+
+#### Estrategia de Agregación
+
+```python
+def _calculate_threat_level(self, sources: list[ThreatSource]) -> float:
+    """
+    - Primary signal: max confidence across all sources
+    - Multi-source bonus: +0.1 per additional source
+    - Clamped to 1.0
+    """
+    max_confidence = max(s.confidence for s in sources)
+    multi_source_bonus = 0.1 * (len(sources) - 1)
+    return min(1.0, max_confidence + multi_source_bonus)
+```
+
+**Resiliencia**: Cada provider maneja sus propios errores internamente y retorna `[]` en caso de fallo. El manager continúa con los providers que sí respondieron.
+
+### 6.5 Mecanismos de Resiliencia Implementados
 
 El sistema implementa múltiples estrategias de resiliencia para garantizar que el pipeline completo continúe funcionando incluso cuando agentes individuales fallan.
 
@@ -630,9 +747,40 @@ except Exception as e:
     return {"policy_matches": PolicyMatchResult(matches=[], chunk_ids=[])}
 ```
 
+#### Safety Overrides (Decision Arbiter)
+
+**Archivo**: `backend/app/utils/decision_utils.py`
+
+El Decision Arbiter aplica overrides de seguridad automáticos que anulan la decisión del LLM en casos extremos:
+
+| Condición | Override | Justificación |
+|-----------|----------|---------------|
+| `composite_score > 85.0` | Forzar **BLOCK** | Riesgo crítico requiere bloqueo inmediato |
+| `confidence < 0.55` | Forzar **ESCALATE_TO_HUMAN** | Baja confianza requiere revisión humana |
+
+```python
+from ..constants import SAFETY_OVERRIDES
+
+def apply_safety_overrides(decision, confidence, reasoning, composite_score):
+    if composite_score > SAFETY_OVERRIDES.critical_risk_threshold:  # 85.0
+        decision = "BLOCK"
+        confidence = max(confidence, 0.85)
+    if confidence < SAFETY_OVERRIDES.low_confidence_threshold:  # 0.55
+        decision = "ESCALATE_TO_HUMAN"
+    return decision, confidence, reasoning
+```
+
+Los umbrales están centralizados en `constants.py` (clase `SafetyOverrides`), no hardcodeados.
+
 #### Timeouts Configurables
 
-Cada agente LLM tiene un timeout de 30 segundos, implementado con el decorador `@timed_agent`:
+Cada agente LLM tiene timeouts configurables, centralizados en `constants.py` (clase `AgentTimeouts`):
+
+- `llm_call`: 30s (timeout por llamada LLM individual)
+- `pipeline`: 60s (timeout global del pipeline)
+- `provider_lookup`: 15s (timeout por provider de threat intel)
+
+Implementado con el decorador `@timed_agent`:
 
 **Archivo**: `backend/app/utils/timing.py`
 
@@ -814,21 +962,29 @@ uv run uvicorn app.main:app --reload
 
 ```
 components/
-├── ui/                           # 17 componentes base (shadcn/ui)
+├── ui/                           # 23 componentes base (shadcn/ui)
 │   ├── button.tsx
 │   ├── card.tsx
 │   ├── badge.tsx
 │   ├── select.tsx
 │   ├── dialog.tsx
-│   └── ...
+│   └── ... (18 más)
 ├── dashboard/                    # Componentes de dominio (custom)
 │   ├── StatsCards.tsx
 │   ├── RecentDecisions.tsx
 │   └── RiskDistribution.tsx
 ├── transactions/
 │   ├── TransactionTable.tsx
-│   └── TransactionDetail.tsx
-└── ... (8 directorios de dominio, 43 componentes totales)
+│   └── TransactionDetailClient.tsx
+├── policies/                     # NUEVO: Gestión CRUD de políticas
+│   ├── PoliciesClient.tsx
+│   ├── PolicyList.tsx
+│   ├── PolicyCard.tsx
+│   ├── PolicyForm.tsx
+│   └── PolicyDeleteDialog.tsx
+├── common/                       # NUEVO: Componentes compartidos
+│   └── WebSocketStatus.tsx
+└── ... (10 directorios, 51 componentes totales)
 ```
 
 **Dependencias reales** (solo primitives de Radix UI):
@@ -843,6 +999,69 @@ components/
 ```
 
 **Decisión**: shadcn/ui permite **máxima flexibilidad** sin sacrificar velocidad de desarrollo. Para un proyecto de detección de fraude con requisitos de UI específicos (colores de decisión, gráficos custom, tablas complejas), tener control total del código frontend es más importante que la conveniencia de una librería empaquetada.
+
+### 7.8 ¿Por qué constantes centralizadas (`constants.py`)?
+
+**Archivo**: `backend/app/constants.py`
+
+Todos los "magic numbers" del pipeline están centralizados en **6 modelos Pydantic** que actúan como single source of truth:
+
+| Modelo | Propósito | Ejemplo |
+|--------|-----------|---------|
+| `BehavioralWeights` | Pesos de desviación conductual | `off_hours: 0.04`, `foreign_country: 0.20` |
+| `AmountThresholds` | Umbrales de ratio de monto | `high_ratio: 3.0`, `velocity_ratio: 5.0` |
+| `EvidenceWeights` | Pesos del score compuesto | `behavioral: 0.30`, `policy: 0.25` |
+| `RiskThresholds` | Categorías de riesgo (0-100) | `low_max: 30.0`, `high_max: 80.0` |
+| `SafetyOverrides` | Overrides del Decision Arbiter | `critical_risk_threshold: 85.0` |
+| `AgentTimeouts` | Timeouts en segundos | `llm_call: 30.0`, `pipeline: 60.0` |
+
+**Beneficios**:
+- ✅ Validación automática por Pydantic (tipos, rangos)
+- ✅ Un solo lugar para ajustar parámetros del pipeline
+- ✅ Documentación inline (docstrings en cada modelo)
+- ✅ Evita magic numbers dispersos en el código
+
+### 7.9 ¿Por qué patrón "Thin Agent"?
+
+Los agentes siguen el patrón de **orquestadores delgados**: cada agente es una función pequeña que coordina llamadas a utilidades y prompts, sin contener lógica pesada internamente.
+
+**Separación de responsabilidades**:
+
+| Capa | Directorio | Responsabilidad |
+|------|-----------|-----------------|
+| **Prompts** | `app/prompts/` | Templates de prompts LLM (5 módulos: policy, threat, debate, decision, explainability) |
+| **Utils** | `app/utils/` | Helpers de dominio (debate_utils, decision_utils, policy_utils, threat_utils, llm_utils) |
+| **Agents** | `app/agents/` | Orquestación: leer estado → llamar utils/prompts → escribir estado |
+
+**Ejemplo** — El agente `decision_arbiter.py`:
+1. Lee `evidence` y `debate` del estado
+2. Construye el prompt usando `prompts/decision.py`
+3. Invoca el LLM con `utils/llm_utils.py`
+4. Aplica safety overrides con `utils/decision_utils.py`
+5. Retorna `decision` al estado
+
+**Beneficio**: Cada componente es testeable en aislamiento. Los prompts pueden iterarse sin tocar la lógica del agente.
+
+### 7.10 ¿Por qué jerarquía de excepciones custom (`exceptions.py`)?
+
+**Archivo**: `backend/app/exceptions.py`
+
+El sistema define una jerarquía de excepciones que mapea a categorías específicas de error:
+
+```
+FraudDetectionError (base)
+├── PolicyNotFoundError      → 404
+├── PolicyExistsError        → 409
+├── InvalidPolicyFormatError → 422
+├── LLMParsingError          → 500 (JSON parse failure)
+└── LLMTimeoutError          → 504 (timeout)
+```
+
+**Beneficios**:
+- ✅ Routers mapean excepciones a HTTP status codes específicos
+- ✅ Cada excepción incluye `details: dict` para debugging
+- ✅ Los agentes capturan errores tipados en lugar de `Exception` genérico
+- ✅ Logging estructurado incluye detalles de la excepción automáticamente
 
 ---
 
@@ -892,7 +1111,7 @@ graph TB
         end
 
         subgraph "Servicios Locales (no containerizados)"
-            OL[Ollama<br/>:11434<br/>llama3.1:8b]
+            OL[Ollama<br/>:11434<br/>qwen3:30b]
             CHR[(ChromaDB<br/>Embedded<br/>./data/chroma)]
         end
 
@@ -932,7 +1151,7 @@ docker compose up -d
 
 # 2. Verificar Ollama está corriendo (host)
 ollama serve  # Si no está ya corriendo
-ollama pull llama3.1:8b
+ollama pull qwen3:30b
 
 # 3. Iniciar backend (desde backend/)
 cd backend
@@ -954,7 +1173,7 @@ DATABASE_URL=postgresql+asyncpg://fraud_user:fraud_pass_dev@localhost:5432/fraud
 
 # LLM
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.1:8b
+OLLAMA_MODEL=qwen3:30b
 
 # ChromaDB
 CHROMA_PERSIST_DIR=./data/chroma
@@ -1082,7 +1301,7 @@ graph TB
 
 **Migración requerida**:
 1. Cambiar `OLLAMA_BASE_URL` → `AZURE_OPENAI_ENDPOINT`
-2. Cambiar modelo `llama3.1:8b` → `gpt-4o`
+2. Cambiar modelo `qwen3:30b` → `gpt-4o`
 3. Actualizar `DATABASE_URL` a Azure PostgreSQL connection string
 4. Configurar managed identities para Key Vault
 5. Agregar Application Insights SDK
@@ -1145,6 +1364,36 @@ curl -X POST http://localhost:8000/api/v1/hitl/1/resolve \
   }'
 ```
 
+#### Políticas (`/api/v1/policies`)
+
+| Método | Endpoint | Descripción | Estado | Request Body | Response |
+|--------|----------|-------------|--------|--------------|----------|
+| GET | `/` | Listar todas las políticas de fraude | ✅ | - | `List[PolicyResponse]` |
+| GET | `/{policy_id}` | Obtener política por ID (ej. FP-01) | ✅ | - | `PolicyResponse` |
+| POST | `/` | Crear nueva política (genera .md + reingest ChromaDB) | ✅ | `PolicyCreate` | `PolicyResponse` (201) |
+| PUT | `/{policy_id}` | Actualizar política existente (parcial) | ✅ | `PolicyUpdate` | `PolicyResponse` |
+| DELETE | `/{policy_id}` | Eliminar política (.md + ChromaDB) | ✅ | - | 204 No Content |
+| POST | `/reingest` | Re-ingestar manualmente todas las políticas en ChromaDB | ✅ | - | 202 Accepted |
+
+**Ejemplo de uso**:
+```bash
+# Listar políticas
+curl http://localhost:8000/api/v1/policies
+
+# Crear nueva política
+curl -X POST http://localhost:8000/api/v1/policies \
+  -H "Content-Type: application/json" \
+  -d '{
+    "policy_id": "FP-07",
+    "title": "Nueva Política",
+    "description": "Descripción detallada...",
+    "criteria": ["criterio 1"],
+    "thresholds": ["umbral 1"],
+    "action_recommended": "CHALLENGE",
+    "severity": "MEDIUM"
+  }'
+```
+
 #### Analytics (`/api/v1/analytics`)
 
 | Método | Endpoint | Descripción | Estado | Query Params | Response |
@@ -1199,7 +1448,7 @@ ws.onmessage = (event) => {
 
 ## 11. Estructura Final del Proyecto
 
-**Nota**: Esta estructura refleja el estado actual del repositorio (commit 59eaff0).
+**Nota**: Esta estructura refleja el estado actual del repositorio (commit b781347).
 
 ```
 fraud-detection-multi-agent-system/
@@ -1208,7 +1457,9 @@ fraud-detection-multi-agent-system/
 │   │   ├── __init__.py
 │   │   ├── main.py                    # FastAPI app + routers + CORS
 │   │   ├── config.py                  # Pydantic Settings (env vars)
+│   │   ├── constants.py               # Constantes centralizadas (6 modelos Pydantic)
 │   │   ├── dependencies.py            # Dependency injection (LLM, DB session)
+│   │   ├── exceptions.py              # Jerarquía de excepciones custom
 │   │   ├── models/                    # Pydantic models (9 archivos)
 │   │   │   ├── __init__.py
 │   │   │   ├── transaction.py         # Transaction, CustomerBehavior
@@ -1217,42 +1468,64 @@ fraud-detection-multi-agent-system/
 │   │   │   ├── debate.py              # DebateArguments
 │   │   │   ├── decision.py            # FraudDecision, ExplanationResult
 │   │   │   ├── trace.py               # AgentTraceEntry, OrchestratorState
-│   │   │   ├── hitl.py                # HITLCaseCreate, HITLCaseResolve
-│   │   │   └── analytics.py           # AnalyticsSummary, DecisionDistribution
+│   │   │   ├── policy.py              # PolicyBase, PolicyCreate, PolicyUpdate, PolicyResponse
+│   │   │   └── analyze_request.py     # AnalyzeRequest (transaction + behavior)
 │   │   ├── agents/                    # 8 agentes + orchestrator (10 archivos)
 │   │   │   ├── __init__.py
 │   │   │   ├── orchestrator.py        # LangGraph StateGraph + asyncio.gather
 │   │   │   ├── transaction_context.py # Señales determinísticas
 │   │   │   ├── behavioral_pattern.py  # Análisis de desviación comportamental
 │   │   │   ├── policy_rag.py          # ChromaDB + LLM para políticas
-│   │   │   ├── external_threat.py     # DuckDuckGo search + LLM
+│   │   │   ├── external_threat.py     # Multi-provider threat intel + LLM synthesis
 │   │   │   ├── evidence_aggregator.py # Consolidación matemática + narrativa
 │   │   │   ├── debate.py              # Pro-Fraud + Pro-Customer (adversarial)
-│   │   │   ├── decision_arbiter.py    # Evaluación final LLM
+│   │   │   ├── decision_arbiter.py    # Evaluación final LLM + safety overrides
 │   │   │   └── explainability.py      # Generación de explicaciones duales
+│   │   ├── prompts/                   # Templates de prompts LLM (5 módulos)
+│   │   │   ├── __init__.py
+│   │   │   ├── policy.py              # Prompts del PolicyRAG agent
+│   │   │   ├── threat.py              # Prompts del ExternalThreat agent
+│   │   │   ├── debate.py              # Prompts Pro-Fraud + Pro-Customer
+│   │   │   ├── decision.py            # Prompts del Decision Arbiter
+│   │   │   └── explainability.py      # Prompts del Explainability agent
 │   │   ├── db/                        # Capa de base de datos PostgreSQL
 │   │   │   ├── __init__.py
-│   │   │   ├── session.py             # AsyncSession factory
+│   │   │   ├── engine.py              # AsyncEngine + init_db
 │   │   │   └── models.py              # SQLAlchemy models (TransactionRecord, AgentTrace, HITLCase)
 │   │   ├── rag/                       # ChromaDB vector store
 │   │   │   ├── __init__.py
-│   │   │   ├── vector_store.py        # Ingestion + query functions
-│   │   │   └── embeddings.py          # Ollama embedding model config
+│   │   │   ├── vector_store.py        # Query functions
+│   │   │   └── ingest.py              # Ingestion de políticas
 │   │   ├── services/                  # Business logic layer
 │   │   │   ├── __init__.py
-│   │   │   ├── transaction_service.py # Transaction CRUD + orchestration
-│   │   │   ├── analytics_service.py   # Aggregation queries
-│   │   │   └── hitl_service.py        # HITL queue management
+│   │   │   ├── seed_service.py        # Ingesta de datos sintéticos
+│   │   │   ├── policy_service.py      # Policy CRUD orchestration
+│   │   │   ├── policy_parser.py       # Markdown ↔ PolicyResponse parser
+│   │   │   ├── policy_repository.py   # Filesystem I/O para policies .md
+│   │   │   └── threat_intel/          # Threat Intelligence providers
+│   │   │       ├── __init__.py
+│   │   │       ├── base.py            # ThreatProvider ABC interface
+│   │   │       ├── manager.py         # ThreatIntelManager (fan-out paralelo)
+│   │   │       ├── country_risk.py    # CountryRiskProvider (FATF lists)
+│   │   │       ├── osint_search.py    # OSINTSearchProvider (DuckDuckGo)
+│   │   │       └── sanctions_screening.py # SanctionsProvider (OpenSanctions)
 │   │   ├── routers/                   # FastAPI route handlers (5 archivos)
 │   │   │   ├── __init__.py
+│   │   │   ├── health.py              # GET /health
 │   │   │   ├── transactions.py        # POST /analyze, GET /{id}/trace
 │   │   │   ├── hitl.py                # GET /queue, POST /{id}/resolve
-│   │   │   ├── analytics.py           # GET /summary, /decisions
+│   │   │   ├── policies.py            # CRUD /policies + POST /reingest
 │   │   │   └── websocket.py           # WS /transactions (real-time events)
-│   │   └── utils/                     # Utilities
+│   │   └── utils/                     # Utilities (9 módulos)
 │   │       ├── __init__.py
 │   │       ├── logger.py              # structlog configuration
-│   │       └── timing.py              # @timed_agent decorator
+│   │       ├── timing.py              # @timed_agent decorator
+│   │       ├── shared_utils.py        # parse_usual_hours, is_time_in_range
+│   │       ├── llm_utils.py           # JSON parsing, LLM call helpers
+│   │       ├── debate_utils.py        # Debate argument formatting
+│   │       ├── decision_utils.py      # Safety overrides, citations, fallback
+│   │       ├── policy_utils.py        # Policy matching helpers
+│   │       └── threat_utils.py        # Threat analysis helpers
 │   ├── alembic/                       # Database migrations
 │   │   ├── versions/
 │   │   │   └── 001_initial_schema.py
@@ -1262,20 +1535,43 @@ fraud-detection-multi-agent-system/
 │   │   ├── synthetic_data.json        # 6 transacciones sintéticas (T-1001 a T-1006)
 │   │   ├── README.md                  # Descripción de datos sintéticos
 │   │   └── chroma/                    # ChromaDB persistent directory (gitignored)
-│   ├── policies/
-│   │   └── fraud_policies.md          # 6 políticas de fraude (FP-01 a FP-06)
+│   ├── policies/                      # Políticas individuales (1 archivo .md por política)
+│   │   ├── FP-01.md                   # Montos significativamente superiores
+│   │   ├── FP-02.md                   # Transacciones desde países no habituales
+│   │   ├── FP-03.md                   # Dispositivos no reconocidos
+│   │   ├── FP-04.md                   # Horarios inusuales
+│   │   ├── FP-05.md                   # Patrones de velocidad sospechosos
+│   │   └── FP-06.md                   # Combinación de múltiples señales
 │   ├── scripts/                       # Scripts de utilidad
 │   │   ├── demo.py                    # Demo end-to-end con Rich CLI
 │   │   ├── verify_api.py              # Verificación de endpoints
 │   │   └── seed_test.py               # Ingesta de datos sintéticos
-│   ├── tests/                         # Test suite (pytest)
-│   │   ├── test_agents/
+│   ├── tests/                         # Test suite (pytest, 21+ archivos)
+│   │   ├── conftest.py                # Fixtures compartidos
+│   │   ├── test_agents/               # Tests de agentes (10 archivos)
 │   │   │   ├── test_transaction_context.py
+│   │   │   ├── test_behavioral_pattern.py
 │   │   │   ├── test_policy_rag.py
-│   │   │   └── ...
-│   │   ├── test_routers/
-│   │   │   └── test_transactions.py
-│   │   └── test_orchestrator.py
+│   │   │   ├── test_external_threat_providers.py
+│   │   │   ├── test_external_threat_refactored.py
+│   │   │   ├── test_evidence_aggregator.py
+│   │   │   ├── test_debate.py
+│   │   │   ├── test_decision_arbiter.py
+│   │   │   ├── test_explainability.py
+│   │   │   └── test_orchestrator.py
+│   │   ├── test_routers/              # Tests de endpoints (5 archivos)
+│   │   │   ├── test_health.py
+│   │   │   ├── test_transactions.py
+│   │   │   ├── test_hitl.py
+│   │   │   ├── test_policies.py
+│   │   │   └── test_websocket.py
+│   │   ├── test_services/             # Tests de servicios (4 archivos)
+│   │   │   ├── test_policy_service.py
+│   │   │   ├── test_threat_intel_osint.py
+│   │   │   ├── test_threat_intel_country_risk.py
+│   │   │   └── test_threat_intel_manager.py
+│   │   └── test_rag/                  # Tests de RAG
+│   │       └── test_vector_store.py
 │   ├── Dockerfile                     # Multi-stage build (uv + Python 3.13)
 │   ├── .env.example                   # Environment variables template
 │   ├── pyproject.toml                 # uv project definition (Python >=3.13)
@@ -1283,33 +1579,45 @@ fraud-detection-multi-agent-system/
 │
 ├── frontend/                          # Frontend Next.js 16
 │   ├── src/
-│   │   ├── app/                       # Next.js App Router (6 pages)
+│   │   ├── app/                       # Next.js App Router (6 páginas)
 │   │   │   ├── layout.tsx             # Root layout con sidebar + header
 │   │   │   ├── page.tsx               # Dashboard principal (stats + charts)
+│   │   │   ├── error.tsx              # Error boundary
+│   │   │   ├── loading.tsx            # Loading state
+│   │   │   ├── not-found.tsx          # 404 page
 │   │   │   ├── transactions/
 │   │   │   │   ├── page.tsx           # Lista de transacciones + tabla
 │   │   │   │   └── [id]/page.tsx      # Detalle + trace + debate
 │   │   │   ├── hitl/
 │   │   │   │   └── page.tsx           # Cola HITL + form de resolución
-│   │   │   └── analytics/
-│   │   │       └── page.tsx           # Métricas + distribución + trends
-│   │   ├── components/                # 43 componentes React (8 subdirectorios)
-│   │   │   ├── layout/                # Sidebar, Header, MainContent
+│   │   │   ├── analytics/
+│   │   │   │   └── page.tsx           # Métricas + distribución + trends
+│   │   │   └── policies/
+│   │   │       └── page.tsx           # Gestión CRUD de políticas
+│   │   ├── components/                # 51 componentes React (10 subdirectorios)
+│   │   │   ├── layout/                # Header, Sidebar, MobileSidebar
 │   │   │   ├── dashboard/             # StatsCards, RecentDecisions, RiskDistribution
-│   │   │   ├── transactions/          # TransactionTable, TransactionDetail, AnalyzeButton
-│   │   │   ├── agents/                # AgentTraceTimeline, AgentFlowDiagram, DebateView
+│   │   │   ├── transactions/          # TransactionTable, TransactionsClient, TransactionDetailClient,
+│   │   │   │                          #   TransactionDetailCard, DecisionCard, AnalyzeButton
+│   │   │   ├── agents/                # AgentTraceTimeline, DebateView
 │   │   │   ├── hitl/                  # HITLQueue, HITLReviewForm
-│   │   │   ├── analytics/             # DecisionChart, PerformanceMetrics
+│   │   │   ├── analytics/             # DecisionBreakdownChart, ProcessingTimeChart,
+│   │   │   │                          #   ConfidenceDistribution, RiskByCountry
 │   │   │   ├── explanation/           # CustomerExplanation, AuditExplanation
-│   │   │   └── ui/                    # 17 shadcn/ui components (button, card, badge, etc.)
+│   │   │   ├── policies/              # PoliciesClient, PolicyList, PolicyCard,
+│   │   │   │                          #   PolicyForm, PolicyDeleteDialog
+│   │   │   ├── common/                # WebSocketStatus
+│   │   │   └── ui/                    # 23 shadcn/ui components (button, card, badge, dialog, etc.)
 │   │   ├── lib/
 │   │   │   ├── api.ts                 # Fetch wrapper con error handling
 │   │   │   ├── types.ts               # TypeScript interfaces (mirror Pydantic models)
-│   │   │   └── utils.ts               # Helper functions (cn, formatters)
-│   │   └── hooks/                     # 3 custom hooks
-│   │       ├── use-transactions.ts    # SWR hook para transacciones
-│   │       ├── use-websocket.ts       # WebSocket con reconnect + circuit breaker
-│   │       └── use-analytics.ts       # Hook para métricas
+│   │   │   ├── utils.ts               # Helper functions (cn, formatters)
+│   │   │   └── constants.ts           # Constantes frontend
+│   │   └── hooks/                     # 4 custom hooks
+│   │       ├── useTransactions.ts     # Hook para transacciones
+│   │       ├── useWebSocket.ts        # WebSocket con reconnect + circuit breaker
+│   │       ├── useSystemHealth.ts     # Hook de health check
+│   │       └── use-toast.ts           # Hook de notificaciones toast
 │   ├── public/                        # Static assets
 │   ├── Dockerfile                     # Next.js production build
 │   ├── package.json                   # Dependencies (Next.js ^16.1.6, React ^18)
@@ -1336,11 +1644,6 @@ fraud-detection-multi-agent-system/
 │   └── memory/
 │       └── MEMORY.md                  # Patrones aprendidos
 │
-├── .github/
-│   └── workflows/
-│       ├── ci.yml                     # GitHub Actions: lint + test
-│       └── deploy.yml                 # GitHub Actions: build + deploy (placeholder)
-│
 ├── .env.example                       # Environment variables template
 ├── .gitignore                         # Python, Node, ChromaDB, .env
 ├── Makefile                           # Comandos útiles (install, dev, test, docker-up)
@@ -1349,15 +1652,16 @@ fraud-detection-multi-agent-system/
 ```
 
 **Conteo de archivos**:
-- **Backend**: 54 archivos Python (.py)
-- **Frontend**: 43 componentes React (.tsx) + 3 custom hooks
+- **Backend**: ~65 archivos Python (.py)
+- **Frontend**: 51 componentes React (.tsx) + 4 custom hooks
 - **Total componentes frontend**:
-  - 17 componentes UI base (shadcn/ui)
-  - 24 componentes de dominio (dashboard, transactions, agents, hitl, analytics)
+  - 23 componentes UI base (shadcn/ui)
+  - 28 componentes de dominio (dashboard, transactions, agents, hitl, analytics, policies, common)
   - 3 componentes de layout
-- **Tests**: 12 archivos de test (pytest)
+- **Tests**: 21 archivos de test (pytest) en 4 subdirectorios
 - **Docker**: 3 Dockerfiles + 2 docker-compose configs
 - **Docs**: 3 archivos de documentación + 3 screenshots
+- **Páginas frontend**: 6 (dashboard, transactions, transaction detail, hitl, analytics, policies)
 
 ---
 
@@ -1372,7 +1676,7 @@ No todos los agentes necesitan un LLM. Diseño híbrido optimizado para costo y 
 | Transaction Context | **Determinístico** | Reglas de negocio claras (ratios, horarios, país) | Cálculos matemáticos + comparaciones | `transaction_context.py` |
 | Behavioral Pattern | **Determinístico** | Comparación directa contra historial | Desviación estándar + anomaly detection | `behavioral_pattern.py` |
 | Policy RAG | **LLM + RAG** | Necesita entender semántica de políticas | ChromaDB query + LLM relevance scoring | `policy_rag.py` |
-| External Threat | **LLM + Web** | Web search requiere interpretación | DuckDuckGo search + LLM synthesis | `external_threat.py` |
+| External Threat | **LLM + Multi-Provider** | Múltiples fuentes requieren agregación e interpretación | FATF + OSINT + Sanctions → LLM synthesis | `external_threat.py` |
 | Evidence Aggregation | **Determinístico** | Agregación matemática pura | Weighted average + categorization | `evidence_aggregator.py` |
 | Debate Pro-Fraud | **LLM** | Argumentación requiere razonamiento | LLM prompt engineering | `debate.py:debate_pro_fraud_agent` |
 | Debate Pro-Customer | **LLM** | Argumentación requiere razonamiento | LLM prompt engineering | `debate.py:debate_pro_customer_agent` |
@@ -1934,7 +2238,8 @@ npx -p @mermaid-js/mermaid-cli mmdc -i diagrama.mmd -o diagrama.png
 
 **Para auditorías de seguridad/compliance**:
 1. Sección 5: Modelo de estado (qué datos se almacenan)
-2. Sección 6.4: Mecanismos de resiliencia (manejo de errores)
-3. Sección 10: Endpoints API (superficie de ataque)
-4. Sección 12.2: Timeouts y circuit breakers (protección)
-5. Logs estructurados con structlog (auditabilidad)
+2. Sección 6.4: Arquitectura de Threat Intelligence (providers externos)
+3. Sección 6.5: Mecanismos de resiliencia (safety overrides, timeouts, circuit breakers)
+4. Sección 10: Endpoints API (superficie de ataque)
+5. Sección 12.2: Timeouts y circuit breakers (protección)
+6. Logs estructurados con structlog (auditabilidad)

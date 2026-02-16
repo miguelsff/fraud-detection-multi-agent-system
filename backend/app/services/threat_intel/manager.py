@@ -2,7 +2,7 @@
 
 import asyncio
 
-from app.models import Transaction, TransactionSignals, ThreatIntelResult, ThreatSource
+from app.models import ThreatIntelResult, ThreatSource, Transaction, TransactionSignals
 from app.utils.logger import get_logger
 
 from .base import ThreatProvider

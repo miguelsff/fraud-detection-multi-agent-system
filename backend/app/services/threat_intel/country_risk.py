@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from app.models import Transaction, TransactionSignals, ThreatSource
+from app.models import ThreatSource, Transaction, TransactionSignals
 from app.utils.logger import get_logger
 
 from .base import ThreatProvider

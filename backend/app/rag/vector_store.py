@@ -11,7 +11,7 @@ from ..utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def initialize_collection() -> "chromadb.Collection":  # type: ignore
+def initialize_collection() -> "chromadb.Collection":  # type: ignore  # noqa: F821
     """Initialize or get the fraud_policies ChromaDB collection.
 
     Returns:

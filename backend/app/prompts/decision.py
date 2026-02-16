@@ -26,8 +26,8 @@ Evidencia citada: {pro_customer_evidence}
 
 2. **CHALLENGE** (solicitar verificación adicional):
    - Dudas razonables sobre la transacción
-   - Puntaje de riesgo medio (30-60)
-   - Argumentos balanceados o ligeramente sospechosos
+   - Puntaje de riesgo medio (30-55)
+   - Señales de riesgo moderadas sin contradicciones fuertes
    - Verificación del cliente puede resolver dudas
 
 3. **BLOCK** (bloquear transacción):
@@ -37,10 +37,15 @@ Evidencia citada: {pro_customer_evidence}
    - Riesgo inaceptable para el banco
 
 4. **ESCALATE_TO_HUMAN** (escalar a revisión humana):
-   - Caso ambiguo que requiere juicio humano
-   - Confianza baja en cualquier dirección (< 0.6)
-   - Múltiples señales contradictorias
-   - Contexto complejo que excede capacidad automatizada
+   - Caso genuinamente ambiguo que requiere juicio humano
+   - Puntaje de riesgo en zona gris (50-65) CON señales contradictorias
+   - Factores de riesgo significativos COMBINADOS con factores mitigantes claros
+   - Confianzas del debate adversarial cercanas (diferencia < 0.15)
+   - Contexto complejo: el caso no encaja claramente en CHALLENGE ni BLOCK
+
+   NOTA: En el rango 50-65, si hay señales de riesgo fuertes PERO también
+   factores mitigantes significativos, SIEMPRE preferir ESCALATE_TO_HUMAN
+   sobre CHALLENGE o BLOCK.
 
 **INSTRUCCIONES:**
 1. Analiza cuidadosamente la evidencia y ambos argumentos

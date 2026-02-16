@@ -78,6 +78,7 @@ export function TransactionDetailClient({
             confidence={detail.confidence}
             evidence={detail.evidence}
             signals={detail.transaction_signals}
+            hitl={detail.hitl}
           />
 
           {detail.explanation && (

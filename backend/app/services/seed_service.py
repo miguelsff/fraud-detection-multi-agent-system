@@ -1,16 +1,17 @@
 """Seed service for loading and testing synthetic fraud data."""
 
-import json
 import asyncio
+import json
 from pathlib import Path
 from typing import Any
-from rich.console import Console
-from rich.table import Table
-from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from ..models import Transaction, CustomerBehavior, FraudDecision
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.table import Table
+
 from ..agents.orchestrator import analyze_transaction
 from ..db.engine import async_session as async_session_maker
+from ..models import CustomerBehavior, FraudDecision, Transaction
 from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -56,7 +57,9 @@ async def run_single_analysis(
                 "confidence": decision.confidence,
                 "matches": matches,
                 "reason": transaction_data.get("reason", "N/A"),
-                "explanation": decision.explanation_customer[:100] + "..." if len(decision.explanation_customer) > 100 else decision.explanation_customer,
+                "explanation": decision.explanation_customer[:100] + "..."
+                if len(decision.explanation_customer) > 100
+                else decision.explanation_customer,
             }
         except Exception as e:
             logger.error(
@@ -101,10 +104,7 @@ async def run_batch_analysis(parallel: bool = False) -> list[dict[str, Any]]:
         ) as progress:
             task = progress.add_task("Analyzing transactions...", total=None)
 
-            tasks = [
-                run_single_analysis(item, item["expected_outcome"])
-                for item in data
-            ]
+            tasks = [run_single_analysis(item, item["expected_outcome"]) for item in data]
             results = await asyncio.gather(*tasks)
 
             progress.update(task, completed=True)
@@ -131,7 +131,9 @@ async def run_batch_analysis(parallel: bool = False) -> list[dict[str, Any]]:
 
 def display_results(results: list[dict[str, Any]]) -> None:
     """Display analysis results in a rich table."""
-    table = Table(title="Fraud Detection Analysis Results", show_header=True, header_style="bold magenta")
+    table = Table(
+        title="Fraud Detection Analysis Results", show_header=True, header_style="bold magenta"
+    )
 
     table.add_column("Transaction ID", style="cyan", width=12)
     table.add_column("Expected", style="yellow", width=18)
@@ -163,11 +165,13 @@ def display_results(results: list[dict[str, Any]]) -> None:
 
     # Summary
     accuracy = (matches / total) * 100 if total > 0 else 0
-    console.print(f"\n[bold]Summary:[/bold]")
+    console.print("\n[bold]Summary:[/bold]")
     console.print(f"  Total: {total}")
     console.print(f"  Matches: [green]{matches}[/green]")
     console.print(f"  Mismatches: [red]{total - matches}[/red]")
-    console.print(f"  Accuracy: [{'green' if accuracy >= 80 else 'yellow' if accuracy >= 60 else 'red'}]{accuracy:.1f}%[/]\n")
+    console.print(
+        f"  Accuracy: [{'green' if accuracy >= 80 else 'yellow' if accuracy >= 60 else 'red'}]{accuracy:.1f}%[/]\n"
+    )
 
 
 async def seed_and_test(parallel: bool = False) -> None:

@@ -6,7 +6,7 @@ from datetime import datetime
 from duckduckgo_search import DDGS
 
 from app.config import settings
-from app.models import Transaction, TransactionSignals, ThreatSource
+from app.models import ThreatSource, Transaction, TransactionSignals
 from app.utils.logger import get_logger
 
 from .base import ThreatProvider

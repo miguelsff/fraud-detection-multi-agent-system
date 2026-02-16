@@ -1,14 +1,16 @@
 """Transaction analysis endpoints."""
+
 import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..dependencies import get_db
-from ..models import FraudDecision, AnalyzeRequest
 from ..agents.orchestrator import analyze_transaction
-from ..db.models import TransactionRecord, AgentTrace
+from ..db.models import AgentTrace, HITLCase, TransactionRecord
+from ..dependencies import get_db
+from ..models import AnalyzeRequest, FraudDecision
 from ..utils.logger import get_logger
 
 router = APIRouter()
@@ -18,6 +20,7 @@ logger = get_logger(__name__)
 class PaginationParams(BaseModel):
     limit: int = Field(10, ge=1, le=1000)
     offset: int = Field(0, ge=0)
+
 
 @router.post("/analyze", response_model=FraudDecision)
 async def analyze(
@@ -39,7 +42,7 @@ async def analyze(
         return decision
     except asyncio.TimeoutError:
         logger.error("analysis_timeout", transaction_id=request.transaction.transaction_id)
-        raise HTTPException(status_code=504, detail="Analysis timeout (>60s)")
+        raise HTTPException(status_code=504, detail="Analysis timeout (exceeded configured pipeline timeout)")
     except Exception as e:
         logger.error(
             "analysis_error",
@@ -62,12 +65,16 @@ async def analyze_batch(
             decision = await analyze_transaction(req.transaction, req.customer_behavior, db)
             results.append({"status": "ok", "decision": decision})
         except Exception as e:
-            logger.error("batch_item_failed", transaction_id=req.transaction.transaction_id, error=str(e))
-            results.append({
-                "status": "error",
-                "transaction_id": req.transaction.transaction_id,
-                "error": str(e),
-            })
+            logger.error(
+                "batch_item_failed", transaction_id=req.transaction.transaction_id, error=str(e)
+            )
+            results.append(
+                {
+                    "status": "error",
+                    "transaction_id": req.transaction.transaction_id,
+                    "error": str(e),
+                }
+            )
 
     return results
 
@@ -88,6 +95,20 @@ async def get_result(
     # Parse analysis_state (may be None for old records)
     state = record.analysis_state or {}
 
+    # Look up associated HITL case (if any)
+    hitl_stmt = select(HITLCase).where(HITLCase.transaction_id == transaction_id)
+    hitl_result = await db.execute(hitl_stmt)
+    hitl_case = hitl_result.scalar_one_or_none()
+
+    hitl_data = None
+    if hitl_case:
+        hitl_data = {
+            "case_id": hitl_case.id,
+            "status": hitl_case.status,
+            "resolution": hitl_case.resolution,
+            "resolved_at": hitl_case.resolved_at.isoformat() if hitl_case.resolved_at else None,
+        }
+
     return {
         "transaction_id": record.transaction_id,
         "transaction": record.raw_data,
@@ -102,6 +123,7 @@ async def get_result(
         "decision": record.decision,
         "confidence": float(record.confidence),
         "analyzed_at": record.created_at.isoformat(),
+        "hitl": hitl_data,
     }
 
 
@@ -126,6 +148,18 @@ async def get_trace(
             "output_summary": t.output_summary,
             "status": t.status,
             "created_at": t.created_at.isoformat(),
+            # LLM interaction fields
+            "llm_prompt": t.llm_prompt,
+            "llm_response_raw": t.llm_response_raw,
+            "llm_model": t.llm_model,
+            "llm_temperature": float(t.llm_temperature) if t.llm_temperature else None,
+            "llm_tokens_used": t.llm_tokens_used,
+            # RAG query fields
+            "rag_query": t.rag_query,
+            "rag_scores": t.rag_scores,
+            # Error handling fields
+            "fallback_reason": t.fallback_reason,
+            "error_details": t.error_details,
         }
         for t in traces
     ]

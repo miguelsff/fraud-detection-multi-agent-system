@@ -7,8 +7,9 @@ and fallback decision logic for the Decision Arbiter agent.
 import re
 
 from app.models import AggregatedEvidence, DebateArguments
-from ..constants import SAFETY_OVERRIDES
 from app.utils.logger import get_logger
+
+from ..constants import SAFETY_OVERRIDES
 
 logger = get_logger(__name__)
 
@@ -66,7 +67,9 @@ def apply_safety_overrides(
             "safety_override_applied",
             original=original_decision,
             final=decision,
-            reason="critical_score" if composite_score > SAFETY_OVERRIDES.critical_risk_threshold else "low_confidence",
+            reason="critical_score"
+            if composite_score > SAFETY_OVERRIDES.critical_risk_threshold
+            else "low_confidence",
         )
 
     return decision, confidence, reasoning
@@ -98,21 +101,27 @@ def build_citations_external(evidence: AggregatedEvidence) -> list[dict]:
         if citation.startswith("Threat:"):
             match = re.match(r"Threat:\s*(.+?)\s*\(confidence:\s*([\d.]+)\)", citation)
             if match:
-                citations.append({
-                    "source": match.group(1),
-                    "detail": f"Confidence: {match.group(2)}",
-                })
+                citations.append(
+                    {
+                        "source": match.group(1),
+                        "detail": f"Confidence: {match.group(2)}",
+                    }
+                )
             else:
-                citations.append({
-                    "source": "external_threat",
-                    "detail": citation.replace("Threat: ", ""),
-                })
+                citations.append(
+                    {
+                        "source": "external_threat",
+                        "detail": citation.replace("Threat: ", ""),
+                    }
+                )
 
     if not citations:
-        citations.append({
-            "source": "external_threat_check",
-            "detail": "No external threats detected",
-        })
+        citations.append(
+            {
+                "source": "external_threat_check",
+                "detail": "No external threats detected",
+            }
+        )
 
     return citations
 
@@ -127,29 +136,44 @@ def generate_fallback_decision(evidence: AggregatedEvidence) -> tuple[str, float
 
     mappings = {
         "low": (
-            "APPROVE", 0.75,
+            "APPROVE",
+            0.75,
             f"Puntaje de riesgo bajo ({composite_score}/100). Señales mínimas de fraude. Transacción aprobada.",
         ),
         "medium": (
-            "CHALLENGE", 0.70,
-            f"Puntaje de riesgo medio ({composite_score}/100). Verificación adicional recomendada antes de aprobar.",
+            "ESCALATE_TO_HUMAN" if composite_score >= 55 else "CHALLENGE",
+            0.55 if composite_score >= 55 else 0.70,
+            f"Puntaje de riesgo medio-alto ({composite_score}/100). Señales mixtas requieren revisión humana."
+            if composite_score >= 55
+            else f"Puntaje de riesgo medio ({composite_score}/100). Verificación adicional recomendada antes de aprobar.",
         ),
         "high": (
-            "BLOCK", 0.80,
+            "BLOCK",
+            0.80,
             f"Puntaje de riesgo alto ({composite_score}/100). Señales significativas de fraude justifican bloqueo.",
         ),
         "critical": (
-            "BLOCK", 0.90,
+            "BLOCK",
+            0.90,
             f"Puntaje de riesgo crítico ({composite_score}/100). Múltiples señales de alto riesgo. Bloqueo inmediato requerido.",
         ),
     }
 
     decision, confidence, reasoning = mappings.get(
         risk_category,
-        ("ESCALATE_TO_HUMAN", 0.50, "Categoría de riesgo no clasificada. Revisión humana requerida."),
+        (
+            "ESCALATE_TO_HUMAN",
+            0.50,
+            "Categoría de riesgo no clasificada. Revisión humana requerida.",
+        ),
     )
 
-    logger.info("fallback_decision_generated", risk_category=risk_category, decision=decision, confidence=confidence)
+    logger.info(
+        "fallback_decision_generated",
+        risk_category=risk_category,
+        decision=decision,
+        confidence=confidence,
+    )
     return decision, confidence, reasoning
 
 
@@ -188,6 +212,8 @@ def generate_audit_explanation(
     ]
 
     if evidence.all_signals:
-        audit_parts.append(f"Señales detectadas ({len(evidence.all_signals)}): {', '.join(evidence.all_signals[:5])}")
+        audit_parts.append(
+            f"Señales detectadas ({len(evidence.all_signals)}): {', '.join(evidence.all_signals[:5])}"
+        )
 
     return " | ".join(audit_parts)

@@ -130,6 +130,6 @@ async def main():
 if __name__ == "__main__":
     print("\nNOTE: This example requires:")
     print("  1. Policies ingested into ChromaDB (run: python -m app.rag.ingest)")
-    print("  2. Ollama running with llama3.1:8b model")
+    print("  2. Ollama running with qwen3:30b model")
     print()
     asyncio.run(main())

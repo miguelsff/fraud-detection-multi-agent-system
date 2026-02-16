@@ -69,7 +69,7 @@ const SCENARIOS = {
       customer_id: "C-502",
       amount: 8500.00,
       currency: "USD",
-      country: "NG",
+      country: "KP",
       channel: "mobile",
       device_id: "D-99",
       timestamp: "2025-01-15T02:00:00Z",
@@ -84,16 +84,16 @@ const SCENARIOS = {
     }
   },
   ESCALATE_TO_HUMAN: {
-    name: "ESCALAR - Señales Ambiguas",
+    name: "ESCALAR - Señales Contradictorias",
     transaction: {
       transaction_id: "T-1004",
       customer_id: "C-504",
-      amount: 2000.00,
+      amount: 1500.00,
       currency: "USD",
-      country: "CO",
-      channel: "web",
+      country: "PK",
+      channel: "app",
       device_id: "D-01",
-      timestamp: "2025-01-15T16:00:00Z",
+      timestamp: "2025-01-15T00:00:00Z",
       merchant_id: "M-280"
     },
     customerBehavior: {
@@ -118,7 +118,17 @@ export function AnalyzeButton() {
 
   const loadScenario = (scenarioKey: keyof typeof SCENARIOS) => {
     const scenario = SCENARIOS[scenarioKey];
-    setTransactionJson(JSON.stringify(scenario.transaction, null, 2));
+
+    // Generate unique transaction_id: T-{timestamp}-{random}
+    const uniqueId = `T-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+    // Clone transaction with unique ID
+    const transactionWithUniqueId = {
+      ...scenario.transaction,
+      transaction_id: uniqueId,
+    };
+
+    setTransactionJson(JSON.stringify(transactionWithUniqueId, null, 2));
     setCustomerBehaviorJson(JSON.stringify(scenario.customerBehavior, null, 2));
     setError(null); // Clear any previous error
     setResult(null); // Clear any previous result

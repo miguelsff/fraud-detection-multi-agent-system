@@ -17,6 +17,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ..constants import AGENT_TIMEOUTS
 from ..db.models import AgentTrace as AgentTraceDB
 from ..db.models import HITLCase, TransactionRecord
 from ..models import (
@@ -205,24 +206,14 @@ async def persist_audit(state: OrchestratorState, config: RunnableConfig) -> dic
                 else None
             ),
             "threat_intel": (
-                state["threat_intel"].model_dump(mode="json")
-                if state.get("threat_intel")
-                else None
+                state["threat_intel"].model_dump(mode="json") if state.get("threat_intel") else None
             ),
             "evidence": (
-                state["evidence"].model_dump(mode="json")
-                if state.get("evidence")
-                else None
+                state["evidence"].model_dump(mode="json") if state.get("evidence") else None
             ),
-            "debate": (
-                state["debate"].model_dump(mode="json")
-                if state.get("debate")
-                else None
-            ),
+            "debate": (state["debate"].model_dump(mode="json") if state.get("debate") else None),
             "explanation": (
-                state["explanation"].model_dump(mode="json")
-                if state.get("explanation")
-                else None
+                state["explanation"].model_dump(mode="json") if state.get("explanation") else None
             ),
         }
 
@@ -377,7 +368,7 @@ async def analyze_transaction(
         FraudDecision with decision, confidence, signals, and explanations.
 
     Raises:
-        asyncio.TimeoutError: If the pipeline exceeds 60 seconds.
+        asyncio.TimeoutError: If the pipeline exceeds the configured timeout (see AGENT_TIMEOUTS.pipeline).
         KeyError: If the pipeline finishes without producing a decision
                   (should not happen with proper fallbacks in agents).
     """
@@ -391,7 +382,7 @@ async def analyze_transaction(
 
     final_state = await asyncio.wait_for(
         graph.ainvoke(initial_state, config=config),
-        timeout=60.0,
+        timeout=AGENT_TIMEOUTS.pipeline,
     )
 
     return final_state["decision"]

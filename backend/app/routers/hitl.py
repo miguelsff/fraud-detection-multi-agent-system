@@ -1,12 +1,14 @@
 """Human-in-the-Loop (HITL) endpoints."""
-from datetime import datetime, UTC
+
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..dependencies import get_db
 from ..db.models import HITLCase
+from ..dependencies import get_db
 
 router = APIRouter()
 
@@ -17,11 +19,7 @@ async def get_queue(
     db: AsyncSession = Depends(get_db),
 ):
     """Retrieve HITL cases by status."""
-    stmt = (
-        select(HITLCase)
-        .where(HITLCase.status == status)
-        .order_by(HITLCase.created_at.asc())
-    )
+    stmt = select(HITLCase).where(HITLCase.status == status).order_by(HITLCase.created_at.asc())
     result = await db.execute(stmt)
     cases = result.scalars().all()
 
@@ -41,6 +39,7 @@ async def get_queue(
 
 class ResolveRequest(BaseModel):
     """Request model for resolving HITL cases."""
+
     resolution: str  # "APPROVE" or "BLOCK"
     reason: str
 

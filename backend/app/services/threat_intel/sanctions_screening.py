@@ -5,7 +5,7 @@ import asyncio
 import httpx
 
 from app.config import settings
-from app.models import Transaction, TransactionSignals, ThreatSource
+from app.models import ThreatSource, Transaction, TransactionSignals
 from app.utils.logger import get_logger
 
 from .base import ThreatProvider
@@ -45,9 +45,7 @@ class SanctionsProvider(ThreatProvider):
             # Check cache first
             cache_key = f"merchant:{transaction.merchant_id}"
             if cache_key in self._cache:
-                logger.debug(
-                    "opensanctions_cache_hit", merchant_id=transaction.merchant_id
-                )
+                logger.debug("opensanctions_cache_hit", merchant_id=transaction.merchant_id)
                 return self._cache[cache_key]
 
             # Search OpenSanctions
@@ -98,9 +96,7 @@ class SanctionsProvider(ThreatProvider):
             return sources
 
         except httpx.HTTPStatusError as e:
-            logger.warning(
-                "opensanctions_http_error", status=e.response.status_code
-            )
+            logger.warning("opensanctions_http_error", status=e.response.status_code)
             return []
         except asyncio.TimeoutError:
             logger.warning("opensanctions_timeout")

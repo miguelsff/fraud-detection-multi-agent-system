@@ -8,9 +8,10 @@ import re
 from typing import Optional
 
 from app.models import BehavioralSignals, PolicyMatch, Transaction, TransactionSignals
-from app.utils.logger import get_logger
-from ..constants import AMOUNT_THRESHOLDS
 from app.utils.llm_utils import clamp_float, parse_json_response
+from app.utils.logger import get_logger
+
+from ..constants import AMOUNT_THRESHOLDS
 
 logger = get_logger(__name__)
 
@@ -102,11 +103,13 @@ def parse_policy_matches(response_text: str) -> list[PolicyMatch]:
             for match_data in data.get("matches", []):
                 score = clamp_float(float(match_data["relevance_score"]))
                 if score >= 0.5:
-                    matches.append(PolicyMatch(
-                        policy_id=match_data["policy_id"],
-                        description=match_data["description"],
-                        relevance_score=score,
-                    ))
+                    matches.append(
+                        PolicyMatch(
+                            policy_id=match_data["policy_id"],
+                            description=match_data["description"],
+                            relevance_score=score,
+                        )
+                    )
             logger.info("llm_response_parsed_json", count=len(matches))
             return matches
         except (KeyError, ValueError):
@@ -119,11 +122,13 @@ def parse_policy_matches(response_text: str) -> list[PolicyMatch]:
     for policy_id, score_str in regex_matches:
         score = clamp_float(float(score_str))
         if score >= 0.5:
-            matches.append(PolicyMatch(
-                policy_id=policy_id,
-                description=f"Política {policy_id} aplicable (extracción por regex)",
-                relevance_score=score,
-            ))
+            matches.append(
+                PolicyMatch(
+                    policy_id=policy_id,
+                    description=f"Política {policy_id} aplicable (extracción por regex)",
+                    relevance_score=score,
+                )
+            )
 
     logger.info("llm_response_parsed_regex", count=len(matches))
     return matches
