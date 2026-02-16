@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from app.agents.policy_rag import policy_rag_agent
-from app.agents.policy_utils import (
+from app.utils.policy_utils import (
     build_rag_query as _build_query_from_signals,
     parse_policy_matches as _parse_llm_response,
 )

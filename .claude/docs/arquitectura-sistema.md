@@ -1924,8 +1924,7 @@ npx -p @mermaid-js/mermaid-cli mmdc -i diagrama.mmd -o diagrama.png
 1. Leer `README.md` (overview y quickstart)
 2. Leer `CLAUDE.md` (reglas de desarrollo)
 3. Revisar este archivo (`arquitectura-sistema.md`) para entender arquitectura completa
-4. Ver screenshots en `docs/images/` para contexto visual
-5. Ejecutar `make demo` para ver el sistema en acción
+4. Ejecutar `make demo` para ver el sistema en acción
 
 **Para presentaciones técnicas**:
 1. Usar diagramas Mermaid exportados como PNG/SVG

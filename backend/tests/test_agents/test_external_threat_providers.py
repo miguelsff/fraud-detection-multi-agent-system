@@ -17,7 +17,7 @@ from app.agents.external_threat import (
     _get_enabled_providers,
     external_threat_agent,
 )
-from app.agents.threat_utils import (
+from app.utils.threat_utils import (
     calculate_baseline_from_sources as _calculate_baseline_from_sources,
     classify_provider_type as _classify_provider_type,
 )

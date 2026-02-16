@@ -11,7 +11,7 @@ from app.agents.debate import (
     PRO_CUSTOMER_PROMPT,
     PRO_FRAUD_PROMPT,
 )
-from app.agents.debate_utils import (
+from app.utils.debate_utils import (
     call_debate_llm as _call_llm_for_debate,
     _parse_debate_response,
     generate_fallback_pro_fraud as _generate_fallback_pro_fraud,
@@ -310,7 +310,7 @@ async def test_call_llm_for_debate_timeout():
     mock_llm = AsyncMock()
     mock_llm.ainvoke.side_effect = TimeoutError("LLM timeout")
 
-    with patch("app.agents.debate_utils.asyncio.wait_for", side_effect=TimeoutError):
+    with patch("app.utils.debate_utils.asyncio.wait_for", side_effect=TimeoutError):
         argument, confidence, evidence_cited = await _call_llm_for_debate(
             mock_llm,
             evidence,
@@ -433,7 +433,7 @@ async def test_debate_pro_fraud_agent_llm_timeout():
 
     # Mock LLM timeout
     with patch("app.agents.debate.get_llm") as mock_get_llm, \
-         patch("app.agents.debate_utils.asyncio.wait_for", side_effect=TimeoutError):
+         patch("app.utils.debate_utils.asyncio.wait_for", side_effect=TimeoutError):
         mock_llm = AsyncMock()
         mock_get_llm.return_value = mock_llm
 

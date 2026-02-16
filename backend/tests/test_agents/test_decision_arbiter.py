@@ -11,7 +11,7 @@ from app.agents.decision_arbiter import (
     _parse_decision_response,
     decision_arbiter_agent,
 )
-from app.agents.decision_utils import (
+from app.utils.decision_utils import (
     apply_safety_overrides as _apply_safety_overrides,
     build_citations_external as _build_citations_external,
     build_citations_internal as _build_citations_internal,

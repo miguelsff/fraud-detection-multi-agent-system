@@ -24,7 +24,7 @@ from ..models import (
 )
 from ..utils.logger import get_logger
 from ..utils.timing import timed_agent
-from .constants import EVIDENCE_WEIGHTS, MAX_POLICIES, RISK_THRESHOLDS
+from ..constants import EVIDENCE_WEIGHTS, MAX_POLICIES, RISK_THRESHOLDS
 
 logger = get_logger(__name__)
 
