@@ -23,6 +23,7 @@ This system implements a **multi-agent architecture** for detecting fraudulent t
 - 🧠 **Adversarial Debate** — Pro-fraud vs Pro-customer agents argue opposing positions before decision
 - 📊 **Real-time Updates** — WebSocket support for live agent progress tracking
 - 🔍 **Full Traceability** — Every decision includes agent execution trace and audit trail
+- 🔬 **LLM/RAG Trace Inspection** — View LLM interactions and RAG queries directly in the UI via `LLMInteractionViewer` and `RAGQueryViewer` components
 - 🎨 **Explainability** — Customer-facing and audit explanations for regulatory compliance
 
 ---
@@ -339,8 +340,10 @@ This system showcases several advanced software engineering patterns and design 
 ### 5. **Human-in-the-Loop (HITL) Escalation Queue**
 - Ambiguous cases (conflicting evidence, low confidence) escalated to `/api/v1/hitl/queue`
 - Human reviewers can override decisions and provide feedback
+- **HITL resolution visible in transaction detail** — `GET /transactions/{id}/result` includes `hitl` field with `case_id`, `status`, `resolution`, and `resolved_at` when a HITL case exists
+- Original decision preserved with "Escalado" badge + human resolution section in the frontend
 - Enables **active learning**: HITL resolutions feed back into model fine-tuning
-- Production-ready workflow with status tracking (pending → approved/rejected → archived)
+- Production-ready workflow with status tracking (pending → resolved → archived)
 
 **Why This Matters:**
 Traditional fraud detection systems rely on rigid rules or black-box ML models. This architecture combines the **explainability of rules**, the **adaptability of LLMs**, and the **reliability of deterministic logic** — achieving a balance rarely seen in production AI systems.
@@ -353,7 +356,7 @@ Traditional fraud detection systems rely on rigid rules or black-box ML models. 
 |--------|----------|-------------|------|
 | **POST** | `/api/v1/transactions/analyze` | Analyze single transaction | ❌ |
 | **POST** | `/api/v1/transactions/analyze/batch` | Batch analysis (up to 100) | ❌ |
-| **GET** | `/api/v1/transactions/{id}/result` | Get analysis result by ID | ❌ |
+| **GET** | `/api/v1/transactions/{id}/result` | Get analysis result by ID (includes `hitl` field if HITL case exists) | ❌ |
 | **GET** | `/api/v1/transactions/{id}/trace` | Get agent execution trace | ❌ |
 | **GET** | `/api/v1/transactions` | List analyzed transactions | ❌ |
 | **GET** | `/api/v1/hitl/queue` | Get HITL review queue | ❌ |
@@ -465,7 +468,7 @@ make test-integration
 | Module | Tests | Coverage | Type |
 |--------|-------|----------|------|
 | **Transaction Context** | 6 tests | ✅ 100% | Unit |
-| **Behavioral Pattern** | 5 tests | ⏳ Pending | Unit (skipped) |
+| **Behavioral Pattern** | 5 tests | ✅ 100% | Unit |
 | **Evidence Aggregator** | 16 tests | ✅ 100% | Unit |
 | **Debate Agents** | 27 tests | ✅ 100% | Unit |
 | **Decision Arbiter** | 25 tests | ✅ 100% | Unit |
@@ -573,7 +576,7 @@ Humans can **override** agent decisions and provide feedback for model improveme
 - [x] **Phase 2**: Evidence aggregation + debate mechanism
 - [x] **Phase 3**: Decision arbiter + explainability
 - [x] **Phase 4**: API endpoints + WebSocket support
-- [x] **Phase 5**: Comprehensive test suite (180+ tests)
+- [x] **Phase 5**: Comprehensive test suite (250+ tests)
 - [x] **Phase 6**: Frontend dashboard (Next.js + TypeScript + shadcn/ui)
 - [ ] **Phase 7**: Azure deployment (Container Apps + Terraform)
 - [ ] **Phase 8**: Production monitoring + observability

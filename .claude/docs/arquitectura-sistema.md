@@ -1,7 +1,7 @@
 # Arquitectura del Sistema Multi-Agente de Detección de Fraude
 
 **Última actualización**: 2026-02-16
-**Refleja commit**: b781347 (Policy CRUD, Threat Intel real, Prompts extraídos, Constantes centralizadas)
+**Refleja commit**: fa32866 (HITL resolution visibility, LLM/RAG trace fields, componentes trace UI, traducción español)
 **Actualizar este documento cuando**: Se cambien versiones de tech stack, se agreguen nuevos agentes, o se modifique arquitectura core
 
 ## 1. Visión General
@@ -13,7 +13,7 @@ El sistema implementa un pipeline de **8 agentes especializados** orquestados me
 - ✅ HITL (Human-in-the-Loop) queue con resolución manual
 - ✅ Analytics dashboard con métricas en tiempo real
 - ✅ WebSocket para actualizaciones en vivo
-- ✅ Frontend completo con 51 componentes React y 6 páginas
+- ✅ Frontend completo con 54 componentes React y 6 páginas
 - ✅ PostgreSQL async con Alembic migrations
 - ✅ ChromaDB para RAG de políticas internas
 - ✅ Policy CRUD (gestión de políticas con sincronización ChromaDB)
@@ -24,6 +24,8 @@ El sistema implementa un pipeline de **8 agentes especializados** orquestados me
 - ✅ Estructured logging con structlog
 - ✅ Datos sintéticos para testing (6 transacciones)
 - ✅ Scripts de demostración end-to-end
+- ✅ Resolución HITL visible en detalle de transacción (`GET /result` incluye campo `hitl`)
+- ✅ Trace de interacciones LLM y queries RAG en UI (`LLMInteractionViewer`, `RAGQueryViewer`)
 
 ### Stack Tecnológico
 
@@ -458,6 +460,21 @@ classDiagram
         +PolicySeverity severity
         +str file_path
     }
+
+    class HITLResolution {
+        +int case_id
+        +str status
+        +str? resolution
+        +datetime? resolved_at
+    }
+
+    class TransactionAnalysisDetail {
+        +FraudDecision decision
+        +HITLResolution? hitl
+    }
+
+    TransactionAnalysisDetail --> FraudDecision
+    TransactionAnalysisDetail --> HITLResolution
 
     OrchestratorState --> Transaction
     OrchestratorState --> CustomerBehavior
@@ -962,12 +979,13 @@ uv run uvicorn app.main:app --reload
 
 ```
 components/
-├── ui/                           # 23 componentes base (shadcn/ui)
+├── ui/                           # 24 componentes base (shadcn/ui + JsonViewer)
 │   ├── button.tsx
 │   ├── card.tsx
 │   ├── badge.tsx
 │   ├── select.tsx
 │   ├── dialog.tsx
+│   ├── JsonViewer.tsx
 │   └── ... (18 más)
 ├── dashboard/                    # Componentes de dominio (custom)
 │   ├── StatsCards.tsx
@@ -984,7 +1002,7 @@ components/
 │   └── PolicyDeleteDialog.tsx
 ├── common/                       # NUEVO: Componentes compartidos
 │   └── WebSocketStatus.tsx
-└── ... (10 directorios, 51 componentes totales)
+└── ... (10 directorios, 54 componentes totales)
 ```
 
 **Dependencias reales** (solo primitives de Radix UI):
@@ -1324,7 +1342,7 @@ graph TB
 | POST | `/analyze` | Analizar transacción individual (pipeline completo) | ✅ | `Transaction` + `CustomerBehavior` | `FraudDecision` |
 | POST | `/analyze/batch` | Analizar múltiples transacciones en paralelo | ✅ | `List[Transaction + Behavior]` | `List[FraudDecision]` |
 | GET | `/` | Listar todas las transacciones analizadas | ✅ | - | `List[TransactionRecord]` |
-| GET | `/{transaction_id}/result` | Obtener decisión de una transacción | ✅ | - | `FraudDecision` |
+| GET | `/{transaction_id}/result` | Obtener decisión de una transacción (incluye `hitl` si hay caso asociado) | ✅ | - | `FraudDecision` + `hitl?` |
 | GET | `/{transaction_id}/trace` | Obtener traza completa de agentes | ✅ | - | `List[AgentTraceEntry]` |
 
 **Ejemplo de uso**:
@@ -1340,6 +1358,28 @@ curl -X POST http://localhost:8000/api/v1/transactions/analyze \
 # Ver resultado
 curl http://localhost:8000/api/v1/transactions/T-1001/result
 ```
+
+**Campo `hitl` en respuesta de `GET /{transaction_id}/result`**:
+
+Si la transacción tiene un caso HITL asociado, el campo `hitl` contendrá los datos de resolución:
+
+```json
+{
+  "decision": "ESCALATE_TO_HUMAN",
+  "confidence": 0.55,
+  "...": "...",
+  "hitl": {
+    "case_id": 1,
+    "status": "resolved",
+    "resolution": "APPROVE: Cliente confirmó la transacción por teléfono",
+    "resolved_at": "2026-02-16T10:30:00Z"
+  }
+}
+```
+
+- Si no hay caso HITL asociado, `hitl` será `null`
+- El campo `resolution` sigue el formato `"DECISION: razón"` (ej. `"APPROVE: razón"` o `"BLOCK: razón"`)
+- El frontend parsea este formato para mostrar la decisión humana con badge de color y la justificación por separado
 
 #### HITL - Human-in-the-Loop (`/api/v1/hitl`)
 
@@ -1448,7 +1488,7 @@ ws.onmessage = (event) => {
 
 ## 11. Estructura Final del Proyecto
 
-**Nota**: Esta estructura refleja el estado actual del repositorio (commit b781347).
+**Nota**: Esta estructura refleja el estado actual del repositorio (commit fa32866).
 
 ```
 fraud-detection-multi-agent-system/
@@ -1528,7 +1568,8 @@ fraud-detection-multi-agent-system/
 │   │       └── threat_utils.py        # Threat analysis helpers
 │   ├── alembic/                       # Database migrations
 │   │   ├── versions/
-│   │   │   └── 001_initial_schema.py
+│   │   │   ├── ac4fa394c551_add_analysis_state_to_transaction_.py
+│   │   │   └── 685da8fe2597_add_llm_and_rag_trace_fields.py
 │   │   ├── env.py
 │   │   └── alembic.ini
 │   ├── data/
@@ -1594,12 +1635,12 @@ fraud-detection-multi-agent-system/
 │   │   │   │   └── page.tsx           # Métricas + distribución + trends
 │   │   │   └── policies/
 │   │   │       └── page.tsx           # Gestión CRUD de políticas
-│   │   ├── components/                # 51 componentes React (10 subdirectorios)
+│   │   ├── components/                # 54 componentes React (10 subdirectorios)
 │   │   │   ├── layout/                # Header, Sidebar, MobileSidebar
 │   │   │   ├── dashboard/             # StatsCards, RecentDecisions, RiskDistribution
 │   │   │   ├── transactions/          # TransactionTable, TransactionsClient, TransactionDetailClient,
 │   │   │   │                          #   TransactionDetailCard, DecisionCard, AnalyzeButton
-│   │   │   ├── agents/                # AgentTraceTimeline, DebateView
+│   │   │   ├── agents/                # AgentTraceTimeline, DebateView, LLMInteractionViewer, RAGQueryViewer
 │   │   │   ├── hitl/                  # HITLQueue, HITLReviewForm
 │   │   │   ├── analytics/             # DecisionBreakdownChart, ProcessingTimeChart,
 │   │   │   │                          #   ConfidenceDistribution, RiskByCountry
@@ -1607,7 +1648,7 @@ fraud-detection-multi-agent-system/
 │   │   │   ├── policies/              # PoliciesClient, PolicyList, PolicyCard,
 │   │   │   │                          #   PolicyForm, PolicyDeleteDialog
 │   │   │   ├── common/                # WebSocketStatus
-│   │   │   └── ui/                    # 23 shadcn/ui components (button, card, badge, dialog, etc.)
+│   │   │   └── ui/                    # 24 shadcn/ui + custom components (button, card, badge, dialog, JsonViewer, etc.)
 │   │   ├── lib/
 │   │   │   ├── api.ts                 # Fetch wrapper con error handling
 │   │   │   ├── types.ts               # TypeScript interfaces (mirror Pydantic models)
@@ -1653,12 +1694,13 @@ fraud-detection-multi-agent-system/
 
 **Conteo de archivos**:
 - **Backend**: ~65 archivos Python (.py)
-- **Frontend**: 51 componentes React (.tsx) + 4 custom hooks
+- **Frontend**: 54 componentes React (.tsx) + 4 custom hooks
 - **Total componentes frontend**:
-  - 23 componentes UI base (shadcn/ui)
-  - 28 componentes de dominio (dashboard, transactions, agents, hitl, analytics, policies, common)
+  - 24 componentes UI base (shadcn/ui + JsonViewer)
+  - 30 componentes de dominio (dashboard, transactions, agents, hitl, analytics, policies, common)
   - 3 componentes de layout
 - **Tests**: 21 archivos de test (pytest) en 4 subdirectorios
+- **Migrations**: 2 Alembic migrations (initial schema + LLM/RAG trace fields)
 - **Docker**: 3 Dockerfiles + 2 docker-compose configs
 - **Docs**: 3 archivos de documentación + 3 screenshots
 - **Páginas frontend**: 6 (dashboard, transactions, transaction detail, hitl, analytics, policies)
