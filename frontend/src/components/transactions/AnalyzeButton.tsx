@@ -21,7 +21,7 @@ import type { Transaction, CustomerBehavior } from "@/lib/types";
 // Test scenarios from synthetic_data.json
 const SCENARIOS = {
   APPROVE: {
-    name: "APPROVE - Normal Transaction",
+    name: "APROBAR - Transacción Normal",
     transaction: {
       transaction_id: "T-1003",
       customer_id: "C-503",
@@ -42,7 +42,7 @@ const SCENARIOS = {
     }
   },
   CHALLENGE: {
-    name: "CHALLENGE - High Amount + Off Hours",
+    name: "DESAFIAR - Monto Alto + Fuera de Horario",
     transaction: {
       transaction_id: "T-1001",
       customer_id: "C-501",
@@ -63,7 +63,7 @@ const SCENARIOS = {
     }
   },
   BLOCK: {
-    name: "BLOCK - Multiple Risk Factors",
+    name: "BLOQUEAR - Múltiples Factores de Riesgo",
     transaction: {
       transaction_id: "T-1002",
       customer_id: "C-502",
@@ -84,7 +84,7 @@ const SCENARIOS = {
     }
   },
   ESCALATE_TO_HUMAN: {
-    name: "ESCALATE - Ambiguous Signals",
+    name: "ESCALAR - Señales Ambiguas",
     transaction: {
       transaction_id: "T-1004",
       customer_id: "C-504",
@@ -136,11 +136,11 @@ export function AnalyzeButton() {
 
       // Validate required fields
       if (!transaction.transaction_id || !transaction.customer_id || !transaction.amount) {
-        throw new Error("Transaction must have transaction_id, customer_id, and amount");
+        throw new Error("La transacción debe tener transaction_id, customer_id y amount");
       }
 
       if (!customerBehavior.customer_id) {
-        throw new Error("Customer behavior must have customer_id");
+        throw new Error("El comportamiento del cliente debe tener customer_id");
       }
 
       // Call API
@@ -161,11 +161,11 @@ export function AnalyzeButton() {
 
     } catch (err) {
       if (err instanceof SyntaxError) {
-        setError("Invalid JSON format. Please check your input.");
+        setError("Formato JSON inválido. Por favor verifica tu entrada.");
       } else if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("Failed to analyze transaction. Please try again.");
+        setError("Error al analizar la transacción. Por favor intenta de nuevo.");
       }
     } finally {
       setLoading(false);
@@ -188,21 +188,21 @@ export function AnalyzeButton() {
       <DialogTrigger asChild>
         <Button>
           <PlusCircle className="mr-2 h-4 w-4" />
-          Analyze New
+          Analizar Nueva
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Analyze New Transaction</DialogTitle>
+          <DialogTitle>Analizar Nueva Transacción</DialogTitle>
           <DialogDescription>
-            Submit a transaction for fraud detection analysis. Use quick presets or enter custom JSON.
+            Envía una transacción para análisis de detección de fraude. Usa preconfigurados rápidos o ingresa JSON personalizado.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           {/* Scenario Preset Buttons */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Quick Test Scenarios</Label>
+            <Label className="text-sm font-medium">Escenarios de Prueba Rápidos</Label>
             <div className="grid grid-cols-2 gap-2">
               <Button
                 type="button"
@@ -215,9 +215,9 @@ export function AnalyzeButton() {
                 <div className="flex items-center gap-2 w-full">
                   <div className="w-2 h-2 rounded-full bg-approve flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-xs">APPROVE</div>
+                    <div className="font-medium text-xs">APROBAR</div>
                     <div className="text-xs text-muted-foreground truncate">
-                      Normal transaction
+                      Transacción normal
                     </div>
                   </div>
                 </div>
@@ -234,9 +234,9 @@ export function AnalyzeButton() {
                 <div className="flex items-center gap-2 w-full">
                   <div className="w-2 h-2 rounded-full bg-challenge flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-xs">CHALLENGE</div>
+                    <div className="font-medium text-xs">DESAFIAR</div>
                     <div className="text-xs text-muted-foreground truncate">
-                      High amount + off-hours
+                      Monto alto + fuera de horario
                     </div>
                   </div>
                 </div>
@@ -253,9 +253,9 @@ export function AnalyzeButton() {
                 <div className="flex items-center gap-2 w-full">
                   <div className="w-2 h-2 rounded-full bg-block flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-xs">BLOCK</div>
+                    <div className="font-medium text-xs">BLOQUEAR</div>
                     <div className="text-xs text-muted-foreground truncate">
-                      Multiple risk factors
+                      Múltiples factores de riesgo
                     </div>
                   </div>
                 </div>
@@ -272,9 +272,9 @@ export function AnalyzeButton() {
                 <div className="flex items-center gap-2 w-full">
                   <div className="w-2 h-2 rounded-full bg-escalate flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-xs">ESCALATE</div>
+                    <div className="font-medium text-xs">ESCALAR</div>
                     <div className="text-xs text-muted-foreground truncate">
-                      Ambiguous signals
+                      Señales ambiguas
                     </div>
                   </div>
                 </div>
@@ -284,12 +284,12 @@ export function AnalyzeButton() {
 
           {/* Transaction JSON */}
           <div className="space-y-2">
-            <Label htmlFor="transaction">Transaction Data (JSON)</Label>
+            <Label htmlFor="transaction">Datos de Transacción (JSON)</Label>
             <Textarea
               id="transaction"
               value={transactionJson}
               onChange={(e) => setTransactionJson(e.target.value)}
-              placeholder="Enter transaction JSON"
+              placeholder="Ingresa el JSON de la transacción"
               className="font-mono text-sm min-h-[200px]"
               disabled={loading || !!result}
             />
@@ -297,12 +297,12 @@ export function AnalyzeButton() {
 
           {/* Customer Behavior JSON */}
           <div className="space-y-2">
-            <Label htmlFor="customer-behavior">Customer Behavior (JSON)</Label>
+            <Label htmlFor="customer-behavior">Comportamiento del Cliente (JSON)</Label>
             <Textarea
               id="customer-behavior"
               value={customerBehaviorJson}
               onChange={(e) => setCustomerBehaviorJson(e.target.value)}
-              placeholder="Enter customer behavior JSON"
+              placeholder="Ingresa el JSON del comportamiento del cliente"
               className="font-mono text-sm min-h-[150px]"
               disabled={loading || !!result}
             />
@@ -323,7 +323,7 @@ export function AnalyzeButton() {
             onClick={() => handleOpenChange(false)}
             disabled={loading}
           >
-            Cancel
+            Cancelar
           </Button>
           <Button
             onClick={handleAnalyze}
@@ -332,10 +332,10 @@ export function AnalyzeButton() {
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Analyzing...
+                Analizando...
               </>
             ) : (
-              "Analyze"
+              "Analizar"
             )}
           </Button>
         </DialogFooter>

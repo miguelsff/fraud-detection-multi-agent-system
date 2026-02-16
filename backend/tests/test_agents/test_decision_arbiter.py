@@ -6,16 +6,18 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.agents.decision_arbiter import (
-    _apply_safety_overrides,
-    _build_citations_external,
-    _build_citations_internal,
     _call_llm_for_decision,
     _extract_agent_trace,
-    _generate_audit_explanation,
-    _generate_customer_explanation,
-    _generate_fallback_decision,
     _parse_decision_response,
     decision_arbiter_agent,
+)
+from app.agents.decision_utils import (
+    apply_safety_overrides as _apply_safety_overrides,
+    build_citations_external as _build_citations_external,
+    build_citations_internal as _build_citations_internal,
+    generate_audit_explanation as _generate_audit_explanation,
+    generate_customer_explanation as _generate_customer_explanation,
+    generate_fallback_decision as _generate_fallback_decision,
 )
 from app.models import (
     AggregatedEvidence,
@@ -193,7 +195,7 @@ def test_safety_override_critical_score():
         "APPROVE",
         0.60,
         "Original reasoning",
-        evidence,
+        evidence.composite_risk_score,
     )
 
     assert decision == "BLOCK"  # Overridden
@@ -215,7 +217,7 @@ def test_safety_override_low_confidence():
         "CHALLENGE",
         0.45,  # Low confidence
         "Original reasoning",
-        evidence,
+        evidence.composite_risk_score,
     )
 
     assert decision == "ESCALATE_TO_HUMAN"  # Overridden
@@ -236,7 +238,7 @@ def test_safety_override_no_override_needed():
         "BLOCK",
         0.80,  # Good confidence
         "Original reasoning",
-        evidence,
+        evidence.composite_risk_score,
     )
 
     assert decision == "BLOCK"  # No change
@@ -257,7 +259,7 @@ def test_safety_override_both_conditions():
         "APPROVE",
         0.45,  # Low confidence
         "Original",
-        evidence,
+        evidence.composite_risk_score,
     )
 
     # Critical score override takes priority
@@ -349,7 +351,7 @@ def test_build_citations_external_no_threats():
 
 def test_generate_customer_explanation_approve():
     """Test customer explanation for APPROVE decision."""
-    explanation = _generate_customer_explanation("APPROVE", "Some reasoning")
+    explanation = _generate_customer_explanation("APPROVE")
 
     assert "aprobada" in explanation.lower()
     assert "orden" in explanation.lower()
@@ -357,7 +359,7 @@ def test_generate_customer_explanation_approve():
 
 def test_generate_customer_explanation_challenge():
     """Test customer explanation for CHALLENGE decision."""
-    explanation = _generate_customer_explanation("CHALLENGE", "Some reasoning")
+    explanation = _generate_customer_explanation("CHALLENGE")
 
     assert "verificar" in explanation.lower()
     assert "inusual" in explanation.lower()
@@ -365,7 +367,7 @@ def test_generate_customer_explanation_challenge():
 
 def test_generate_customer_explanation_block():
     """Test customer explanation for BLOCK decision."""
-    explanation = _generate_customer_explanation("BLOCK", "Some reasoning")
+    explanation = _generate_customer_explanation("BLOCK")
 
     assert "bloqueado" in explanation.lower() or "bloqueada" in explanation.lower()
     assert "sospechosa" in explanation.lower()
@@ -373,7 +375,7 @@ def test_generate_customer_explanation_block():
 
 def test_generate_customer_explanation_escalate():
     """Test customer explanation for ESCALATE_TO_HUMAN decision."""
-    explanation = _generate_customer_explanation("ESCALATE_TO_HUMAN", "Some reasoning")
+    explanation = _generate_customer_explanation("ESCALATE_TO_HUMAN")
 
     assert "revisión" in explanation.lower()
 

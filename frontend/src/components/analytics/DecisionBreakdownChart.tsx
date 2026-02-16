@@ -13,10 +13,10 @@ interface DecisionBreakdownChartProps {
 export function DecisionBreakdownChart({ breakdown }: DecisionBreakdownChartProps) {
   // Transform breakdown object into array format for recharts
   const chartData = [
-    { name: "Approved", value: breakdown.APPROVE, fill: DECISION_COLORS.APPROVE },
-    { name: "Challenged", value: breakdown.CHALLENGE, fill: DECISION_COLORS.CHALLENGE },
-    { name: "Blocked", value: breakdown.BLOCK, fill: DECISION_COLORS.BLOCK },
-    { name: "Escalated", value: breakdown.ESCALATE_TO_HUMAN, fill: DECISION_COLORS.ESCALATE_TO_HUMAN }
+    { name: "Aprobado", value: breakdown.APPROVE, fill: DECISION_COLORS.APPROVE },
+    { name: "Desafiado", value: breakdown.CHALLENGE, fill: DECISION_COLORS.CHALLENGE },
+    { name: "Bloqueado", value: breakdown.BLOCK, fill: DECISION_COLORS.BLOCK },
+    { name: "Escalado", value: breakdown.ESCALATE_TO_HUMAN, fill: DECISION_COLORS.ESCALATE_TO_HUMAN }
   ];
 
   const hasData = chartData.some(item => item.value > 0);
@@ -24,7 +24,7 @@ export function DecisionBreakdownChart({ breakdown }: DecisionBreakdownChartProp
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Decision Breakdown</CardTitle>
+        <CardTitle>Desglose de Decisiones</CardTitle>
       </CardHeader>
       <CardContent>
         {!hasData ? (
@@ -32,7 +32,7 @@ export function DecisionBreakdownChart({ breakdown }: DecisionBreakdownChartProp
             <div className="text-center">
               <BarChart3Icon className="mx-auto h-12 w-12 text-muted-foreground" />
               <p className="mt-4 text-muted-foreground">
-                No decisions yet. Analyze transactions to see breakdown.
+                No hay decisiones aún. Analiza transacciones para ver el desglose.
               </p>
             </div>
           </div>

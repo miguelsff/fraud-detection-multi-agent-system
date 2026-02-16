@@ -16,7 +16,7 @@ export default async function DashboardPage() {
       getTransactions(5, 0)
     ]);
   } catch (err) {
-    error = err instanceof Error ? err.message : "Failed to fetch dashboard data";
+    error = err instanceof Error ? err.message : "Error al obtener datos del panel";
     // Fallback data for error state
     analytics = {
       total_analyzed: 0,
@@ -37,18 +37,18 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       {/* Page Title */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Panel de Control</h1>
         <p className="text-muted-foreground mt-1">
-          Multi-agent fraud detection system overview
+          Vista general del sistema multi-agente de detección de fraude
         </p>
       </div>
 
       {/* Error Alert */}
       {error && (
         <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg">
-          <p className="font-medium">Failed to load dashboard data</p>
+          <p className="font-medium">Error al cargar datos del panel</p>
           <p className="text-sm mt-1">{error}</p>
-          <p className="text-sm mt-1">Make sure the backend is running on http://localhost:8000</p>
+          <p className="text-sm mt-1">Asegúrate de que el backend esté ejecutándose en http://localhost:8000</p>
         </div>
       )}
 

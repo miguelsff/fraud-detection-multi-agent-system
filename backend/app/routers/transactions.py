@@ -1,12 +1,12 @@
 """Transaction analysis endpoints."""
 import asyncio
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..dependencies import get_db
-from ..models import Transaction, CustomerBehavior, FraudDecision
+from ..models import FraudDecision, AnalyzeRequest
 from ..agents.orchestrator import analyze_transaction
 from ..db.models import TransactionRecord, AgentTrace
 from ..utils.logger import get_logger
@@ -15,11 +15,9 @@ router = APIRouter()
 logger = get_logger(__name__)
 
 
-class AnalyzeRequest(BaseModel):
-    """Request model for transaction analysis."""
-    transaction: Transaction
-    customer_behavior: CustomerBehavior
-
+class PaginationParams(BaseModel):
+    limit: int = Field(10, ge=1, le=1000)
+    offset: int = Field(0, ge=0)
 
 @router.post("/analyze", response_model=FraudDecision)
 async def analyze(
@@ -135,8 +133,8 @@ async def get_trace(
 
 @router.get("")
 async def list_transactions(
-    limit: int = 50,
-    offset: int = 0,
+    limit: int = Query(default=10, ge=1, le=1000),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     """List analyzed transactions (paginated)."""

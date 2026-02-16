@@ -1,7 +1,9 @@
 """Central configuration loaded from environment variables / .env file."""
 
 from pathlib import Path
+from typing import Literal
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,19 +24,21 @@ class Settings(BaseSettings):
     ollama_model: str = "llama3.1:8b"
 
     # Database
-    database_url: str = "postgresql+asyncpg://fraud_user:fraud_pass_dev@localhost:5432/fraud_detection"
+    database_url: SecretStr = SecretStr(
+        "postgresql+asyncpg://fraud_user:fraud_pass_dev@localhost:5432/fraud_detection"
+    )
 
     # ChromaDB
     chroma_persist_dir: str = "./data/chroma"
 
     # App
-    app_env: str = "development"
+    app_env: Literal["development", "staging", "production"] = "development"
     log_level: str = "DEBUG"
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 
     # Threat Intelligence APIs
-    opensanctions_api_key: str = ""  # Empty = disabled (graceful skip)
+    opensanctions_api_key: SecretStr = SecretStr("")
 
     # Threat Intelligence Feature Flags
     threat_intel_enable_osint: bool = True

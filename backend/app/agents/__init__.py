@@ -1,5 +1,6 @@
 """Multi-agent fraud detection system agents."""
 
+from .behavioral_pattern import behavioral_pattern_agent
 from .debate import debate_pro_customer_agent, debate_pro_fraud_agent
 from .decision_arbiter import decision_arbiter_agent
 from .evidence_aggregator import evidence_aggregation_agent
@@ -11,6 +12,7 @@ from .transaction_context import transaction_context_agent
 
 __all__ = [
     "transaction_context_agent",
+    "behavioral_pattern_agent",
     "policy_rag_agent",
     "external_threat_agent",
     "evidence_aggregation_agent",

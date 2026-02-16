@@ -117,12 +117,12 @@ ${trace.map(t => `- ${t.agent_name}: ${t.duration_ms}ms [${t.status}]`).join('\n
                     {copied ? (
                       <>
                         <Check className="h-4 w-4 text-green-500" />
-                        <span className="text-xs">Copied!</span>
+                        <span className="text-xs">Copiado</span>
                       </>
                     ) : (
                       <>
                         <Copy className="h-4 w-4" />
-                        <span className="text-xs">Copy</span>
+                        <span className="text-xs">Copiar</span>
                       </>
                     )}
                   </Button>
@@ -142,7 +142,7 @@ ${trace.map(t => `- ${t.agent_name}: ${t.duration_ms}ms [${t.status}]`).join('\n
             {/* Technical Explanation */}
             <div className="space-y-2">
               <h4 className="text-sm font-semibold text-foreground">
-                Technical Summary
+                Resumen Técnico
               </h4>
               <ScrollArea className="max-h-32">
                 <pre className="text-xs font-mono bg-muted p-3 rounded-md whitespace-pre-wrap">
@@ -155,7 +155,7 @@ ${trace.map(t => `- ${t.agent_name}: ${t.duration_ms}ms [${t.status}]`).join('\n
             {policyMatches && policyMatches.matches.length > 0 && (
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold text-foreground">
-                  Policies Applied
+                  Políticas Aplicadas
                 </h4>
                 <div className="space-y-1.5">
                   {policyMatches.matches.map((match, idx) => (
@@ -168,19 +168,19 @@ ${trace.map(t => `- ${t.agent_name}: ${t.duration_ms}ms [${t.status}]`).join('\n
                           {match.policy_id}
                         </Badge>
                         <span className="text-muted-foreground">
-                          {match.description || "Policy rule matched"}
+                          {match.description || "Regla de política coincidió"}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-muted-foreground">
-                          Score: {match.relevance_score.toFixed(2)}
+                          Puntuación: {match.relevance_score.toFixed(2)}
                         </span>
                       </div>
                     </div>
                   ))}
                 </div>
                 <div className="text-xs text-muted-foreground mt-2">
-                  Referenced chunks: {policyMatches.chunk_ids.length}
+                  Fragmentos referenciados: {policyMatches.chunk_ids.length}
                 </div>
               </div>
             )}
@@ -189,15 +189,15 @@ ${trace.map(t => `- ${t.agent_name}: ${t.duration_ms}ms [${t.status}]`).join('\n
             {evidence && evidence.all_signals.length > 0 && (
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold text-foreground">
-                  Signals Detected
+                  Señales Detectadas
                 </h4>
                 <div className="border rounded-md">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50">
-                        <TableHead className="text-xs">Signal</TableHead>
-                        <TableHead className="text-xs">Source</TableHead>
-                        <TableHead className="text-xs text-right">Weight</TableHead>
+                        <TableHead className="text-xs">Señal</TableHead>
+                        <TableHead className="text-xs">Fuente</TableHead>
+                        <TableHead className="text-xs text-right">Peso</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -207,11 +207,11 @@ ${trace.map(t => `- ${t.agent_name}: ${t.duration_ms}ms [${t.status}]`).join('\n
                             {signal}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground">
-                            {signal.includes("amount") ? "Transaction" :
-                             signal.includes("behavioral") ? "Behavioral" :
-                             signal.includes("policy") ? "Policy" :
-                             signal.includes("threat") ? "External" :
-                             "Detection"}
+                            {signal.includes("amount") ? "Transacción" :
+                             signal.includes("behavioral") ? "Comportamiento" :
+                             signal.includes("policy") ? "Política" :
+                             signal.includes("threat") ? "Externa" :
+                             "Detección"}
                           </TableCell>
                           <TableCell className="text-xs text-right font-mono">
                             {(Math.random() * 0.5 + 0.5).toFixed(2)}
@@ -223,7 +223,7 @@ ${trace.map(t => `- ${t.agent_name}: ${t.duration_ms}ms [${t.status}]`).join('\n
                 </div>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground bg-muted p-2 rounded">
                   <span>
-                    Composite Risk: {evidence.composite_risk_score.toFixed(2)}/100
+                    Riesgo Compuesto: {evidence.composite_risk_score.toFixed(2)}/100
                   </span>
                   <Badge
                     variant="outline"
@@ -247,7 +247,7 @@ ${trace.map(t => `- ${t.agent_name}: ${t.duration_ms}ms [${t.status}]`).join('\n
             {evidence && evidence.all_citations.length > 0 && (
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold text-foreground">
-                  Citations
+                  Citas
                 </h4>
                 <div className="space-y-1">
                   {evidence.all_citations.map((citation, idx) => (
@@ -267,7 +267,7 @@ ${trace.map(t => `- ${t.agent_name}: ${t.duration_ms}ms [${t.status}]`).join('\n
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold text-foreground">
-                    Execution Timeline
+                    Línea de Tiempo de Ejecución
                   </h4>
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Clock className="h-3 w-3" />
@@ -278,9 +278,9 @@ ${trace.map(t => `- ${t.agent_name}: ${t.duration_ms}ms [${t.status}]`).join('\n
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50">
-                        <TableHead className="text-xs">Agent</TableHead>
-                        <TableHead className="text-xs text-right">Duration</TableHead>
-                        <TableHead className="text-xs">Status</TableHead>
+                        <TableHead className="text-xs">Agente</TableHead>
+                        <TableHead className="text-xs text-right">Duración</TableHead>
+                        <TableHead className="text-xs">Estado</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>

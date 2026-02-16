@@ -9,7 +9,6 @@ class TransactionSignals(BaseModel):
     """Contextual signals extracted from a transaction."""
 
     amount_ratio: float = Field(ge=0)
-    is_off_hours: bool
     is_foreign: bool
     is_unknown_device: bool
     channel_risk: Literal["low", "medium", "high"]
@@ -19,11 +18,10 @@ class TransactionSignals(BaseModel):
         json_schema_extra={
             "example": {
                 "amount_ratio": 3.6,
-                "is_off_hours": True,
                 "is_foreign": False,
                 "is_unknown_device": False,
                 "channel_risk": "medium",
-                "flags": ["high_amount", "off_hours"],
+                "flags": ["high_amount_ratio_3.6x", "foreign_country_BR"],
             }
         }
     )

@@ -32,17 +32,17 @@ export function DebateView({ debate, decision }: DebateViewProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Scale className="h-5 w-5" />
-            Adversarial Debate
+            Debate Adversarial
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <Scale className="h-12 w-12 text-muted-foreground/40 mb-3" />
             <p className="text-sm text-muted-foreground">
-              Debate not available
+              Debate no disponible
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              No debate arguments were generated for this transaction
+              No se generaron argumentos de debate para esta transacción
             </p>
           </div>
         </CardContent>
@@ -71,7 +71,7 @@ export function DebateView({ debate, decision }: DebateViewProps) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Scale className="h-5 w-5" />
-          Adversarial Debate
+          Debate Adversarial
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -90,7 +90,7 @@ export function DebateView({ debate, decision }: DebateViewProps) {
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
               <h4 className="font-bold text-red-700 dark:text-red-300">
-                ⚠️ Case for Fraud
+                ⚠️ Caso de Fraude
               </h4>
             </div>
 
@@ -105,7 +105,7 @@ export function DebateView({ debate, decision }: DebateViewProps) {
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-red-600 dark:text-red-400 font-medium">
-                  Confidence
+                  Confianza
                 </span>
                 <span className="font-bold text-red-700 dark:text-red-300">
                   {fraudConfidence}%
@@ -121,7 +121,7 @@ export function DebateView({ debate, decision }: DebateViewProps) {
             {debate.pro_fraud_evidence.length > 0 && (
               <div className="space-y-2 pt-3 border-t border-red-200 dark:border-red-900">
                 <p className="text-xs font-semibold text-red-700 dark:text-red-400 uppercase tracking-wide">
-                  Evidence Cited
+                  Evidencia Citada
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {debate.pro_fraud_evidence.map((item, idx) => (
@@ -141,7 +141,7 @@ export function DebateView({ debate, decision }: DebateViewProps) {
             {winner === "fraud" && (
               <div className="pt-3 border-t border-red-300 dark:border-red-800">
                 <Badge className="bg-red-500 text-white">
-                  ✓ Prevailed in Decision
+                  ✓ Prevaleció en Decisión
                 </Badge>
               </div>
             )}
@@ -179,7 +179,7 @@ export function DebateView({ debate, decision }: DebateViewProps) {
             <div className="flex items-center gap-2">
               <UserCheck className="h-5 w-5 text-green-600 dark:text-green-400" />
               <h4 className="font-bold text-green-700 dark:text-green-300">
-                ✅ Case for Legitimacy
+                ✅ Caso de Legitimidad
               </h4>
             </div>
 
@@ -194,7 +194,7 @@ export function DebateView({ debate, decision }: DebateViewProps) {
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-green-600 dark:text-green-400 font-medium">
-                  Confidence
+                  Confianza
                 </span>
                 <span className="font-bold text-green-700 dark:text-green-300">
                   {customerConfidence}%
@@ -210,7 +210,7 @@ export function DebateView({ debate, decision }: DebateViewProps) {
             {debate.pro_customer_evidence.length > 0 && (
               <div className="space-y-2 pt-3 border-t border-green-200 dark:border-green-900">
                 <p className="text-xs font-semibold text-green-700 dark:text-green-400 uppercase tracking-wide">
-                  Evidence Cited
+                  Evidencia Citada
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {debate.pro_customer_evidence.map((item, idx) => (
@@ -230,7 +230,7 @@ export function DebateView({ debate, decision }: DebateViewProps) {
             {winner === "customer" && (
               <div className="pt-3 border-t border-green-300 dark:border-green-800">
                 <Badge className="bg-green-500 text-white">
-                  ✓ Prevailed in Decision
+                  ✓ Prevaleció en Decisión
                 </Badge>
               </div>
             )}
@@ -241,7 +241,7 @@ export function DebateView({ debate, decision }: DebateViewProps) {
         {winner === "tie" && (
           <div className="text-center p-4 bg-violet-50 dark:bg-violet-950/20 border-2 border-violet-200 dark:border-violet-900 rounded-lg animate-in fade-in-50 delay-150">
             <Badge variant="outline" className="bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/30">
-              ⚖️ Balanced Arguments - Escalated to Human Review
+              ⚖️ Argumentos Balanceados - Escalado a Revisión Humana
             </Badge>
           </div>
         )}
@@ -252,12 +252,12 @@ export function DebateView({ debate, decision }: DebateViewProps) {
             <div className="flex items-center gap-2">
               <Gavel className="h-5 w-5 text-foreground" />
               <h4 className="font-semibold text-foreground">
-                Arbiter's Verdict
+                Veredicto del Árbitro
               </h4>
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Decision:</span>
+                <span className="text-sm text-muted-foreground">Decisión:</span>
                 <Badge
                   variant="outline"
                   className={cn(
@@ -271,7 +271,7 @@ export function DebateView({ debate, decision }: DebateViewProps) {
                   {decision.decision}
                 </Badge>
                 <span className="text-sm text-muted-foreground">
-                  (Confidence: {Math.round(decision.confidence * 100)}%)
+                  (Confianza: {Math.round(decision.confidence * 100)}%)
                 </span>
               </div>
               {decision.reasoning && (

@@ -40,7 +40,6 @@ async def test_transaction_context_normal_transaction(
 
     # T-1003: amount=250, avg=500 → ratio=0.5 (low)
     assert signals.amount_ratio == 0.5
-    assert signals.is_off_hours is False
     assert signals.is_foreign is False
     assert signals.is_unknown_device is False
     assert signals.channel_risk == "low"
@@ -58,15 +57,16 @@ async def test_transaction_context_normal_transaction(
 async def test_transaction_context_high_amount_off_hours(
     transaction_t1001, customer_behavior_c501
 ):
-    """Test T-1001: High amount (3.6x) + off-hours → CHALLENGE expected.
+    """Test T-1001: High amount (3.6x) → CHALLENGE expected.
 
     T-1001 characteristics:
     - Amount: 1800 PEN (3.6x avg 500) - HIGH
     - Country: PE (usual)
-    - Time: 03:15 (off-hours)
+    - Time: 03:15 (off-hours - will be detected by behavioral_pattern agent)
     - Device: D-01 (known)
 
-    Expected: High amount ratio flag, off-hours flag.
+    Expected: High amount ratio flag.
+    Note: Off-hours detection is now in behavioral_pattern agent.
     """
     # Arrange
     state: OrchestratorState = {
@@ -84,15 +84,13 @@ async def test_transaction_context_high_amount_off_hours(
 
     # T-1001: amount=1800, avg=500 → ratio=3.6
     assert signals.amount_ratio == 3.6
-    assert signals.is_off_hours is True
     assert signals.is_foreign is False
     assert signals.is_unknown_device is False
     assert signals.channel_risk == "low"
 
     # Check flags
-    assert len(signals.flags) == 2
+    assert len(signals.flags) == 1
     assert any("high_amount_ratio" in flag for flag in signals.flags)
-    assert "transaction_off_hours" in signals.flags
 
 
 @pytest.mark.asyncio
@@ -105,10 +103,11 @@ async def test_transaction_context_foreign_unknown_device(
     T-1002 characteristics:
     - Amount: 8500 USD (17x avg 500) - VERY HIGH
     - Country: NG (Nigeria, not in usual [PE, CL]) - FOREIGN
-    - Time: 02:00 (off-hours)
+    - Time: 02:00 (off-hours - will be detected by behavioral_pattern agent)
     - Device: D-99 (not in usual [D-03]) - UNKNOWN
 
-    Expected: Multiple risk flags (amount, foreign, device, off-hours).
+    Expected: Multiple risk flags (amount, foreign, device).
+    Note: Off-hours detection is now in behavioral_pattern agent.
     """
     # Arrange
     state: OrchestratorState = {
@@ -126,7 +125,6 @@ async def test_transaction_context_foreign_unknown_device(
 
     # T-1002: amount=8500, avg=500 → ratio=17.0
     assert signals.amount_ratio == 17.0
-    assert signals.is_off_hours is True
     assert signals.is_foreign is True
     assert signals.is_unknown_device is True
     assert signals.channel_risk == "medium"  # mobile channel
@@ -216,7 +214,11 @@ async def test_transaction_context_mobile_channel():
 @pytest.mark.asyncio
 @pytest.mark.unit
 async def test_transaction_context_overnight_hours():
-    """Test transaction with overnight usual_hours (22:00-06:00)."""
+    """Test transaction with overnight usual_hours (22:00-06:00).
+
+    Note: Off-hours detection is now handled by behavioral_pattern agent.
+    This test verifies transaction_context doesn't use customer_behavior.usual_hours.
+    """
     # Arrange
     state: OrchestratorState = {
         "transaction": Transaction(
@@ -246,5 +248,8 @@ async def test_transaction_context_overnight_hours():
 
     # Assert
     signals = result["transaction_signals"]
-    # Transaction at 23:30 should be within overnight range 22:00-06:00
-    assert signals.is_off_hours is False
+    # Verify basic signals are set correctly
+    assert signals.amount_ratio == 1.0
+    assert signals.is_foreign is False
+    assert signals.is_unknown_device is False
+    assert signals.channel_risk == "low"

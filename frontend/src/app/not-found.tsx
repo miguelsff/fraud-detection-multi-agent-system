@@ -20,9 +20,9 @@ export default function NotFound() {
             {/* Title */}
             <div className="space-y-2">
               <h1 className="text-4xl font-bold tracking-tight">404</h1>
-              <h2 className="text-xl font-semibold">Page Not Found</h2>
+              <h2 className="text-xl font-semibold">Página No Encontrada</h2>
               <p className="text-muted-foreground">
-                The page you're looking for doesn't exist or has been moved.
+                La página que buscas no existe o ha sido movida.
               </p>
             </div>
 
@@ -35,38 +35,38 @@ export default function NotFound() {
               >
                 <Link href="javascript:history.back()">
                   <ArrowLeft className="mr-2 h-4 w-4" />
-                  Go Back
+                  Volver
                 </Link>
               </Button>
               <Button className="flex-1" asChild>
                 <Link href="/">
                   <Home className="mr-2 h-4 w-4" />
-                  Dashboard
+                  Panel
                 </Link>
               </Button>
             </div>
 
             {/* Quick Links */}
             <div className="pt-4 border-t w-full">
-              <p className="text-sm text-muted-foreground mb-3">Quick links:</p>
+              <p className="text-sm text-muted-foreground mb-3">Enlaces rápidos:</p>
               <div className="flex flex-col gap-2 text-sm">
                 <Link
                   href="/transactions"
                   className="text-primary hover:underline"
                 >
-                  View Transactions
+                  Ver Transacciones
                 </Link>
                 <Link
                   href="/analytics"
                   className="text-primary hover:underline"
                 >
-                  Analytics Dashboard
+                  Panel de Analítica
                 </Link>
                 <Link
                   href="/hitl"
                   className="text-primary hover:underline"
                 >
-                  HITL Queue
+                  Cola HITL
                 </Link>
               </div>
             </div>

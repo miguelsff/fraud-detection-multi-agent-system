@@ -33,20 +33,20 @@ export function TransactionsClient({
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight">Transactions</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Transacciones</h1>
             {refreshInterval > 0 && (
               <Badge variant="outline" className="bg-blue-500/10 text-blue-700 border-blue-500/20">
-                Auto-refresh: {refreshInterval}s
+                Auto-actualización: {refreshInterval}s
               </Badge>
             )}
           </div>
           <p className="text-muted-foreground mt-1">
             {totalCount > 0 ? (
               <>
-                Showing <span className="font-medium">{totalCount}</span> analyzed transaction{totalCount !== 1 ? 's' : ''}
+                Mostrando <span className="font-medium">{totalCount}</span> transacción{totalCount !== 1 ? 'es' : ''} analizada{totalCount !== 1 ? 's' : ''}
               </>
             ) : (
-              "No transactions analyzed yet"
+              "No hay transacciones analizadas aún"
             )}
           </p>
         </div>
@@ -58,7 +58,7 @@ export function TransactionsClient({
             disabled={isLoading}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
+            Actualizar
           </Button>
         </div>
       </div>
@@ -66,9 +66,9 @@ export function TransactionsClient({
       {/* Error Alert */}
       {error && (
         <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg">
-          <p className="font-medium">Failed to load transactions</p>
+          <p className="font-medium">Error al cargar transacciones</p>
           <p className="text-sm mt-1">{error}</p>
-          <p className="text-sm mt-1">Make sure the backend is running on http://localhost:8000</p>
+          <p className="text-sm mt-1">Asegúrate de que el backend esté ejecutándose en http://localhost:8000</p>
         </div>
       )}
 

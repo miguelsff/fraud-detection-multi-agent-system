@@ -17,19 +17,19 @@ interface DecisionCardProps {
 
 const decisionConfig = {
   APPROVE: {
-    label: "Approved",
+    label: "Aprobado",
     color: "bg-green-500/10 text-green-700 border-green-500/20",
   },
   CHALLENGE: {
-    label: "Challenge",
+    label: "Desafiado",
     color: "bg-amber-500/10 text-amber-700 border-amber-500/20",
   },
   BLOCK: {
-    label: "Blocked",
+    label: "Bloqueado",
     color: "bg-red-500/10 text-red-700 border-red-500/20",
   },
   ESCALATE_TO_HUMAN: {
-    label: "Escalated",
+    label: "Escalado",
     color: "bg-violet-500/10 text-violet-700 border-violet-500/20",
   },
 };
@@ -56,7 +56,7 @@ export function DecisionCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Decision</CardTitle>
+        <CardTitle className="text-lg">Decisión</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Decision Badge */}
@@ -73,14 +73,14 @@ export function DecisionCard({
         {decision === "ESCALATE_TO_HUMAN" && (
           <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/20 p-3 rounded-md border border-amber-200 dark:border-amber-900">
             <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-            <span>Pending human review</span>
+            <span>Pendiente de revisión humana</span>
           </div>
         )}
 
         {/* Confidence */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Confidence</span>
+            <span className="text-muted-foreground">Confianza</span>
             <span className="font-semibold">{confidencePercent}%</span>
           </div>
           <Progress value={confidencePercent} className="h-2" />
@@ -90,7 +90,7 @@ export function DecisionCard({
         {evidence && (
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Risk Score</span>
+              <span className="text-muted-foreground">Puntuación de Riesgo</span>
               <span className="font-semibold">{riskScore.toFixed(1)}</span>
             </div>
             <div className="flex items-center gap-2">
@@ -109,7 +109,7 @@ export function DecisionCard({
         {keySignals.length > 0 && (
           <div className="space-y-2">
             <h4 className="text-sm font-medium text-muted-foreground">
-              Key Signals
+              Señales Clave
             </h4>
             <ul className="space-y-1">
               {keySignals.map((signal, idx) => (

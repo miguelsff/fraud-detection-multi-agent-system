@@ -63,7 +63,7 @@ export function RiskByCountry({ transactions }: RiskByCountryProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Risk by Country</CardTitle>
+        <CardTitle>Riesgo por País</CardTitle>
       </CardHeader>
       <CardContent>
         {!hasData ? (
@@ -71,7 +71,7 @@ export function RiskByCountry({ transactions }: RiskByCountryProps) {
             <div className="text-center">
               <GlobeIcon className="mx-auto h-12 w-12 text-muted-foreground" />
               <p className="mt-4 text-muted-foreground">
-                No transactions yet. Analyze transactions to see country risk.
+                No hay transacciones aún. Analiza transacciones para ver el riesgo por país.
               </p>
             </div>
           </div>
@@ -80,10 +80,10 @@ export function RiskByCountry({ transactions }: RiskByCountryProps) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Country</TableHead>
+                  <TableHead>País</TableHead>
                   <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right">Avg Risk</TableHead>
-                  <TableHead className="text-right">Blocked %</TableHead>
+                  <TableHead className="text-right">Riesgo Prom.</TableHead>
+                  <TableHead className="text-right">Bloqueado %</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

@@ -24,21 +24,9 @@ from ..models import (
 )
 from ..utils.logger import get_logger
 from ..utils.timing import timed_agent
+from .constants import EVIDENCE_WEIGHTS, MAX_POLICIES, RISK_THRESHOLDS
 
 logger = get_logger(__name__)
-
-# Weights for composite risk score calculation
-# These weights reflect the relative importance of each signal source
-WEIGHTS = {
-    "behavioral": 0.30,  # Behavioral deviation is highly predictive
-    "policy": 0.25,  # Policy matches indicate rule violations
-    "threat": 0.20,  # External threat intel provides context
-    "transaction": 0.25,  # Transaction signals are foundational
-}
-
-# Maximum number of policies (used for normalization)
-# Based on the 6 policies in fraud_policies.md
-MAX_POLICIES = 6.0
 
 
 @timed_agent("evidence_aggregation")
@@ -187,10 +175,10 @@ def _calculate_composite_score(
 
     # Calculate weighted average
     weighted_sum = (
-        behavioral_score * WEIGHTS["behavioral"]
-        + policy_score * WEIGHTS["policy"]
-        + threat_score * WEIGHTS["threat"]
-        + transaction_score * WEIGHTS["transaction"]
+        behavioral_score * EVIDENCE_WEIGHTS.behavioral
+        + policy_score * EVIDENCE_WEIGHTS.policy
+        + threat_score * EVIDENCE_WEIGHTS.threat
+        + transaction_score * EVIDENCE_WEIGHTS.transaction
     )
 
     # Convert to 0-100 scale and round
@@ -301,11 +289,11 @@ def _determine_risk_category(composite_score: float) -> RiskCategory:
     Returns:
         Risk category string
     """
-    if composite_score < 30.0:
+    if composite_score < RISK_THRESHOLDS.low_max:
         return "low"
-    elif composite_score < 60.0:
+    elif composite_score < RISK_THRESHOLDS.medium_max:
         return "medium"
-    elif composite_score < 80.0:
+    elif composite_score < RISK_THRESHOLDS.high_max:
         return "high"
     else:
         return "critical"

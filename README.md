@@ -25,20 +25,6 @@ This system implements a **multi-agent architecture** for detecting fraudulent t
 - 🔍 **Full Traceability** — Every decision includes agent execution trace and audit trail
 - 🎨 **Explainability** — Customer-facing and audit explanations for regulatory compliance
 
-### 📸 Screenshots
-
-<div align="center">
-
-#### Dashboard Overview
-![Dashboard](docs/images/dashboard-screenshot.png)
-*Real-time fraud detection dashboard with live transaction feed and decision distribution*
-
-#### Agent Timeline Visualization
-![Agent Timeline](docs/images/agent-timeline-screenshot.png)
-*Interactive timeline showing the 8-agent pipeline execution with debate visualization*
-
-</div>
-
 ---
 
 ## 🏗️ Architecture

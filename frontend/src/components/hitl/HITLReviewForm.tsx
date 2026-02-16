@@ -31,12 +31,12 @@ export function HITLReviewForm({ caseId, onResolved }: HITLReviewFormProps) {
     e.preventDefault();
 
     if (!resolution) {
-      setError("Please select a decision");
+      setError("Por favor selecciona una decisión");
       return;
     }
 
     if (!reason.trim()) {
-      setError("Please provide a reason for your decision");
+      setError("Por favor proporciona una razón para tu decisión");
       return;
     }
 
@@ -52,7 +52,7 @@ export function HITLReviewForm({ caseId, onResolved }: HITLReviewFormProps) {
         onResolved();
       }, 1000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to submit decision");
+      setError(err instanceof Error ? err.message : "Error al enviar la decisión");
     } finally {
       setIsLoading(false);
     }
@@ -63,7 +63,7 @@ export function HITLReviewForm({ caseId, onResolved }: HITLReviewFormProps) {
       <Alert className="border-green-500 bg-green-50">
         <CheckCircle className="h-4 w-4 text-green-600" />
         <AlertDescription className="text-green-800">
-          Decision submitted successfully
+          Decisión enviada exitosamente
         </AlertDescription>
       </Alert>
     );
@@ -72,25 +72,25 @@ export function HITLReviewForm({ caseId, onResolved }: HITLReviewFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4 pt-4 border-t">
       <div className="space-y-2">
-        <Label htmlFor="resolution">Decision</Label>
+        <Label htmlFor="resolution">Decisión</Label>
         <Select
           value={resolution}
           onValueChange={(value) => setResolution(value as "APPROVE" | "BLOCK")}
         >
           <SelectTrigger id="resolution">
-            <SelectValue placeholder="Select decision..." />
+            <SelectValue placeholder="Selecciona una decisión..." />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="APPROVE">
               <span className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-green-500" />
-                Approve Transaction
+                Aprobar Transacción
               </span>
             </SelectItem>
             <SelectItem value="BLOCK">
               <span className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-red-500" />
-                Block Transaction
+                Bloquear Transacción
               </span>
             </SelectItem>
           </SelectContent>
@@ -98,10 +98,10 @@ export function HITLReviewForm({ caseId, onResolved }: HITLReviewFormProps) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="reason">Reason for Decision</Label>
+        <Label htmlFor="reason">Razón de la Decisión</Label>
         <Textarea
           id="reason"
-          placeholder="Explain your decision rationale..."
+          placeholder="Explica la justificación de tu decisión..."
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           className="min-h-[100px]"
@@ -124,10 +124,10 @@ export function HITLReviewForm({ caseId, onResolved }: HITLReviewFormProps) {
         {isLoading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Submitting Decision...
+            Enviando Decisión...
           </>
         ) : (
-          "Submit Decision"
+          "Enviar Decisión"
         )}
       </Button>
     </form>

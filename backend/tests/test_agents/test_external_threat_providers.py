@@ -10,13 +10,16 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from pydantic import SecretStr
 
 from app.agents.external_threat import (
-    _calculate_baseline_from_sources,
-    _classify_provider_type,
     _gather_threat_intel,
     _get_enabled_providers,
     external_threat_agent,
+)
+from app.agents.threat_utils import (
+    calculate_baseline_from_sources as _calculate_baseline_from_sources,
+    classify_provider_type as _classify_provider_type,
 )
 from app.config import settings
 from app.models import OrchestratorState, Transaction, TransactionSignals, ThreatSource
@@ -263,7 +266,7 @@ async def test_osint_search_real_query(transaction_high_risk):
 async def test_sanctions_no_api_key(transaction_high_risk):
     """Sanctions provider without API key should skip gracefully."""
     with patch("app.services.threat_intel.sanctions_screening.settings") as mock_settings:
-        mock_settings.opensanctions_api_key = ""
+        mock_settings.opensanctions_api_key = SecretStr("")
 
         provider = SanctionsProvider()
         sources = await provider.lookup(transaction_high_risk)
@@ -276,7 +279,7 @@ async def test_sanctions_no_api_key(transaction_high_risk):
 async def test_sanctions_disabled_via_config(transaction_high_risk):
     """Sanctions disabled via config should return empty list."""
     with patch("app.services.threat_intel.sanctions_screening.settings") as mock_settings:
-        mock_settings.opensanctions_api_key = "fake-key"
+        mock_settings.opensanctions_api_key = SecretStr("fake-key")
         mock_settings.threat_intel_enable_sanctions = False
 
         provider = SanctionsProvider()
@@ -295,7 +298,7 @@ async def test_sanctions_api_error_graceful(transaction_high_risk):
         mock_client_instance.get.side_effect = Exception("API error")
 
         with patch("app.services.threat_intel.sanctions_screening.settings") as mock_settings:
-            mock_settings.opensanctions_api_key = "fake-key"
+            mock_settings.opensanctions_api_key = SecretStr("fake-key")
             mock_settings.threat_intel_enable_sanctions = True
 
             provider = SanctionsProvider()
@@ -310,7 +313,7 @@ async def test_sanctions_api_error_graceful(transaction_high_risk):
 async def test_sanctions_with_real_api_key(transaction_high_risk):
     """Sanctions with real API key (integration test - requires API key)."""
     # Skip if no API key configured
-    if not settings.opensanctions_api_key:
+    if not settings.opensanctions_api_key.get_secret_value():
         pytest.skip("No OpenSanctions API key configured")
 
     provider = SanctionsProvider()
@@ -401,7 +404,7 @@ def test_get_enabled_providers_all_enabled():
     with patch("app.agents.external_threat.settings") as mock_settings:
         mock_settings.threat_intel_enable_osint = True
         mock_settings.threat_intel_enable_sanctions = True
-        mock_settings.opensanctions_api_key = "fake-key"
+        mock_settings.opensanctions_api_key = SecretStr("fake-key")
         mock_settings.threat_intel_osint_max_results = 5
 
         providers = _get_enabled_providers()
@@ -429,7 +432,7 @@ def test_get_enabled_providers_no_sanctions_without_key():
     with patch("app.agents.external_threat.settings") as mock_settings:
         mock_settings.threat_intel_enable_osint = True
         mock_settings.threat_intel_enable_sanctions = True
-        mock_settings.opensanctions_api_key = ""  # No key
+        mock_settings.opensanctions_api_key = SecretStr("")  # No key
         mock_settings.threat_intel_osint_max_results = 5
 
         providers = _get_enabled_providers()

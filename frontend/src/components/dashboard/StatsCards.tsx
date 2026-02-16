@@ -19,9 +19,9 @@ export function StatsCards({ analytics }: StatsCardsProps) {
   };
 
   const getConfidenceInterpretation = (conf: number): string => {
-    if (conf > 0.8) return "Excellent";
-    if (conf > 0.6) return "Good";
-    return "Needs review";
+    if (conf > 0.8) return "Excelente";
+    if (conf > 0.6) return "Bueno";
+    return "Requiere revisión";
   };
 
   const getProcessingColor = (ms: number): string => {
@@ -31,9 +31,9 @@ export function StatsCards({ analytics }: StatsCardsProps) {
   };
 
   const getProcessingLabel = (ms: number): string => {
-    if (ms < 5000) return "Fast";
-    if (ms < 10000) return "Acceptable";
-    return "Slow";
+    if (ms < 5000) return "Rápido";
+    if (ms < 10000) return "Aceptable";
+    return "Lento";
   };
 
   const confidenceColor = getConfidenceColor(analytics.avg_confidence);
@@ -45,13 +45,13 @@ export function StatsCards({ analytics }: StatsCardsProps) {
       {/* Card 1: Total Analyzed */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Analyzed</CardTitle>
+          <CardTitle className="text-sm font-medium">Total Analizadas</CardTitle>
           <Activity className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{analytics.total_analyzed.toLocaleString()}</div>
           <p className="text-xs text-muted-foreground mt-1">
-            Total transactions processed
+            Transacciones procesadas
           </p>
         </CardContent>
       </Card>
@@ -59,7 +59,7 @@ export function StatsCards({ analytics }: StatsCardsProps) {
       {/* Card 2: Avg Confidence */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Average Confidence</CardTitle>
+          <CardTitle className="text-sm font-medium">Confianza Promedio</CardTitle>
           <ConfidenceIcon className={`h-4 w-4 ${confidenceColor}`} />
         </CardHeader>
         <CardContent>
@@ -75,7 +75,7 @@ export function StatsCards({ analytics }: StatsCardsProps) {
       {/* Card 3: Escalation Rate */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Escalation Rate</CardTitle>
+          <CardTitle className="text-sm font-medium">Tasa de Escalamiento</CardTitle>
           <UserCheck className="h-4 w-4 text-escalate" />
         </CardHeader>
         <CardContent>
@@ -83,7 +83,7 @@ export function StatsCards({ analytics }: StatsCardsProps) {
             {escalationPercent}%
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Cases requiring human review
+            Casos que requieren revisión humana
           </p>
         </CardContent>
       </Card>
@@ -91,7 +91,7 @@ export function StatsCards({ analytics }: StatsCardsProps) {
       {/* Card 4: Avg Processing Time */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Processing Time</CardTitle>
+          <CardTitle className="text-sm font-medium">Tiempo de Procesamiento</CardTitle>
           <Zap className={`h-4 w-4 ${processingColor}`} />
         </CardHeader>
         <CardContent>

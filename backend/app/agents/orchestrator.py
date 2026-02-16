@@ -28,6 +28,7 @@ from ..models import (
 )
 from ..models.trace import AgentTraceEntry
 from ..utils.logger import get_logger
+from .behavioral_pattern import behavioral_pattern_agent
 from .debate import debate_pro_customer_agent, debate_pro_fraud_agent
 from .decision_arbiter import decision_arbiter_agent
 from .evidence_aggregator import evidence_aggregation_agent
@@ -93,9 +94,10 @@ async def validate_input(state: OrchestratorState) -> dict:
 
 
 async def phase1_parallel(state: OrchestratorState) -> dict:
-    """Run Phase 1 collection agents in parallel (3 agents)."""
+    """Run Phase 1 collection agents in parallel (4 agents)."""
     results = await asyncio.gather(
         transaction_context_agent(state),
+        behavioral_pattern_agent(state),
         policy_rag_agent(state),
         external_threat_agent(state),
         return_exceptions=True,

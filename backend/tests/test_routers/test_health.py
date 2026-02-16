@@ -1,14 +1,11 @@
 """Tests for health check endpoint."""
 import pytest
-from fastapi.testclient import TestClient
 from app.main import app
 
-client = TestClient(app)
 
-
-def test_health_check():
+def test_health_check(test_client):
     """Test health check endpoint returns OK status."""
-    response = client.get("/api/v1/health")
+    response = test_client.get("/api/v1/health")
     assert response.status_code == 200
 
     data = response.json()
@@ -17,9 +14,9 @@ def test_health_check():
     assert data["version"] == "1.0.0"
 
 
-def test_health_check_format():
+def test_health_check_format(test_client):
     """Test health check response format."""
-    response = client.get("/api/v1/health")
+    response = test_client.get("/api/v1/health")
     data = response.json()
 
     # Verify timestamp is ISO format

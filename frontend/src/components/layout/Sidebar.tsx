@@ -2,27 +2,32 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ArrowLeftRight, UserCheck, BarChart3 } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, UserCheck, BarChart3, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigationItems = [
   {
-    name: "Dashboard",
+    name: "Panel",
     href: "/",
     icon: LayoutDashboard,
   },
   {
-    name: "Transactions",
+    name: "Transacciones",
     href: "/transactions",
     icon: ArrowLeftRight,
   },
   {
-    name: "HITL Queue",
+    name: "Cola HITL",
     href: "/hitl",
     icon: UserCheck,
   },
   {
-    name: "Analytics",
+    name: "Políticas",
+    href: "/policies",
+    icon: ShieldCheck,
+  },
+  {
+    name: "Analíticas",
     href: "/analytics",
     icon: BarChart3,
   },

@@ -98,8 +98,6 @@ Run `python seed_test.py` from `backend/` to test the full pipeline against thes
 - WebSocket at `/api/v1/ws/transactions` streams agent progress events in real-time
 
 ## API Endpoints
-
-```
 POST   /api/v1/transactions/analyze          — Full pipeline analysis
 POST   /api/v1/transactions/analyze/batch    — Batch analysis
 GET    /api/v1/transactions/{id}/result      — Get analysis result
@@ -116,6 +114,7 @@ WS     /api/v1/ws/transactions
 3. API calls via lib/api.ts (fetch wrapper centralizado)
 4. shadcn/ui para TODOS los componentes UI base
 5. Colores decisión: APPROVE=green, CHALLENGE=amber, BLOCK=red, ESCALATE=violet
+6. Todo el texto para el usuario en español
 
 ## Arquitectura Frontend
 Layout: app/layout.tsx (sidebar + header)
@@ -124,4 +123,6 @@ Components: components/{dashboard,transactions,agents,hitl,explanation}/
 API Client: lib/api.ts (fetch wrapper → backend :8000)
 Types: lib/types.ts (mirror de Pydantic schemas del backend)
 
-Sólo debes crear documentación si te solicita explicitamente y en caso se te solicita debes preguntar para confirmar
+## Reglas general
+1. Sólo debes crear documentación si te solicita explicitamente y en caso se te solicita debes preguntar para confirmar
+

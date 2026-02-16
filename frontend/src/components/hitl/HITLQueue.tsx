@@ -112,7 +112,7 @@ function CaseCard({ hitlCase, onResolved }: CaseCardProps) {
           <CardContent className="space-y-4">
             {isLoadingDetail ? (
               <div className="text-center py-8 text-muted-foreground">
-                Loading transaction details...
+                Cargando detalles de la transacción...
               </div>
             ) : detailData ? (
               <>
@@ -120,7 +120,7 @@ function CaseCard({ hitlCase, onResolved }: CaseCardProps) {
                 {evidence && evidence.all_signals.length > 0 && (
                   <div className="space-y-2">
                     <h4 className="text-sm font-semibold text-muted-foreground">
-                      Detected Signals
+                      Señales Detectadas
                     </h4>
                     <div className="flex flex-wrap gap-2">
                       {evidence.all_signals.map((signal: string, idx: number) => (
@@ -136,7 +136,7 @@ function CaseCard({ hitlCase, onResolved }: CaseCardProps) {
                 {explanation && (
                   <div className="space-y-2">
                     <h4 className="text-sm font-semibold text-muted-foreground">
-                      Explanation Summary
+                      Resumen de Explicación
                     </h4>
                     <p className="text-sm text-foreground bg-muted/50 p-3 rounded">
                       {explanation.customer_explanation}
@@ -151,10 +151,10 @@ function CaseCard({ hitlCase, onResolved }: CaseCardProps) {
                     <div className="space-y-2 border rounded-lg p-3 bg-red-50 border-red-200">
                       <div className="flex items-center justify-between">
                         <h4 className="text-sm font-semibold text-red-900">
-                          Pro-Fraud Agent
+                          Agente Pro-Fraude
                         </h4>
                         <Badge variant="outline" className="text-xs border-red-400">
-                          {(debate.pro_fraud_confidence * 100).toFixed(0)}% confident
+                          {(debate.pro_fraud_confidence * 100).toFixed(0)}% confianza
                         </Badge>
                       </div>
                       <p className="text-xs text-red-800 line-clamp-4">
@@ -166,10 +166,10 @@ function CaseCard({ hitlCase, onResolved }: CaseCardProps) {
                     <div className="space-y-2 border rounded-lg p-3 bg-green-50 border-green-200">
                       <div className="flex items-center justify-between">
                         <h4 className="text-sm font-semibold text-green-900">
-                          Pro-Customer Agent
+                          Agente Pro-Cliente
                         </h4>
                         <Badge variant="outline" className="text-xs border-green-400">
-                          {(debate.pro_customer_confidence * 100).toFixed(0)}% confident
+                          {(debate.pro_customer_confidence * 100).toFixed(0)}% confianza
                         </Badge>
                       </div>
                       <p className="text-xs text-green-800 line-clamp-4">
@@ -184,13 +184,13 @@ function CaseCard({ hitlCase, onResolved }: CaseCardProps) {
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4 text-violet-700" />
                     <h4 className="text-sm font-semibold text-violet-900">
-                      Why This Was Escalated
+                      Por Qué Fue Escalado
                     </h4>
                   </div>
                   <p className="text-xs text-violet-800">
-                    The arbiter could not make a confident decision
-                    {detailData.confidence && ` (${(detailData.confidence * 100).toFixed(0)}% confidence)`}.
-                    This case requires human judgment to resolve the ambiguity between the arguments presented.
+                    El árbitro no pudo tomar una decisión confiable
+                    {detailData.confidence && ` (${(detailData.confidence * 100).toFixed(0)}% de confianza)`}.
+                    Este caso requiere juicio humano para resolver la ambigüedad entre los argumentos presentados.
                   </p>
                 </div>
 
@@ -199,7 +199,7 @@ function CaseCard({ hitlCase, onResolved }: CaseCardProps) {
               </>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
-                Failed to load transaction details
+                Error al cargar detalles de la transacción
               </div>
             )}
           </CardContent>

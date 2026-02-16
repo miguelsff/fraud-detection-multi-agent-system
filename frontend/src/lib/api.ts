@@ -12,6 +12,9 @@ import {
   AgentTraceEntry,
   HITLCase,
   AnalyticsSummary,
+  Policy,
+  PolicyCreate,
+  PolicyUpdate,
 } from "@/lib/types";
 
 // API base URL from environment variables
@@ -193,6 +196,71 @@ export async function resolveHITLCase(
  */
 export async function getAnalyticsSummary(): Promise<AnalyticsSummary> {
   return fetchAPI<AnalyticsSummary>("/api/v1/analytics/summary");
+}
+
+// ============================================================================
+// Policy Management API
+// ============================================================================
+
+/**
+ * Get list of all fraud detection policies.
+ * GET /api/v1/policies
+ */
+export async function getPolicies(): Promise<Policy[]> {
+  return fetchAPI<Policy[]>("/api/v1/policies");
+}
+
+/**
+ * Get a single policy by ID.
+ * GET /api/v1/policies/{id}
+ */
+export async function getPolicy(policyId: string): Promise<Policy> {
+  return fetchAPI<Policy>(`/api/v1/policies/${policyId}`);
+}
+
+/**
+ * Create a new policy.
+ * POST /api/v1/policies
+ */
+export async function createPolicy(policy: PolicyCreate): Promise<Policy> {
+  return fetchAPI<Policy>("/api/v1/policies", {
+    method: "POST",
+    body: JSON.stringify(policy),
+  });
+}
+
+/**
+ * Update an existing policy.
+ * PUT /api/v1/policies/{id}
+ */
+export async function updatePolicy(
+  policyId: string,
+  updates: PolicyUpdate
+): Promise<Policy> {
+  return fetchAPI<Policy>(`/api/v1/policies/${policyId}`, {
+    method: "PUT",
+    body: JSON.stringify(updates),
+  });
+}
+
+/**
+ * Delete a policy.
+ * DELETE /api/v1/policies/{id}
+ */
+export async function deletePolicy(policyId: string): Promise<void> {
+  return fetchAPI<void>(`/api/v1/policies/${policyId}`, {
+    method: "DELETE",
+  });
+}
+
+/**
+ * Manually trigger ChromaDB reingest of all policies.
+ * POST /api/v1/policies/reingest
+ */
+export async function reingestPolicies(): Promise<void> {
+  return fetchAPI<void>("/api/v1/policies/reingest", {
+    method: "POST",
+  });
 }
 
 // ============================================================================

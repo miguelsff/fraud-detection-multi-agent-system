@@ -101,13 +101,13 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
   const formatDecisionName = (decision: DecisionType) => {
     switch (decision) {
       case "APPROVE":
-        return "Approved";
+        return "Aprobado";
       case "CHALLENGE":
-        return "Challenged";
+        return "Desafiado";
       case "BLOCK":
-        return "Blocked";
+        return "Bloqueado";
       case "ESCALATE_TO_HUMAN":
-        return "Escalated";
+        return "Escalado";
       default:
         return decision;
     }
@@ -128,9 +128,9 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
     return (
       <div className="text-center py-12 border rounded-lg bg-muted/10">
         <FileQuestion className="mx-auto h-16 w-16 text-muted-foreground" />
-        <p className="mt-4 text-lg font-medium">No transactions found</p>
+        <p className="mt-4 text-lg font-medium">No se encontraron transacciones</p>
         <p className="text-muted-foreground mt-2">
-          Click &quot;Analyze New&quot; to process your first transaction
+          Haz clic en &quot;Analizar Nueva&quot; para procesar tu primera transacción
         </p>
       </div>
     );
@@ -152,33 +152,33 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
                 className="cursor-pointer hover:bg-muted/50"
                 onClick={() => handleSort("customer_id")}
               >
-                Customer <SortIcon column="customer_id" />
+                Cliente <SortIcon column="customer_id" />
               </TableHead>
               <TableHead
                 className="cursor-pointer hover:bg-muted/50"
                 onClick={() => handleSort("amount")}
               >
-                Amount <SortIcon column="amount" />
+                Monto <SortIcon column="amount" />
               </TableHead>
-              <TableHead>Country</TableHead>
-              <TableHead>Channel</TableHead>
+              <TableHead>País</TableHead>
+              <TableHead>Canal</TableHead>
               <TableHead
                 className="cursor-pointer hover:bg-muted/50"
                 onClick={() => handleSort("decision")}
               >
-                Decision <SortIcon column="decision" />
+                Decisión <SortIcon column="decision" />
               </TableHead>
               <TableHead
                 className="cursor-pointer hover:bg-muted/50"
                 onClick={() => handleSort("confidence")}
               >
-                Confidence <SortIcon column="confidence" />
+                Confianza <SortIcon column="confidence" />
               </TableHead>
               <TableHead
                 className="cursor-pointer hover:bg-muted/50"
                 onClick={() => handleSort("created_at")}
               >
-                Date <SortIcon column="created_at" />
+                Fecha <SortIcon column="created_at" />
               </TableHead>
             </TableRow>
           </TableHeader>

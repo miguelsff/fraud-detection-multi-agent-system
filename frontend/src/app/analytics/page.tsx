@@ -42,7 +42,7 @@ export default async function AnalyticsPage() {
       timestamp: t.analyzed_at
     }));
   } catch (err) {
-    error = err instanceof Error ? err.message : "Failed to fetch analytics data";
+    error = err instanceof Error ? err.message : "Error al obtener datos de analítica";
     // Fallback data for error state
     analytics = {
       total_analyzed: 0,
@@ -64,18 +64,18 @@ export default async function AnalyticsPage() {
     <div className="space-y-6">
       {/* Page Title */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Analítica</h1>
         <p className="text-muted-foreground mt-1">
-          Comprehensive fraud detection performance insights
+          Información detallada del rendimiento de detección de fraude
         </p>
       </div>
 
       {/* Error Alert */}
       {error && (
         <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg">
-          <p className="font-medium">Failed to load analytics data</p>
+          <p className="font-medium">Error al cargar datos de analítica</p>
           <p className="text-sm mt-1">{error}</p>
-          <p className="text-sm mt-1">Make sure the backend is running on http://localhost:8000</p>
+          <p className="text-sm mt-1">Asegúrate de que el backend esté ejecutándose en http://localhost:8000</p>
         </div>
       )}
 

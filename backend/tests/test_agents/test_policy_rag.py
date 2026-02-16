@@ -5,10 +5,10 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from app.agents.policy_rag import (
-    _build_query_from_signals,
-    _parse_llm_response,
-    policy_rag_agent,
+from app.agents.policy_rag import policy_rag_agent
+from app.agents.policy_utils import (
+    build_rag_query as _build_query_from_signals,
+    parse_policy_matches as _parse_llm_response,
 )
 from app.models import (
     BehavioralSignals,
@@ -35,7 +35,6 @@ def test_build_query_from_signals_full():
 
     transaction_signals = TransactionSignals(
         amount_ratio=3.5,
-        is_off_hours=True,
         is_foreign=True,
         is_unknown_device=True,
         channel_risk="high",
@@ -44,7 +43,7 @@ def test_build_query_from_signals_full():
 
     behavioral_signals = BehavioralSignals(
         deviation_score=0.85,
-        anomalies=["amount_spike", "unusual_hour"],
+        anomalies=["off_hours_transaction", "amount_spike", "unusual_hour"],
         velocity_alert=True,
     )
 
@@ -99,7 +98,6 @@ def test_build_query_with_moderate_amount():
 
     transaction_signals = TransactionSignals(
         amount_ratio=2.2,  # Between 2.0 and 3.0
-        is_off_hours=False,
         is_foreign=False,
         is_unknown_device=False,
         channel_risk="low",
@@ -277,7 +275,6 @@ async def test_policy_rag_agent_success(mock_get_llm, mock_query_policies):
         ),
         "transaction_signals": TransactionSignals(
             amount_ratio=2.0,
-            is_off_hours=False,
             is_foreign=False,
             is_unknown_device=False,
             channel_risk="low",

@@ -48,13 +48,13 @@ export function RecentDecisions({ transactions }: RecentDecisionsProps) {
   const formatDecisionName = (decision: DecisionType) => {
     switch (decision) {
       case "APPROVE":
-        return "Approved";
+        return "Aprobado";
       case "CHALLENGE":
-        return "Challenged";
+        return "Desafiado";
       case "BLOCK":
-        return "Blocked";
+        return "Bloqueado";
       case "ESCALATE_TO_HUMAN":
-        return "Escalated";
+        return "Escalado";
       default:
         return decision;
     }
@@ -63,14 +63,14 @@ export function RecentDecisions({ transactions }: RecentDecisionsProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Recent Decisions</CardTitle>
+        <CardTitle>Decisiones Recientes</CardTitle>
       </CardHeader>
       <CardContent>
         {transactions.length === 0 ? (
           <div className="text-center py-12">
             <FileQuestion className="mx-auto h-12 w-12 text-muted-foreground" />
             <p className="mt-4 text-muted-foreground">
-              No transactions analyzed yet
+              No hay transacciones analizadas aún
             </p>
           </div>
         ) : (
@@ -78,11 +78,11 @@ export function RecentDecisions({ transactions }: RecentDecisionsProps) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Transaction ID</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Decision</TableHead>
-                  <TableHead>Confidence</TableHead>
-                  <TableHead>Time</TableHead>
+                  <TableHead>ID Transacción</TableHead>
+                  <TableHead>Monto</TableHead>
+                  <TableHead>Decisión</TableHead>
+                  <TableHead>Confianza</TableHead>
+                  <TableHead>Hora</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

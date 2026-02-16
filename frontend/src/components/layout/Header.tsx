@@ -7,10 +7,11 @@ import { AnalyzeButton } from "@/components/transactions/AnalyzeButton";
 import { useSystemHealth } from "@/hooks/useSystemHealth";
 
 const BREADCRUMBS: Record<string, string> = {
-  "/": "Dashboard",
-  "/transactions": "Transactions",
-  "/hitl": "Human Review Queue",
-  "/analytics": "Analytics & Reports",
+  "/": "Panel de Control",
+  "/transactions": "Transacciones",
+  "/hitl": "Cola de Revisión Humana",
+  "/analytics": "Analítica e Informes",
+  "/policies": "Políticas de Fraude",
 };
 
 export function Header() {
@@ -18,7 +19,7 @@ export function Header() {
   const { isOnline } = useSystemHealth(30000);
 
   // Get breadcrumb title for current path
-  const breadcrumb = BREADCRUMBS[pathname] || "Dashboard";
+  const breadcrumb = BREADCRUMBS[pathname] || "Panel de Control";
 
   return (
     <header className="sticky top-0 z-40 border-b backdrop-blur bg-background/95 supports-[backdrop-filter]:bg-background/60">
@@ -47,7 +48,7 @@ export function Header() {
               }`}
             />
           </span>
-          <span>{isOnline ? "Online" : "Offline"}</span>
+          <span>{isOnline ? "En línea" : "Fuera de línea"}</span>
         </Badge>
 
         {/* Analyze New Button */}

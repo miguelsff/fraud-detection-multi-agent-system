@@ -15,7 +15,7 @@ from .config import settings
 # ---------------------------------------------------------------------------
 # SQLAlchemy async engine & session factory (module-level singletons)
 # ---------------------------------------------------------------------------
-engine = create_async_engine(settings.database_url, echo=(settings.app_env == "development"))
+engine = create_async_engine(settings.database_url.get_secret_value(), echo=(settings.app_env == "development"))
 async_session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
 

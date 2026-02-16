@@ -195,7 +195,7 @@ function AgentTraceItem({
                   ) : (
                     <>
                       <ChevronDown className="mr-1 h-3 w-3" />
-                      Ver detalles
+                      Mostrar detalles
                     </>
                   )}
                 </Button>
@@ -323,11 +323,11 @@ export function AgentTraceTimeline({ trace, liveEvents = [] }: AgentTraceTimelin
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Agent Execution Trace</CardTitle>
+            <CardTitle>Traza de Ejecución de Agentes</CardTitle>
             {hasLiveUpdates && (
               <Badge variant="outline" className="bg-blue-500/10 text-blue-700 border-blue-500/20">
                 <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                Live
+                En vivo
               </Badge>
             )}
           </div>
@@ -336,10 +336,10 @@ export function AgentTraceTimeline({ trace, liveEvents = [] }: AgentTraceTimelin
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <Clock className="h-12 w-12 text-muted-foreground/40 mb-3" />
             <p className="text-sm text-muted-foreground">
-              Analysis not started
+              Análisis no iniciado
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              No agent execution data available
+              No hay datos de ejecución de agentes disponibles
             </p>
           </div>
         </CardContent>
@@ -355,11 +355,11 @@ export function AgentTraceTimeline({ trace, liveEvents = [] }: AgentTraceTimelin
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <CardTitle>Agent Execution Trace</CardTitle>
+            <CardTitle>Traza de Ejecución de Agentes</CardTitle>
             {hasLiveUpdates && (
               <Badge variant="outline" className="bg-blue-500/10 text-blue-700 border-blue-500/20 animate-pulse">
                 <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                Live
+                En vivo
               </Badge>
             )}
           </div>

@@ -36,10 +36,10 @@ export function TransactionDetailClient({
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            Transaction {transactionId}
+            Transacción {transactionId}
           </h1>
           <p className="text-muted-foreground mt-1">
-            Complete fraud analysis and agent execution trace
+            Análisis completo de fraude y traza de ejecución de agentes
           </p>
         </div>
         <WebSocketStatus isConnected={isConnected} />

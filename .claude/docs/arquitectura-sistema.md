@@ -484,10 +484,10 @@ graph LR
 
 | Agente | Lee del Estado | Escribe al Estado | Tipo | Timeout |
 |--------|---------------|-------------------|------|---------|
-| **Transaction Context** | `transaction` | `transaction_signals` | Determinístico | Instantáneo |
+| **Transaction Context** | `transaction`, `customer_behavior` | `transaction_signals` | Determinístico | Instantáneo |
 | **Behavioral Pattern** | `transaction`, `customer_behavior` | `behavioral_signals` | Determinístico | Instantáneo |
 | **Policy RAG** | `transaction`, `transaction_signals`, `behavioral_signals` | `policy_matches` | LLM + RAG | 30s |
-| **External Threat** | `transaction`, `transaction_signals` | `threat_intel` | LLM + Web Search | 30s |
+| **External Threat** | `transaction`, `transaction_signals`, `behavioral_signals` | `threat_intel` | LLM + Web Search | 30s |
 | **Evidence Aggregation** | `transaction_signals`, `behavioral_signals`, `policy_matches`, `threat_intel` | `evidence` | Determinístico | <100ms |
 | **Debate Pro-Fraud** | `evidence` | `debate.pro_fraud_*` | LLM | 30s |
 | **Debate Pro-Customer** | `evidence` | `debate.pro_customer_*` | LLM | 30s |

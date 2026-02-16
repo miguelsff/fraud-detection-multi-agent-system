@@ -16,9 +16,9 @@ async function HITLContent() {
     return (
       <Alert className="border-green-500 bg-green-50">
         <CheckCircle className="h-5 w-5 text-green-600" />
-        <AlertTitle className="text-green-900">All Clear</AlertTitle>
+        <AlertTitle className="text-green-900">Todo Despejado</AlertTitle>
         <AlertDescription className="text-green-800">
-          No cases pending review. All escalated transactions have been resolved.
+          No hay casos pendientes de revisión. Todas las transacciones escaladas han sido resueltas.
         </AlertDescription>
       </Alert>
     );
@@ -50,7 +50,7 @@ export default function HITLPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold">Human Review Queue</h1>
+          <h1 className="text-3xl font-bold">Cola de Revisión Humana</h1>
           <Suspense fallback={<Skeleton className="h-6 w-12 rounded-full" />}>
             <QueueBadge />
           </Suspense>
@@ -59,7 +59,7 @@ export default function HITLPage() {
       </div>
 
       <p className="text-muted-foreground">
-        Review transactions that require human judgment due to ambiguous fraud signals.
+        Revisa transacciones que requieren juicio humano debido a señales ambiguas de fraude.
       </p>
 
       <Suspense fallback={<LoadingSkeleton />}>
@@ -78,7 +78,7 @@ async function QueueBadge() {
 
   return (
     <Badge variant="secondary" className="bg-violet-100 text-violet-700 border-violet-300">
-      {cases.length} {cases.length === 1 ? "case" : "cases"}
+      {cases.length} {cases.length === 1 ? "caso" : "casos"}
     </Badge>
   );
 }

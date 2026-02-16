@@ -1,14 +1,11 @@
 """Tests for WebSocket and analytics endpoints."""
 import pytest
-from fastapi.testclient import TestClient
 from app.main import app
 
-client = TestClient(app)
 
-
-def test_analytics_summary():
+def test_analytics_summary(test_client):
     """Test analytics summary endpoint."""
-    response = client.get("/api/v1/analytics/summary")
+    response = test_client.get("/api/v1/analytics/summary")
     assert response.status_code == 200
 
     data = response.json()
@@ -26,9 +23,9 @@ def test_analytics_summary():
     assert isinstance(data["escalation_rate"], (int, float))
 
 
-def test_analytics_summary_format():
+def test_analytics_summary_format(test_client):
     """Test analytics summary response format."""
-    response = client.get("/api/v1/analytics/summary")
+    response = test_client.get("/api/v1/analytics/summary")
     data = response.json()
 
     # Escalation rate should be between 0 and 1
@@ -39,16 +36,14 @@ def test_analytics_summary_format():
         assert 0 <= data["avg_confidence"] <= 1
 
 
+@pytest.mark.skip(reason="WebSocket testing requires async client setup")
 def test_websocket_connection():
     """Test WebSocket connection establishment.
 
     Note: This is a basic test. More comprehensive WebSocket tests
     would require async test client or manual connection testing.
     """
-    with pytest.raises(Exception):
-        # TestClient.websocket_connect requires special handling
-        # This is a placeholder for future WebSocket tests
-        pass
+    pass
 
 
 @pytest.mark.skip(reason="WebSocket testing requires async client setup")

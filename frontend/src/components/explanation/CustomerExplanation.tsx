@@ -30,9 +30,9 @@ export function CustomerExplanation({
 
   // Extract key factors from explanation (simplified - in production, this would come from backend)
   const keyFactors = [
-    "Transaction amount reviewed",
-    "Purchase pattern analyzed",
-    "Security verification completed",
+    "Monto de transacción revisado",
+    "Patrón de compra analizado",
+    "Verificación de seguridad completada",
   ];
 
   // Recommended actions based on decision
@@ -40,27 +40,27 @@ export function CustomerExplanation({
     switch (decision.decision) {
       case "APPROVE":
         return [
-          "Transaction approved and processed",
-          "No further action required",
-          "Receipt sent to your email",
+          "Transacción aprobada y procesada",
+          "No se requiere acción adicional",
+          "Recibo enviado a tu correo",
         ];
       case "CHALLENGE":
         return [
-          "Additional verification required",
-          "Check your email for verification code",
-          "Complete verification within 24 hours",
+          "Verificación adicional requerida",
+          "Revisa tu correo para código de verificación",
+          "Completa la verificación en 24 horas",
         ];
       case "BLOCK":
         return [
-          "Transaction blocked for security",
-          "Contact support for assistance",
-          "Review your recent activity",
+          "Transacción bloqueada por seguridad",
+          "Contacta a soporte para asistencia",
+          "Revisa tu actividad reciente",
         ];
       case "ESCALATE_TO_HUMAN":
         return [
-          "Transaction under review",
-          "You will be contacted within 2 hours",
-          "No action needed at this time",
+          "Transacción bajo revisión",
+          "Serás contactado en 2 horas",
+          "No se requiere acción en este momento",
         ];
       default:
         return [];
@@ -75,7 +75,7 @@ export function CustomerExplanation({
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg text-blue-900 dark:text-blue-100">
             <Mail className="h-5 w-5" />
-            📧 Customer Notification
+            📧 Notificación al Cliente
           </CardTitle>
           <Button
             variant="ghost"
@@ -86,12 +86,12 @@ export function CustomerExplanation({
             {copied ? (
               <>
                 <Check className="h-4 w-4 text-green-500" />
-                <span className="text-xs">Copied!</span>
+                <span className="text-xs">Copiado</span>
               </>
             ) : (
               <>
                 <Copy className="h-4 w-4" />
-                <span className="text-xs">Copy</span>
+                <span className="text-xs">Copiar</span>
               </>
             )}
           </Button>
@@ -108,7 +108,7 @@ export function CustomerExplanation({
         {/* Key Factors */}
         <div className="space-y-2">
           <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
-            Key Factors Reviewed:
+            Factores Clave Revisados:
           </h4>
           <ol className="space-y-1.5 ml-4">
             {keyFactors.map((factor, idx) => (
@@ -126,7 +126,7 @@ export function CustomerExplanation({
         {actions.length > 0 && (
           <div className="space-y-2 pt-3 border-t border-blue-200 dark:border-blue-900">
             <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
-              Next Steps:
+              Próximos Pasos:
             </h4>
             <div className="space-y-2">
               {actions.map((action, idx) => (
@@ -145,7 +145,7 @@ export function CustomerExplanation({
         {/* Decision Badge */}
         <div className="pt-3 border-t border-blue-200 dark:border-blue-900">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Status:</span>
+            <span className="text-xs text-muted-foreground">Estado:</span>
             <Badge
               variant="outline"
               className="bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20"

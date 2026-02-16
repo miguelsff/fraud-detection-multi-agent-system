@@ -10,7 +10,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from .config import settings
 from .db.engine import init_db
 from .utils.logger import get_logger, setup_logging
-from .routers import health, hitl, transactions, websocket
+from .routers import health, hitl, policies, transactions, websocket
 
 logger = get_logger(__name__)
 
@@ -54,6 +54,7 @@ app.add_middleware(
 app.include_router(health.router, prefix="/api/v1", tags=["Health"])
 app.include_router(transactions.router, prefix="/api/v1/transactions", tags=["Transactions"])
 app.include_router(hitl.router, prefix="/api/v1/hitl", tags=["HITL"])
+app.include_router(policies.router)
 app.include_router(websocket.router, prefix="/api/v1", tags=["WebSocket", "Analytics"])
 
 

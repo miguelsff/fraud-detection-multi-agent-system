@@ -205,6 +205,38 @@ export interface WebSocketEvent {
 }
 
 // ============================================================================
+// Policy Models (backend/app/models/policy.py)
+// ============================================================================
+
+export type PolicyAction = "APPROVE" | "CHALLENGE" | "BLOCK" | "ESCALATE_TO_HUMAN";
+export type PolicySeverity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+
+export interface PolicyBase {
+  policy_id: string;
+  title: string;
+  description: string;
+  criteria: string[];
+  thresholds: string[];
+  action_recommended: PolicyAction;
+  severity: PolicySeverity;
+}
+
+export interface PolicyCreate extends PolicyBase {}
+
+export interface PolicyUpdate {
+  title?: string;
+  description?: string;
+  criteria?: string[];
+  thresholds?: string[];
+  action_recommended?: PolicyAction;
+  severity?: PolicySeverity;
+}
+
+export interface Policy extends PolicyBase {
+  file_path: string;
+}
+
+// ============================================================================
 // Type Helpers
 // ============================================================================
 

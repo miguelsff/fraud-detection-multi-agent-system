@@ -18,7 +18,7 @@ class SanctionsProvider(ThreatProvider):
 
     def __init__(self):
         """Initialize sanctions provider."""
-        self._api_key = settings.opensanctions_api_key
+        self._api_key = settings.opensanctions_api_key.get_secret_value()
         self._base_url = "https://api.opensanctions.org"
         self._cache = {}  # Simple in-memory cache
 

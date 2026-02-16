@@ -46,20 +46,20 @@ export function TransactionDetailCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Transaction Details</CardTitle>
+        <CardTitle>Detalles de Transacción</CardTitle>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="transaction" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="transaction">Transaction Info</TabsTrigger>
-            <TabsTrigger value="customer">Customer Profile</TabsTrigger>
+            <TabsTrigger value="transaction">Info de Transacción</TabsTrigger>
+            <TabsTrigger value="customer">Perfil del Cliente</TabsTrigger>
           </TabsList>
 
           <TabsContent value="transaction" className="space-y-4 mt-4">
             <div className="grid grid-cols-2 gap-4">
               {/* Transaction ID */}
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Transaction ID</p>
+                <p className="text-sm text-muted-foreground">ID Transacción</p>
                 <p className="text-sm font-mono font-semibold">
                   {transaction.transaction_id}
                 </p>
@@ -67,7 +67,7 @@ export function TransactionDetailCard({
 
               {/* Customer ID */}
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Customer ID</p>
+                <p className="text-sm text-muted-foreground">ID Cliente</p>
                 <p className="text-sm font-mono font-semibold">
                   {transaction.customer_id}
                 </p>
@@ -75,7 +75,7 @@ export function TransactionDetailCard({
 
               {/* Amount */}
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Amount</p>
+                <p className="text-sm text-muted-foreground">Monto</p>
                 <div
                   className={cn(
                     "text-sm font-semibold",
@@ -85,7 +85,7 @@ export function TransactionDetailCard({
                   {formatCurrency(transaction.amount, transaction.currency)}
                   {isAmountHigh && (
                     <Badge variant="destructive" className="ml-2 text-xs">
-                      High Amount
+                      Monto Alto
                     </Badge>
                   )}
                 </div>
@@ -93,7 +93,7 @@ export function TransactionDetailCard({
 
               {/* Timestamp */}
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Timestamp</p>
+                <p className="text-sm text-muted-foreground">Fecha y Hora</p>
                 <div
                   className={cn(
                     "text-sm font-semibold",
@@ -106,7 +106,7 @@ export function TransactionDetailCard({
                       variant="outline"
                       className="ml-2 text-xs bg-amber-500/10 text-amber-700 border-amber-500/20"
                     >
-                      Off Hours
+                      Fuera de Horario
                     </Badge>
                   )}
                 </div>
@@ -114,7 +114,7 @@ export function TransactionDetailCard({
 
               {/* Country */}
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Country</p>
+                <p className="text-sm text-muted-foreground">País</p>
                 <div
                   className={cn(
                     "text-sm font-semibold",
@@ -127,7 +127,7 @@ export function TransactionDetailCard({
                       variant="outline"
                       className="ml-2 text-xs bg-amber-500/10 text-amber-700 border-amber-500/20"
                     >
-                      Foreign
+                      Extranjero
                     </Badge>
                   )}
                 </div>
@@ -135,7 +135,7 @@ export function TransactionDetailCard({
 
               {/* Channel */}
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Channel</p>
+                <p className="text-sm text-muted-foreground">Canal</p>
                 <div
                   className={cn(
                     "text-sm font-semibold capitalize",
@@ -147,7 +147,7 @@ export function TransactionDetailCard({
                   {transaction.channel}
                   {channelRisk === "high" && (
                     <Badge variant="destructive" className="ml-2 text-xs">
-                      High Risk
+                      Riesgo Alto
                     </Badge>
                   )}
                   {channelRisk === "medium" && (
@@ -155,7 +155,7 @@ export function TransactionDetailCard({
                       variant="outline"
                       className="ml-2 text-xs bg-amber-500/10 text-amber-700 border-amber-500/20"
                     >
-                      Medium Risk
+                      Riesgo Medio
                     </Badge>
                   )}
                 </div>
@@ -163,7 +163,7 @@ export function TransactionDetailCard({
 
               {/* Device ID */}
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Device ID</p>
+                <p className="text-sm text-muted-foreground">ID Dispositivo</p>
                 <div
                   className={cn(
                     "text-sm font-mono font-semibold",
@@ -176,7 +176,7 @@ export function TransactionDetailCard({
                       variant="outline"
                       className="ml-2 text-xs bg-amber-500/10 text-amber-700 border-amber-500/20"
                     >
-                      Unknown
+                      Desconocido
                     </Badge>
                   )}
                 </div>
@@ -184,7 +184,7 @@ export function TransactionDetailCard({
 
               {/* Merchant ID */}
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Merchant ID</p>
+                <p className="text-sm text-muted-foreground">ID Comerciante</p>
                 <p className="text-sm font-mono font-semibold">
                   {transaction.merchant_id}
                 </p>
@@ -194,7 +194,7 @@ export function TransactionDetailCard({
             {/* Flags */}
             {transactionSignals && transactionSignals.flags.length > 0 && (
               <div className="space-y-2 pt-4 border-t">
-                <p className="text-sm text-muted-foreground">Detected Flags</p>
+                <p className="text-sm text-muted-foreground">Banderas Detectadas</p>
                 <div className="flex flex-wrap gap-2">
                   {transactionSignals.flags.map((flag, idx) => (
                     <Badge key={idx} variant="outline" className="text-xs">
@@ -211,7 +211,7 @@ export function TransactionDetailCard({
               <div className="grid grid-cols-2 gap-4">
                 {/* Customer ID */}
                 <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Customer ID</p>
+                  <p className="text-sm text-muted-foreground">ID Cliente</p>
                   <p className="text-sm font-mono font-semibold">
                     {customerBehavior.customer_id}
                   </p>
@@ -220,7 +220,7 @@ export function TransactionDetailCard({
                 {/* Usual Amount */}
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">
-                    Usual Amount (Avg)
+                    Monto Usual (Prom)
                   </p>
                   <p className="text-sm font-semibold">
                     {formatCurrency(
@@ -232,7 +232,7 @@ export function TransactionDetailCard({
 
                 {/* Usual Hours */}
                 <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Usual Hours</p>
+                  <p className="text-sm text-muted-foreground">Horario Usual</p>
                   <p className="text-sm font-semibold">
                     {customerBehavior.usual_hours}
                   </p>
@@ -241,7 +241,7 @@ export function TransactionDetailCard({
                 {/* Usual Countries */}
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">
-                    Usual Countries
+                    Países Usuales
                   </p>
                   <div className="flex flex-wrap gap-1">
                     {customerBehavior.usual_countries.map((country, idx) => (
@@ -255,7 +255,7 @@ export function TransactionDetailCard({
                 {/* Usual Devices */}
                 <div className="col-span-2 space-y-1">
                   <p className="text-sm text-muted-foreground">
-                    Usual Devices
+                    Dispositivos Usuales
                   </p>
                   <div className="flex flex-wrap gap-1">
                     {customerBehavior.usual_devices.map((device, idx) => (
@@ -272,7 +272,7 @@ export function TransactionDetailCard({
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                No customer behavior data available
+                No hay datos de comportamiento del cliente disponibles
               </p>
             )}
           </TabsContent>

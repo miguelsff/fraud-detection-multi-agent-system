@@ -13,10 +13,10 @@ interface RiskDistributionProps {
 export function RiskDistribution({ breakdown }: RiskDistributionProps) {
   // Transform data for recharts
   const chartData = [
-    { name: "Approved", value: breakdown.APPROVE, color: DECISION_COLORS.APPROVE },
-    { name: "Challenged", value: breakdown.CHALLENGE, color: DECISION_COLORS.CHALLENGE },
-    { name: "Blocked", value: breakdown.BLOCK, color: DECISION_COLORS.BLOCK },
-    { name: "Escalated", value: breakdown.ESCALATE_TO_HUMAN, color: DECISION_COLORS.ESCALATE_TO_HUMAN }
+    { name: "Aprobado", value: breakdown.APPROVE, color: DECISION_COLORS.APPROVE },
+    { name: "Desafiado", value: breakdown.CHALLENGE, color: DECISION_COLORS.CHALLENGE },
+    { name: "Bloqueado", value: breakdown.BLOCK, color: DECISION_COLORS.BLOCK },
+    { name: "Escalado", value: breakdown.ESCALATE_TO_HUMAN, color: DECISION_COLORS.ESCALATE_TO_HUMAN }
   ].filter(item => item.value > 0); // Only show categories with data
 
   const hasData = chartData.length > 0;
@@ -24,7 +24,7 @@ export function RiskDistribution({ breakdown }: RiskDistributionProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Risk Distribution</CardTitle>
+        <CardTitle>Distribución de Riesgo</CardTitle>
       </CardHeader>
       <CardContent>
         {!hasData ? (
@@ -32,7 +32,7 @@ export function RiskDistribution({ breakdown }: RiskDistributionProps) {
             <div className="text-center">
               <PieChartIcon className="mx-auto h-12 w-12 text-muted-foreground" />
               <p className="mt-4 text-muted-foreground">
-                Run analysis to see distribution
+                Ejecuta un análisis para ver la distribución
               </p>
             </div>
           </div>

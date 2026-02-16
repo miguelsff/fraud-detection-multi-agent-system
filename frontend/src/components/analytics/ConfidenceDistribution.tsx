@@ -37,10 +37,10 @@ export function ConfidenceDistribution({ transactions }: ConfidenceDistributionP
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Confidence Distribution</CardTitle>
+          <CardTitle>Distribución de Confianza</CardTitle>
           {isLimitedData && hasData && (
             <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20">
-              Limited data
+              Datos limitados
             </Badge>
           )}
         </div>
@@ -51,7 +51,7 @@ export function ConfidenceDistribution({ transactions }: ConfidenceDistributionP
             <div className="text-center">
               <TrendingUpIcon className="mx-auto h-12 w-12 text-muted-foreground" />
               <p className="mt-4 text-muted-foreground">
-                No transactions yet. Analyze transactions to see distribution.
+                No hay transacciones aún. Analiza transacciones para ver la distribución.
               </p>
             </div>
           </div>
@@ -74,7 +74,7 @@ export function ConfidenceDistribution({ transactions }: ConfidenceDistributionP
                       <div className="bg-background border border-border rounded-lg px-3 py-2 shadow-md">
                         <p className="text-sm font-medium">{payload[0].payload.bucket}</p>
                         <p className="text-sm text-muted-foreground">
-                          Transactions: {payload[0].value}
+                          Transacciones: {payload[0].value}
                         </p>
                       </div>
                     );

@@ -147,6 +147,8 @@ def _mock_db_session() -> AsyncMock:
     session = AsyncMock()
     # add is synchronous in SQLAlchemy, the rest are awaitable
     session.add = MagicMock()
+    # Explicitly mock commit as AsyncMock to avoid RuntimeWarning about unawaited coroutine
+    session.commit = AsyncMock()
     return session
 
 
@@ -278,7 +280,7 @@ async def test_respond_keeps_escalated():
 @pytest.mark.asyncio
 @pytest.mark.unit
 async def test_phase1_parallel_all_succeed(sample_transaction, sample_customer_behavior):
-    """All 3 agents succeed; merged output contains all expected keys."""
+    """All 4 agents succeed; merged output contains all expected keys."""
     state: OrchestratorState = {
         "transaction": sample_transaction,
         "customer_behavior": sample_customer_behavior,
@@ -288,25 +290,28 @@ async def test_phase1_parallel_all_succeed(sample_transaction, sample_customer_b
 
     with (
         patch("app.agents.orchestrator.transaction_context_agent") as mock_tc,
+        patch("app.agents.orchestrator.behavioral_pattern_agent") as mock_bp,
         patch("app.agents.orchestrator.policy_rag_agent") as mock_pr,
         patch("app.agents.orchestrator.external_threat_agent") as mock_et,
     ):
         mock_tc.return_value = {"transaction_signals": "signals_val", "trace": [MagicMock()]}
+        mock_bp.return_value = {"behavioral_signals": "behavioral_val", "trace": [MagicMock()]}
         mock_pr.return_value = {"policy_matches": "matches_val", "trace": [MagicMock()]}
         mock_et.return_value = {"threat_intel": "intel_val", "trace": [MagicMock()]}
 
         result = await phase1_parallel(state)
 
     assert result["transaction_signals"] == "signals_val"
+    assert result["behavioral_signals"] == "behavioral_val"
     assert result["policy_matches"] == "matches_val"
     assert result["threat_intel"] == "intel_val"
-    assert len(result["trace"]) == 3
+    assert len(result["trace"]) == 4
 
 
 @pytest.mark.asyncio
 @pytest.mark.unit
 async def test_phase1_parallel_one_fails(sample_transaction, sample_customer_behavior):
-    """One agent raises; other 2 succeed (graceful degradation)."""
+    """One agent raises; other 3 succeed (graceful degradation)."""
     state: OrchestratorState = {
         "transaction": sample_transaction,
         "customer_behavior": sample_customer_behavior,
@@ -319,9 +324,11 @@ async def test_phase1_parallel_one_fails(sample_transaction, sample_customer_beh
 
     with (
         patch("app.agents.orchestrator.transaction_context_agent", side_effect=failing_agent),
+        patch("app.agents.orchestrator.behavioral_pattern_agent") as mock_bp,
         patch("app.agents.orchestrator.policy_rag_agent") as mock_pr,
         patch("app.agents.orchestrator.external_threat_agent") as mock_et,
     ):
+        mock_bp.return_value = {"behavioral_signals": "ok", "trace": [MagicMock()]}
         mock_pr.return_value = {"policy_matches": "ok", "trace": [MagicMock()]}
         mock_et.return_value = {"threat_intel": "ok", "trace": [MagicMock()]}
 
@@ -329,15 +336,16 @@ async def test_phase1_parallel_one_fails(sample_transaction, sample_customer_beh
 
     # transaction_signals not set (agent failed), but pipeline continues
     assert "transaction_signals" not in result
+    assert result["behavioral_signals"] == "ok"
     assert result["policy_matches"] == "ok"
     assert result["threat_intel"] == "ok"
-    assert len(result["trace"]) == 2
+    assert len(result["trace"]) == 3
 
 
 @pytest.mark.asyncio
 @pytest.mark.unit
 async def test_phase1_parallel_merges_trace(sample_transaction, sample_customer_behavior):
-    """Trace entries from all agents are combined."""
+    """Trace entries from all 4 agents are combined."""
     state: OrchestratorState = {
         "transaction": sample_transaction,
         "customer_behavior": sample_customer_behavior,
@@ -345,20 +353,22 @@ async def test_phase1_parallel_merges_trace(sample_transaction, sample_customer_
         "trace": [],
     }
 
-    trace_a, trace_b, trace_c = MagicMock(), MagicMock(), MagicMock()
+    trace_a, trace_b, trace_c, trace_d = MagicMock(), MagicMock(), MagicMock(), MagicMock()
 
     with (
         patch("app.agents.orchestrator.transaction_context_agent") as mock_tc,
+        patch("app.agents.orchestrator.behavioral_pattern_agent") as mock_bp,
         patch("app.agents.orchestrator.policy_rag_agent") as mock_pr,
         patch("app.agents.orchestrator.external_threat_agent") as mock_et,
     ):
         mock_tc.return_value = {"transaction_signals": "v", "trace": [trace_a]}
-        mock_pr.return_value = {"policy_matches": "v", "trace": [trace_b]}
-        mock_et.return_value = {"threat_intel": "v", "trace": [trace_c]}
+        mock_bp.return_value = {"behavioral_signals": "v", "trace": [trace_b]}
+        mock_pr.return_value = {"policy_matches": "v", "trace": [trace_c]}
+        mock_et.return_value = {"threat_intel": "v", "trace": [trace_d]}
 
         result = await phase1_parallel(state)
 
-    assert result["trace"] == [trace_a, trace_b, trace_c]
+    assert result["trace"] == [trace_a, trace_b, trace_c, trace_d]
 
 
 # ============================================================================

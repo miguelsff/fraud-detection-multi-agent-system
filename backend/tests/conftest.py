@@ -247,12 +247,14 @@ def mock_db_session() -> AsyncMock:
     session.add = MagicMock()  # add() is synchronous in SQLAlchemy
     session.commit = AsyncMock()
     session.flush = AsyncMock()
-    session.execute = AsyncMock(
-        return_value=AsyncMock(
-            scalar_one_or_none=Mock(return_value=None),
-            scalars=Mock(return_value=Mock(all=Mock(return_value=[]))),
-        )
-    )
+    # execute() is async, but it returns a Result object which is synchronous.
+    # We use MagicMock for the result so methods like scalars(), all(), scalar_one() are synchronous.
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = None
+    mock_result.scalar_one.return_value = 1  # Default int for count/avg queries
+    mock_result.scalars.return_value.all.return_value = []
+    
+    session.execute = AsyncMock(return_value=mock_result)
     return session
 
 
@@ -274,7 +276,7 @@ async def in_memory_db() -> AsyncGenerator[AsyncSession, None]:
     )
 
     # Import Base and create all tables
-    from app.database.base import Base
+    from app.db.models import Base
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -484,7 +486,7 @@ def minimal_state(transaction_t1001, customer_behavior_c501) -> OrchestratorStat
 
 
 @pytest.fixture
-def test_client():
+def test_client(mock_db_session):
     """Synchronous TestClient for FastAPI router tests.
 
     Usage:
@@ -493,5 +495,12 @@ def test_client():
             assert response.status_code == 200
     """
     from app.main import app
+    from app.dependencies import get_db
 
-    return TestClient(app)
+    # Override dependency
+    app.dependency_overrides[get_db] = lambda: mock_db_session
+
+    yield TestClient(app)
+
+    # Cleanup
+    app.dependency_overrides.clear()
