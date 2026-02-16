@@ -2,15 +2,17 @@
 
 import asyncio
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..agents.orchestrator import analyze_transaction
+from ..db.engine import async_session
 from ..db.models import AgentTrace, HITLCase, TransactionRecord
 from ..dependencies import get_db
 from ..models import AnalyzeRequest, FraudDecision
+from ..services.ws_manager import manager
 from ..utils.logger import get_logger
 
 router = APIRouter()
@@ -51,6 +53,59 @@ async def analyze(
             exc_info=True,
         )
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+
+class AnalyzeStartResponse(BaseModel):
+    transaction_id: str
+    status: str = "analyzing"
+
+
+async def _run_analysis_background(transaction, customer_behavior, transaction_id: str):
+    """Background task that runs the full pipeline and broadcasts via WS."""
+    try:
+        async with async_session() as db:
+            await analyze_transaction(
+                transaction,
+                customer_behavior,
+                db,
+                broadcast_fn=manager.broadcast_agent_event,
+            )
+    except asyncio.TimeoutError:
+        logger.error("background_analysis_timeout", transaction_id=transaction_id)
+        await manager.broadcast_agent_event(
+            transaction_id, "analysis_error", data={"error": "Analysis timeout"}
+        )
+    except Exception as e:
+        logger.error(
+            "background_analysis_error",
+            transaction_id=transaction_id,
+            error=str(e),
+            exc_info=True,
+        )
+        await manager.broadcast_agent_event(
+            transaction_id, "analysis_error", data={"error": str(e)}
+        )
+
+
+@router.post("/analyze/start", response_model=AnalyzeStartResponse, status_code=202)
+async def analyze_start(
+    request: AnalyzeRequest,
+    background_tasks: BackgroundTasks,
+):
+    """Start fraud detection pipeline in background and return immediately.
+
+    Returns 202 Accepted with the transaction_id. The client should listen
+    on the WebSocket for real-time agent progress events.
+    """
+    transaction_id = request.transaction.transaction_id
+    background_tasks.add_task(
+        _run_analysis_background,
+        request.transaction,
+        request.customer_behavior,
+        transaction_id,
+    )
+    logger.info("analysis_started_background", transaction_id=transaction_id)
+    return AnalyzeStartResponse(transaction_id=transaction_id)
 
 
 @router.post("/analyze/batch")

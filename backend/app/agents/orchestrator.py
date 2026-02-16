@@ -42,12 +42,43 @@ logger = get_logger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# WebSocket broadcast helper
+# ---------------------------------------------------------------------------
+
+
+async def _broadcast(config: RunnableConfig, event: str, agent: str | None = None, data: dict | None = None):
+    """Send a WebSocket event if a broadcast function was provided via config."""
+    fn = config.get("configurable", {}).get("broadcast_fn")
+    transaction_id = config.get("configurable", {}).get("transaction_id", "")
+    if fn:
+        try:
+            await fn(transaction_id, event, agent, data)
+        except Exception:
+            pass  # Never crash the pipeline because of WS
+
+
+async def _run_agent(
+    config: RunnableConfig, name: str, agent_fn, state: OrchestratorState
+) -> dict:
+    """Wrap an agent call with independent start/complete broadcasts."""
+    await _broadcast(config, "agent_started", name)
+    try:
+        result = await agent_fn(state)
+        await _broadcast(config, "agent_completed", name, {"status": "success"})
+        return result
+    except BaseException:
+        await _broadcast(config, "agent_completed", name, {"status": "error"})
+        raise
+
+
+# ---------------------------------------------------------------------------
 # Node functions
 # ---------------------------------------------------------------------------
 
 
-async def validate_input(state: OrchestratorState) -> dict:
+async def validate_input(state: OrchestratorState, config: RunnableConfig) -> dict:
     """Check that required input fields are present."""
+    await _broadcast(config, "agent_started", "validate_input")
     start = time.perf_counter()
     transaction = state.get("transaction")
     customer_behavior = state.get("customer_behavior")
@@ -60,6 +91,7 @@ async def validate_input(state: OrchestratorState) -> dict:
             missing.append("customer_behavior")
         logger.error("validate_input_missing_fields", missing=missing)
         duration_ms = (time.perf_counter() - start) * 1000
+        await _broadcast(config, "agent_completed", "validate_input", {"status": "error"})
         return {
             "status": "error",
             "trace": [
@@ -79,6 +111,7 @@ async def validate_input(state: OrchestratorState) -> dict:
         transaction_id=transaction.transaction_id,
     )
     duration_ms = (time.perf_counter() - start) * 1000
+    await _broadcast(config, "agent_completed", "validate_input", {"status": "success"})
     return {
         "status": "processing",
         "trace": [
@@ -94,13 +127,13 @@ async def validate_input(state: OrchestratorState) -> dict:
     }
 
 
-async def phase1_parallel(state: OrchestratorState) -> dict:
+async def phase1_parallel(state: OrchestratorState, config: RunnableConfig) -> dict:
     """Run Phase 1 collection agents in parallel (4 agents)."""
     results = await asyncio.gather(
-        transaction_context_agent(state),
-        behavioral_pattern_agent(state),
-        policy_rag_agent(state),
-        external_threat_agent(state),
+        _run_agent(config, "transaction_context", transaction_context_agent, state),
+        _run_agent(config, "behavioral_pattern", behavioral_pattern_agent, state),
+        _run_agent(config, "policy_rag", policy_rag_agent, state),
+        _run_agent(config, "external_threat", external_threat_agent, state),
         return_exceptions=True,
     )
 
@@ -118,16 +151,19 @@ async def phase1_parallel(state: OrchestratorState) -> dict:
     return merged
 
 
-async def evidence_aggregation_node(state: OrchestratorState) -> dict:
+async def evidence_aggregation_node(state: OrchestratorState, config: RunnableConfig) -> dict:
     """Phase 2 — consolidate all signals."""
-    return await evidence_aggregation_agent(state)
+    await _broadcast(config, "agent_started", "evidence_aggregation")
+    result = await evidence_aggregation_agent(state)
+    await _broadcast(config, "agent_completed", "evidence_aggregation", {"status": "success"})
+    return result
 
 
-async def debate_parallel(state: OrchestratorState) -> dict:
+async def debate_parallel(state: OrchestratorState, config: RunnableConfig) -> dict:
     """Run Phase 3 debate agents in parallel, then merge into DebateArguments."""
     results = await asyncio.gather(
-        debate_pro_fraud_agent(state),
-        debate_pro_customer_agent(state),
+        _run_agent(config, "debate_pro_fraud", debate_pro_fraud_agent, state),
+        _run_agent(config, "debate_pro_customer", debate_pro_customer_agent, state),
         return_exceptions=True,
     )
 
@@ -163,14 +199,20 @@ async def debate_parallel(state: OrchestratorState) -> dict:
     return {"debate": debate, "trace": trace_entries}
 
 
-async def decision_arbiter_node(state: OrchestratorState) -> dict:
+async def decision_arbiter_node(state: OrchestratorState, config: RunnableConfig) -> dict:
     """Phase 4 — make final decision."""
-    return await decision_arbiter_agent(state)
+    await _broadcast(config, "agent_started", "decision_arbiter")
+    result = await decision_arbiter_agent(state)
+    await _broadcast(config, "agent_completed", "decision_arbiter", {"status": "success"})
+    return result
 
 
-async def explainability_node(state: OrchestratorState) -> dict:
+async def explainability_node(state: OrchestratorState, config: RunnableConfig) -> dict:
     """Phase 5 — generate explanations."""
-    return await explainability_agent(state)
+    await _broadcast(config, "agent_started", "explainability")
+    result = await explainability_agent(state)
+    await _broadcast(config, "agent_completed", "explainability", {"status": "success"})
+    return result
 
 
 async def persist_audit(state: OrchestratorState, config: RunnableConfig) -> dict:
@@ -273,8 +315,15 @@ async def hitl_queue(state: OrchestratorState, config: RunnableConfig) -> dict:
     return {"status": "escalated"}
 
 
-async def respond(state: OrchestratorState) -> dict:
-    """Terminal node — set final status."""
+async def respond(state: OrchestratorState, config: RunnableConfig) -> dict:
+    """Terminal node — set final status and broadcast decision."""
+    decision = state.get("decision")
+    if decision:
+        await _broadcast(config, "decision_ready", data={
+            "decision": decision.decision,
+            "confidence": float(decision.confidence),
+        })
+
     if state.get("status") == "escalated":
         return {}
     return {"status": "completed"}
@@ -356,6 +405,7 @@ async def analyze_transaction(
     transaction: Transaction,
     customer_behavior: CustomerBehavior,
     db_session: AsyncSession,
+    broadcast_fn=None,
 ) -> FraudDecision:
     """Run the full fraud-detection pipeline and return the final decision.
 
@@ -363,6 +413,9 @@ async def analyze_transaction(
         transaction: The financial transaction to analyze.
         customer_behavior: Historical behavior profile for the customer.
         db_session: Async SQLAlchemy session for persistence.
+        broadcast_fn: Optional async callable(transaction_id, event, agent, data)
+                      for real-time WebSocket broadcasts. When None, no broadcasts
+                      are emitted (backward compatible).
 
     Returns:
         FraudDecision with decision, confidence, signals, and explanations.
@@ -378,7 +431,13 @@ async def analyze_transaction(
         "status": "pending",
         "trace": [],
     }
-    config: RunnableConfig = {"configurable": {"db_session": db_session}}
+    config: RunnableConfig = {
+        "configurable": {
+            "db_session": db_session,
+            "broadcast_fn": broadcast_fn,
+            "transaction_id": transaction.transaction_id,
+        }
+    }
 
     final_state = await asyncio.wait_for(
         graph.ainvoke(initial_state, config=config),

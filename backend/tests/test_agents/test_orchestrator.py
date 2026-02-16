@@ -156,6 +156,11 @@ def _runnable_config(db_session=None) -> dict:
     return {"configurable": {"db_session": db_session or _mock_db_session()}}
 
 
+def _empty_config() -> dict:
+    """Config without db_session for nodes that only need broadcast_fn (which defaults to None)."""
+    return {"configurable": {}}
+
+
 # ============================================================================
 # validate_input tests
 # ============================================================================
@@ -171,7 +176,7 @@ async def test_validate_input_valid(sample_transaction, sample_customer_behavior
         "status": "pending",
         "trace": [],
     }
-    result = await validate_input(state)
+    result = await validate_input(state, _empty_config())
     assert result["status"] == "processing"
     assert len(result["trace"]) == 1
     assert result["trace"][0].agent_name == "validate_input"
@@ -187,7 +192,7 @@ async def test_validate_input_missing_transaction(sample_customer_behavior):
         "status": "pending",
         "trace": [],
     }
-    result = await validate_input(state)
+    result = await validate_input(state, _empty_config())
     assert result["status"] == "error"
     assert result["trace"][0].status == "error"
 
@@ -201,7 +206,7 @@ async def test_validate_input_missing_customer(sample_transaction):
         "status": "pending",
         "trace": [],
     }
-    result = await validate_input(state)
+    result = await validate_input(state, _empty_config())
     assert result["status"] == "error"
 
 
@@ -259,7 +264,7 @@ def test_route_decision_escalate(sample_transaction):
 async def test_respond_sets_completed():
     """respond sets status=completed when not escalated."""
     state: OrchestratorState = {"status": "processing", "trace": []}
-    result = await respond(state)
+    result = await respond(state, _empty_config())
     assert result["status"] == "completed"
 
 
@@ -268,7 +273,7 @@ async def test_respond_sets_completed():
 async def test_respond_keeps_escalated():
     """respond preserves escalated status."""
     state: OrchestratorState = {"status": "escalated", "trace": []}
-    result = await respond(state)
+    result = await respond(state, _empty_config())
     assert result == {}
 
 
@@ -299,7 +304,7 @@ async def test_phase1_parallel_all_succeed(sample_transaction, sample_customer_b
         mock_pr.return_value = {"policy_matches": "matches_val", "trace": [MagicMock()]}
         mock_et.return_value = {"threat_intel": "intel_val", "trace": [MagicMock()]}
 
-        result = await phase1_parallel(state)
+        result = await phase1_parallel(state, _empty_config())
 
     assert result["transaction_signals"] == "signals_val"
     assert result["behavioral_signals"] == "behavioral_val"
@@ -332,7 +337,7 @@ async def test_phase1_parallel_one_fails(sample_transaction, sample_customer_beh
         mock_pr.return_value = {"policy_matches": "ok", "trace": [MagicMock()]}
         mock_et.return_value = {"threat_intel": "ok", "trace": [MagicMock()]}
 
-        result = await phase1_parallel(state)
+        result = await phase1_parallel(state, _empty_config())
 
     # transaction_signals not set (agent failed), but pipeline continues
     assert "transaction_signals" not in result
@@ -366,7 +371,7 @@ async def test_phase1_parallel_merges_trace(sample_transaction, sample_customer_
         mock_pr.return_value = {"policy_matches": "v", "trace": [trace_c]}
         mock_et.return_value = {"threat_intel": "v", "trace": [trace_d]}
 
-        result = await phase1_parallel(state)
+        result = await phase1_parallel(state, _empty_config())
 
     assert result["trace"] == [trace_a, trace_b, trace_c, trace_d]
 
@@ -399,7 +404,7 @@ async def test_debate_parallel_merges_into_debate_arguments():
             "trace": [MagicMock()],
         }
 
-        result = await debate_parallel(state)
+        result = await debate_parallel(state, _empty_config())
 
     debate = result["debate"]
     assert isinstance(debate, DebateArguments)
@@ -430,7 +435,7 @@ async def test_debate_parallel_one_fails():
             "trace": [MagicMock()],
         }
 
-        result = await debate_parallel(state)
+        result = await debate_parallel(state, _empty_config())
 
     debate = result["debate"]
     assert isinstance(debate, DebateArguments)

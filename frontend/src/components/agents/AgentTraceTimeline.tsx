@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,7 @@ const statusConfig = {
   success: {
     color: "bg-green-500",
     dotColor: "bg-green-500",
-    label: "Success",
+    label: "Completado",
   },
   error: {
     color: "bg-red-500",
@@ -58,7 +58,7 @@ const statusConfig = {
   skipped: {
     color: "bg-gray-400",
     dotColor: "bg-gray-400",
-    label: "Skipped",
+    label: "Omitido",
   },
   fallback: {
     color: "bg-orange-500",
@@ -68,23 +68,30 @@ const statusConfig = {
   running: {
     color: "bg-blue-500",
     dotColor: "bg-blue-500",
-    label: "Running",
+    label: "Ejecutando",
+  },
+  idle: {
+    color: "bg-gray-300",
+    dotColor: "bg-gray-300",
+    label: "Pendiente",
   },
 };
 
-const agentConfig: Record<string, { icon: any; phase: number }> = {
-  TransactionContext: { icon: Search, phase: 1 },
-  BehavioralPattern: { icon: TrendingUp, phase: 1 },
-  PolicyRAG: { icon: BookOpen, phase: 1 },
-  ExternalThreat: { icon: Shield, phase: 1 },
-  EvidenceAggregation: { icon: Layers, phase: 2 },
-  ProFraud: { icon: AlertTriangle, phase: 3 },
-  ProCustomer: { icon: UserCheck, phase: 3 },
-  DecisionArbiter: { icon: Scale, phase: 4 },
-  Explainability: { icon: FileText, phase: 5 },
+const agentConfig: Record<string, { icon: any; phase: number; displayName: string }> = {
+  validate_input: { icon: Zap, phase: 0, displayName: "ValidateInput" },
+  transaction_context: { icon: Search, phase: 1, displayName: "TransactionContext" },
+  behavioral_pattern: { icon: TrendingUp, phase: 1, displayName: "BehavioralPattern" },
+  policy_rag: { icon: BookOpen, phase: 1, displayName: "PolicyRAG" },
+  external_threat: { icon: Shield, phase: 1, displayName: "ExternalThreat" },
+  evidence_aggregation: { icon: Layers, phase: 2, displayName: "EvidenceAggregation" },
+  debate_pro_fraud: { icon: AlertTriangle, phase: 3, displayName: "ProFraud" },
+  debate_pro_customer: { icon: UserCheck, phase: 3, displayName: "ProCustomer" },
+  decision_arbiter: { icon: Scale, phase: 4, displayName: "DecisionArbiter" },
+  explainability: { icon: FileText, phase: 5, displayName: "Explainability" },
 };
 
 const phaseConfig = [
+  { id: 0, name: "Fase 0 — Validación", isParallel: false, color: "border-slate-500" },
   { id: 1, name: "Fase 1 — Recolección", isParallel: true, color: "border-blue-500" },
   { id: 2, name: "Fase 2 — Consolidación", isParallel: false, color: "border-purple-500" },
   { id: 3, name: "Fase 3 — Deliberación", isParallel: true, color: "border-orange-500" },
@@ -102,7 +109,7 @@ function groupByPhase(trace: AgentTraceEntry[]): PhaseGroup[] {
 
   trace.forEach((entry) => {
     const config = agentConfig[entry.agent_name];
-    const phase = config?.phase || 0;
+    const phase = config?.phase ?? 0;
 
     if (!groups.has(phase)) {
       groups.set(phase, []);
@@ -126,9 +133,18 @@ function AgentTraceItem({
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isRunning = agentState?.status === "running";
+  const isIdle = agentState?.status === "idle";
   const justCompleted = agentState?.justCompleted;
 
-  const status = isRunning ? "running" : (entry.status as keyof typeof statusConfig) || "success";
+  // Determine visual status: live state takes priority over trace entry status
+  const isPlaceholder = entry.duration_ms === 0 && !entry.output_summary;
+  const status = isRunning
+    ? "running"
+    : agentState?.status === "completed"
+      ? "success"
+      : isIdle || (isPlaceholder && !agentState)
+        ? "idle"
+        : (entry.status as keyof typeof statusConfig) || "success";
   const config = statusConfig[status];
   const agentInfo = agentConfig[entry.agent_name];
   const Icon = agentInfo?.icon || FileText;
@@ -168,7 +184,7 @@ function AgentTraceItem({
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 flex-wrap min-w-0">
                 <span className="font-semibold text-sm truncate">
-                  {entry.agent_name}
+                  {agentInfo?.displayName || entry.agent_name}
                 </span>
                 <Badge
                   variant="outline"
@@ -178,16 +194,20 @@ function AgentTraceItem({
                     status === "error" && "bg-red-500/10 text-red-700 border-red-500/20",
                     status === "timeout" && "bg-amber-500/10 text-amber-700 border-amber-500/20",
                     status === "skipped" && "bg-gray-500/10 text-gray-700 border-gray-500/20",
-                    status === "fallback" && "bg-orange-500/10 text-orange-700 border-orange-500/20"
+                    status === "fallback" && "bg-orange-500/10 text-orange-700 border-orange-500/20",
+                    status === "running" && "bg-blue-500/10 text-blue-700 border-blue-500/20",
+                    status === "idle" && "bg-gray-300/10 text-gray-500 border-gray-300/20"
                   )}
                 >
                   {config.label}
                 </Badge>
               </div>
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-shrink-0">
-                <Clock className="h-3 w-3" />
-                <span className="font-mono">{entry.duration_ms}ms</span>
-              </div>
+              {status !== "idle" && entry.duration_ms > 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-shrink-0">
+                  <Clock className="h-3 w-3" />
+                  <span className="font-mono">{entry.duration_ms}ms</span>
+                </div>
+              )}
             </div>
 
             {/* Collapsible details */}
@@ -357,34 +377,96 @@ function PhaseSection({
 }
 
 export function AgentTraceTimeline({ trace, liveEvents = [] }: AgentTraceTimelineProps) {
-  // Calculate agent states from live events
-  const agentStates = useMemo(() => {
-    const states = new Map<string, AgentState>();
-    const completedRecently = new Set<string>();
+  // Step 1: Pure computation of real states from events
+  const MIN_RUNNING_DISPLAY_MS = 600;
 
-    // Track which agents are running or just completed
+  const realStates = useMemo(() => {
+    const states = new Map<string, AgentState>();
+
+    if (liveEvents.length > 0) {
+      Object.keys(agentConfig).forEach((name) => {
+        states.set(name, { status: "idle" });
+      });
+    }
+
     liveEvents.forEach((event) => {
       if (event.event === "agent_started" && event.agent) {
         states.set(event.agent, { status: "running" });
       } else if (event.event === "agent_completed" && event.agent) {
-        // Check if this was recently completed (within last 2 seconds)
-        const eventTime = new Date(event.timestamp).getTime();
-        const now = Date.now();
-        const justCompleted = (now - eventTime) < 2000;
-
-        states.set(event.agent, {
-          status: "completed",
-          justCompleted
-        });
-
-        if (justCompleted) {
-          completedRecently.add(event.agent);
-        }
+        states.set(event.agent, { status: "completed" });
       }
     });
 
     return states;
   }, [liveEvents]);
+
+  // Step 2: Visual states with minimum running duration
+  const [agentStates, setAgentStates] = useState<Map<string, AgentState>>(() => new Map());
+  const runningAtRef = useRef<Map<string, number>>(new Map());
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  useEffect(() => {
+    const now = Date.now();
+
+    setAgentStates(prev => {
+      const next = new Map(prev);
+
+      // Initialize idle agents that aren't tracked yet
+      realStates.forEach((_real, name) => {
+        if (!next.has(name)) {
+          next.set(name, { status: "idle" });
+        }
+      });
+
+      realStates.forEach((real, name) => {
+        const current = next.get(name);
+
+        if (real.status === "idle") {
+          if (!current || current.status === "idle") {
+            next.set(name, { status: "idle" });
+          }
+        } else if (real.status === "running") {
+          if (current?.status !== "running" && current?.status !== "completed") {
+            next.set(name, { status: "running" });
+            runningAtRef.current.set(name, now);
+          }
+        } else if (real.status === "completed" && current?.status !== "completed") {
+          if (current?.status !== "running") {
+            // Never showed "running" → show it now first
+            next.set(name, { status: "running" });
+            runningAtRef.current.set(name, now);
+          }
+
+          // Schedule delayed transition to "completed"
+          const runningAt = runningAtRef.current.get(name) || now;
+          const elapsed = now - runningAt;
+          const delay = Math.max(0, MIN_RUNNING_DISPLAY_MS - elapsed);
+
+          if (delay === 0) {
+            next.set(name, { status: "completed", justCompleted: true });
+          } else if (!timersRef.current.has(name)) {
+            timersRef.current.set(name, setTimeout(() => {
+              timersRef.current.delete(name);
+              setAgentStates(p => {
+                const n = new Map(p);
+                n.set(name, { status: "completed", justCompleted: true });
+                return n;
+              });
+            }, delay));
+          }
+        }
+      });
+
+      return next;
+    });
+  }, [realStates]);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      timersRef.current.forEach(t => clearTimeout(t));
+    };
+  }, []);
 
   const hasLiveUpdates = liveEvents.length > 0;
 

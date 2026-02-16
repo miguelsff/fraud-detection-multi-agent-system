@@ -31,7 +31,17 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
   const reconnectDelayRef = useRef(1000); // Start with 1s
   const shouldConnectRef = useRef(autoConnect);
   const connectionAttemptsRef = useRef(0);
-  const maxConnectionAttempts = 3; // Stop trying after 3 failed attempts
+  const maxConnectionAttempts = 10; // More attempts during active analysis
+  const transactionIdRef = useRef(transactionId);
+
+  // Reset events when transactionId changes
+  useEffect(() => {
+    if (transactionIdRef.current !== transactionId) {
+      transactionIdRef.current = transactionId;
+      setEvents([]);
+      setLastEvent(null);
+    }
+  }, [transactionId]);
 
   const connect = useCallback(() => {
     // Don't connect if already connected or connecting
@@ -58,6 +68,12 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data) as WebSocketEvent;
+
+          // Client-side filtering: ignore events for other transactions
+          if (transactionIdRef.current && data.transaction_id && data.transaction_id !== transactionIdRef.current) {
+            return;
+          }
+
           setEvents((prev) => [...prev, data]);
           setLastEvent(data);
         } catch (error) {

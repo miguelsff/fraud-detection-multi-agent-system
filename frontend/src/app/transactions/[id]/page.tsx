@@ -1,15 +1,24 @@
 import { notFound } from "next/navigation";
 import { getTransactionDetail, getTransactionTrace } from "@/lib/api";
 import { TransactionDetailClient } from "@/components/transactions/TransactionDetailClient";
+import { TransactionAnalyzingClient } from "@/components/transactions/TransactionAnalyzingClient";
 
 interface TransactionDetailPageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export default async function TransactionDetailPage({
-  params
+  params,
+  searchParams,
 }: TransactionDetailPageProps) {
   const { id: transactionId } = await params;
+  const resolvedSearchParams = await searchParams;
+
+  // If analyzing=true, render the live progress view (client component)
+  if (resolvedSearchParams.analyzing === "true") {
+    return <TransactionAnalyzingClient transactionId={transactionId} />;
+  }
 
   let detail, trace;
   let error: string | null = null;

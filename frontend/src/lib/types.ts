@@ -218,13 +218,19 @@ export interface TransactionAnalysisDetail {
 // WebSocket Models
 // ============================================================================
 
-export type WebSocketEventType = "agent_started" | "agent_completed" | "decision_ready";
+export type WebSocketEventType = "agent_started" | "agent_completed" | "decision_ready" | "analysis_error";
 
 export interface WebSocketEvent {
   event: WebSocketEventType;
   agent?: string;
+  transaction_id?: string;
   timestamp: string; // ISO 8601 datetime string
   data?: Record<string, unknown>;
+}
+
+export interface AnalyzeStartResponse {
+  transaction_id: string;
+  status: "analyzing";
 }
 
 // ============================================================================

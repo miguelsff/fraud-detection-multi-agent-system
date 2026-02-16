@@ -52,7 +52,8 @@
       "Bash(wc:*)",
       "Bash(git -C /d/trabajos-miguel/ai-developer/fraud-detection-multi-agent-system log --oneline --all)",
       "Bash(git -C /d/trabajos-miguel/ai-developer/fraud-detection-multi-agent-system show --stat HEAD)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npx next build)"
     ]
   }
 }

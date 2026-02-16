@@ -15,7 +15,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, Loader2 } from "lucide-react";
-import { analyzeTransaction } from "@/lib/api";
+import { startAnalysis } from "@/lib/api";
 import type { Transaction, CustomerBehavior } from "@/lib/types";
 
 // Test scenarios from synthetic_data.json
@@ -153,21 +153,24 @@ export function AnalyzeButton() {
         throw new Error("El comportamiento del cliente debe tener customer_id");
       }
 
-      // Call API
-      const decision = await analyzeTransaction(transaction, customerBehavior);
-      setResult(decision);
+      // Store data in sessionStorage for the analyzing page to display
+      sessionStorage.setItem(
+        `analyzing:${transaction.transaction_id}`,
+        JSON.stringify({ transaction, customer_behavior: customerBehavior })
+      );
 
-      // Redirect to detail page and clean up
-      setTimeout(() => {
-        router.push(`/transactions/${transaction.transaction_id}`);
-        router.refresh();
-        setOpen(false);
-        // Clean fields for next use
-        setTransactionJson("");
-        setCustomerBehaviorJson("");
-        setResult(null);
-        setError(null);
-      }, 500);
+      // Fire-and-forget: start analysis in background (~50ms response)
+      await startAnalysis(transaction, customerBehavior);
+
+      // Close dialog and navigate immediately
+      setOpen(false);
+      router.push(`/transactions/${transaction.transaction_id}?analyzing=true`);
+
+      // Clean fields for next use
+      setTransactionJson("");
+      setCustomerBehaviorJson("");
+      setResult(null);
+      setError(null);
 
     } catch (err) {
       if (err instanceof SyntaxError) {

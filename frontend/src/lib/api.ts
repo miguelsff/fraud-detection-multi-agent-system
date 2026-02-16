@@ -12,6 +12,7 @@ import {
   AgentTraceEntry,
   HITLCase,
   AnalyticsSummary,
+  AnalyzeStartResponse,
   Policy,
   PolicyCreate,
   PolicyUpdate,
@@ -106,6 +107,24 @@ export async function analyzeTransaction(
   customerBehavior: CustomerBehavior
 ): Promise<FraudDecision> {
   return fetchAPI<FraudDecision>("/api/v1/transactions/analyze", {
+    method: "POST",
+    body: JSON.stringify({
+      transaction,
+      customer_behavior: customerBehavior,
+    }),
+  });
+}
+
+/**
+ * Start a transaction analysis in the background (fire-and-forget).
+ * POST /api/v1/transactions/analyze/start
+ * Returns 202 immediately; progress is streamed via WebSocket.
+ */
+export async function startAnalysis(
+  transaction: Transaction,
+  customerBehavior: CustomerBehavior
+): Promise<AnalyzeStartResponse> {
+  return fetchAPI<AnalyzeStartResponse>("/api/v1/transactions/analyze/start", {
     method: "POST",
     body: JSON.stringify({
       transaction,

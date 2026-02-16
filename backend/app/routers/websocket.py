@@ -6,34 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db.models import AgentTrace, TransactionRecord
 from ..dependencies import get_db
+from ..services.ws_manager import manager
 from ..utils.logger import get_logger
 
 router = APIRouter()
 logger = get_logger(__name__)
-
-
-class ConnectionManager:
-    """Manages WebSocket connections for real-time updates."""
-
-    def __init__(self):
-        self.active_connections: list[WebSocket] = []
-
-    async def connect(self, websocket: WebSocket):
-        """Accept and register a new WebSocket connection."""
-        await websocket.accept()
-        self.active_connections.append(websocket)
-
-    def disconnect(self, websocket: WebSocket):
-        """Remove a WebSocket connection."""
-        self.active_connections.remove(websocket)
-
-    async def broadcast(self, message: dict):
-        """Broadcast a message to all connected clients."""
-        for connection in self.active_connections:
-            await connection.send_json(message)
-
-
-manager = ConnectionManager()
 
 
 @router.websocket("/ws/transactions")
@@ -44,8 +21,16 @@ async def websocket_endpoint(websocket: WebSocket):
     - agent_started: When an agent begins processing
     - agent_completed: When an agent finishes processing
     - decision_ready: When final decision is made
+
+    Accepts optional query param ``transaction_id`` so that buffered events
+    for fast agents (completed before the WS connected) are replayed
+    immediately after the handshake.
     """
+    transaction_id = websocket.query_params.get("transaction_id")
     await manager.connect(websocket)
+    # Replay buffered events for late-connecting clients
+    if transaction_id:
+        await manager.replay_events(websocket, transaction_id)
     try:
         while True:
             # Keep connection alive, broadcast handled by pipeline
