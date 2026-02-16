@@ -12,7 +12,7 @@ import asyncio
 import re
 from typing import Optional
 
-from langchain_ollama import ChatOllama
+from langchain_core.language_models import BaseChatModel
 
 from ..constants import AGENT_TIMEOUTS
 from ..dependencies import get_llm
@@ -102,7 +102,7 @@ def _parse_decision_response(
 
 
 async def _call_llm_for_decision(
-    llm: ChatOllama,
+    llm: BaseChatModel,
     evidence: AggregatedEvidence,
     debate: DebateArguments,
 ) -> tuple[Optional[str], Optional[float], Optional[str], dict]:
@@ -185,7 +185,8 @@ async def decision_arbiter_agent(state: OrchestratorState) -> dict:
             logger.warning("decision_arbiter_no_debate")
             debate = _create_minimal_debate()
 
-        llm = get_llm()
+        # Use GPT-4 for critical decision making (high-stakes reasoning)
+        llm = get_llm(use_gpt4=True)
         decision, confidence, reasoning, llm_trace = await _call_llm_for_decision(
             llm, evidence, debate
         )

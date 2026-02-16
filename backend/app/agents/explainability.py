@@ -11,7 +11,7 @@ import asyncio
 import re
 from typing import Optional
 
-from langchain_ollama import ChatOllama
+from langchain_core.language_models import BaseChatModel
 
 from ..constants import AGENT_TIMEOUTS
 from ..dependencies import get_llm
@@ -104,7 +104,7 @@ def _parse_explanation_response(
 
 
 async def _call_llm_for_explanation(
-    llm: ChatOllama,
+    llm: BaseChatModel,
     decision: FraudDecision,
     evidence: AggregatedEvidence,
     policy_matches: Optional[PolicyMatchResult],
@@ -337,7 +337,8 @@ async def explainability_agent(state: OrchestratorState) -> dict:
             logger.warning("explainability_no_debate")
             debate = _create_minimal_debate()
 
-        llm = get_llm()
+        # Use GPT-4 for complex explanation generation (customer-facing text)
+        llm = get_llm(use_gpt4=True)
         (
             customer_explanation,
             audit_explanation,

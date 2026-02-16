@@ -12,7 +12,7 @@ Uses a provider-based architecture for easy extension with additional threat sou
 import asyncio
 from typing import Optional
 
-from langchain_ollama import ChatOllama
+from langchain_core.language_models import BaseChatModel
 
 from ..config import settings
 from ..constants import AGENT_TIMEOUTS
@@ -64,7 +64,8 @@ async def external_threat_agent(state: OrchestratorState) -> dict:
             "baseline_calculated", baseline=baseline_threat_level, sources_count=len(all_sources)
         )
 
-        llm = get_llm()
+        # Use GPT-3.5 for OSINT analysis (cost optimization)
+        llm = get_llm(use_gpt4=False)
         llm_threat_level, explanation = await _call_llm_for_threat_analysis(
             llm,
             transaction,
@@ -141,7 +142,7 @@ async def _gather_threat_intel(
 
 
 async def _call_llm_for_threat_analysis(
-    llm: ChatOllama,
+    llm: BaseChatModel,
     transaction: Transaction,
     transaction_signals: Optional[TransactionSignals],
     threat_sources: list[ThreatSource],

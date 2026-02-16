@@ -3,7 +3,7 @@
 import asyncio
 from typing import Optional
 
-from langchain_ollama import ChatOllama
+from langchain_core.language_models import BaseChatModel
 
 from ..constants import AGENT_TIMEOUTS
 from ..dependencies import get_llm
@@ -52,7 +52,8 @@ async def policy_rag_agent(state: OrchestratorState) -> dict:
                 "_rag_trace": rag_trace,
             }
 
-        llm = get_llm()
+        # Use GPT-3.5 for simple policy matching (cost optimization)
+        llm = get_llm(use_gpt4=False)
         policy_matches, llm_trace = await _call_llm_for_policy_analysis(
             llm,
             transaction,
@@ -78,7 +79,7 @@ async def policy_rag_agent(state: OrchestratorState) -> dict:
 
 
 async def _call_llm_for_policy_analysis(
-    llm: ChatOllama,
+    llm: BaseChatModel,
     transaction: Transaction,
     transaction_signals: Optional[TransactionSignals],
     behavioral_signals: Optional[BehavioralSignals],
@@ -110,8 +111,8 @@ async def _call_llm_for_policy_analysis(
     # Initialize LLM trace metadata
     llm_trace = {
         "llm_prompt": prompt,
-        "llm_model": llm.model,
-        "llm_temperature": 0.0,
+        "llm_model": getattr(llm, "model", None) or getattr(llm, "deployment_name", "unknown"),
+        "llm_temperature": getattr(llm, "temperature", 0.0),
     }
 
     try:

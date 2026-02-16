@@ -41,7 +41,8 @@ async def debate_pro_fraud_agent(state: OrchestratorState) -> dict:
                 "pro_fraud_evidence": ["no_evidence"],
             }
 
-        llm = get_llm()
+        # Use GPT-3.5 for debate arguments (cost optimization)
+        llm = get_llm(use_gpt4=False)
         argument, confidence, evidence_cited, llm_trace = await call_debate_llm(
             llm, evidence, PRO_FRAUD_PROMPT
         )
@@ -88,7 +89,8 @@ async def debate_pro_customer_agent(state: OrchestratorState) -> dict:
                 "pro_customer_evidence": ["no_evidence"],
             }
 
-        llm = get_llm()
+        # Use GPT-3.5 for debate arguments (cost optimization)
+        llm = get_llm(use_gpt4=False)
         argument, confidence, evidence_cited, llm_trace = await call_debate_llm(
             llm, evidence, PRO_CUSTOMER_PROMPT
         )
