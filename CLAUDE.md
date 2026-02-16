@@ -114,7 +114,12 @@ WS     /api/v1/ws/transactions
 3. API calls via lib/api.ts (fetch wrapper centralizado)
 4. shadcn/ui para TODOS los componentes UI base
 5. Colores decisión: APPROVE=green, CHALLENGE=amber, BLOCK=red, ESCALATE=violet
-6. Todo el texto para el usuario en español
+6. **TODO EL TEXTO VISIBLE AL USUARIO DEBE ESTAR 100% EN ESPAÑOL**
+   - Esto incluye: labels, títulos, badges, mensajes, placeholders, tooltips, y cualquier string que aparezca en la UI
+   - NUNCA usar inglés en JSX/TSX: "Risk", "Decision", "Confidence", "Pending", "Resolved", etc.
+   - Traducir SIEMPRE: "Riesgo", "Decisión", "Confianza", "Pendiente", "Resuelto", etc.
+   - Comentarios en código pueden estar en inglés, pero NO el texto mostrado al usuario
+   - Antes de crear/editar cualquier componente, verificar que TODOS los strings visibles estén en español
 
 ## Arquitectura Frontend
 Layout: app/layout.tsx (sidebar + header)

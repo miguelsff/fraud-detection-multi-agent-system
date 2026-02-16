@@ -82,7 +82,7 @@ function CaseCard({ hitlCase, onResolved }: CaseCardProps) {
                       </span>
                       {evidence && (
                         <Badge className={getRiskBadgeColor(evidence.composite_risk_score)}>
-                          Risk: {evidence.composite_risk_score.toFixed(0)}
+                          Riesgo: {evidence.composite_risk_score.toFixed(0)}
                         </Badge>
                       )}
                       <span className="text-muted-foreground">
