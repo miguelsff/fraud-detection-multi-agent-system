@@ -6,9 +6,9 @@ services:
     image: postgres:16-alpine
     container_name: fraud-db
     environment:
-      POSTGRES_USER: fraud_user
-      POSTGRES_PASSWORD: fraud_pass_dev
-      POSTGRES_DB: fraud_detection
+      POSTGRES_USER: ${POSTGRES_USER:-fraud_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: ${POSTGRES_DB:-fraud_detection}
     ports:
       - "5432:5432"
     volumes:
@@ -29,15 +29,23 @@ services:
     container_name: fraud-backend
     environment:
       # Database
-      DATABASE_URL: postgresql+asyncpg://fraud_user:fraud_pass_dev@postgres:5432/fraud_detection
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set}
 
-      # LLM Config (Ollama - adjust as needed)
-      LLM_MODEL: llama3.2:3b
-      LLM_BASE_URL: http://host.docker.internal:11434
+      # LLM Config
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+
+      # Azure OpenAI (optional for production)
+      USE_AZURE_OPENAI: ${USE_AZURE_OPENAI:-false}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT:-}
+      AZURE_OPENAI_KEY: ${AZURE_OPENAI_KEY:-}
+
+      # External APIs
+      OPENSANCTIONS_API_KEY: ${OPENSANCTIONS_API_KEY:-}
 
       # App Config
-      ENVIRONMENT: production
-      LOG_LEVEL: info
+      APP_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
     ports:
       - "8000:8000"
     depends_on:

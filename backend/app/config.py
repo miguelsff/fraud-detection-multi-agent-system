@@ -19,9 +19,16 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # LLM
+    # LLM - Ollama (for local/dev)
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen3:30b"
+
+    # Azure OpenAI (for cloud production)
+    azure_openai_endpoint: str = ""
+    azure_openai_key: SecretStr = SecretStr("")
+    azure_openai_gpt4_deployment: str = "gpt-4-deployment"
+    azure_openai_gpt35_deployment: str = "gpt-35-turbo-deployment"
+    use_azure_openai: bool = False  # Feature flag
 
     # Database
     database_url: SecretStr = SecretStr(
@@ -30,12 +37,18 @@ class Settings(BaseSettings):
 
     # ChromaDB
     chroma_persist_dir: str = "./data/chroma"
+    chroma_azure_storage_account: str = ""
+    chroma_azure_share_name: str = "chromadb-share"
 
     # App
     app_env: Literal["development", "staging", "production"] = "development"
     log_level: str = "DEBUG"
     api_host: str = "0.0.0.0"
     api_port: int = 8000
+
+    # CORS - Frontend origins (production/staging)
+    cors_frontend_prod_url: str = "https://ca-fraud-frontend-prod.azurecontainerapps.io"
+    cors_frontend_staging_url: str = "https://ca-fraud-frontend-staging.azurecontainerapps.io"
 
     # Threat Intelligence APIs
     opensanctions_api_key: SecretStr = SecretStr("")

@@ -42,12 +42,19 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware (allow all for dev)
+# CORS middleware - restrictive in production
+if settings.app_env == "development":
+    cors_origins = ["*"]
+elif settings.app_env == "staging":
+    cors_origins = [settings.cors_frontend_staging_url, "http://localhost:3000"]
+else:  # production
+    cors_origins = [settings.cors_frontend_prod_url]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: Configure for prod
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
