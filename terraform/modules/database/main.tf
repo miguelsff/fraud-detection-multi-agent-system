@@ -22,14 +22,19 @@ resource "azurerm_postgresql_flexible_server" "main" {
   administrator_password = random_password.postgresql_admin.result
 
   # Networking (private, VNet-integrated)
-  delegated_subnet_id = var.subnet_id
-  private_dns_zone_id = var.private_dns_zone_id
+  delegated_subnet_id         = var.subnet_id
+  private_dns_zone_id         = var.private_dns_zone_id
+  public_network_access_enabled = false # Required when using VNet integration
 
   # High availability (only for production)
-  zone                  = var.zone
-  high_availability {
-    mode                      = var.enable_high_availability ? "ZoneRedundant" : "Disabled"
-    standby_availability_zone = var.enable_high_availability ? var.standby_zone : null
+  zone = var.zone
+
+  dynamic "high_availability" {
+    for_each = var.enable_high_availability ? [1] : []
+    content {
+      mode                      = "ZoneRedundant"
+      standby_availability_zone = var.standby_zone
+    }
   }
 
   # Backup configuration
@@ -59,7 +64,7 @@ resource "azurerm_postgresql_flexible_server_database" "main" {
   name      = var.database_name
   server_id = azurerm_postgresql_flexible_server.main.id
   charset   = "UTF8"
-  collation = "en_US.UTF8"
+  collation = "en_US.utf8"
 }
 
 # PostgreSQL configurations (performance tuning)

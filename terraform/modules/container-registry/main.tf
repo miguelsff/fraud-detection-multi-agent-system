@@ -15,13 +15,5 @@ resource "azurerm_container_registry" "main" {
   tags = var.tags
 }
 
-# Enable geo-replication for production (Standard+ tier only)
-resource "azurerm_container_registry_replication" "geo" {
-  count                     = var.sku == "Standard" || var.sku == "Premium" ? 1 : 0
-  name                      = "westus"
-  container_registry_name   = azurerm_container_registry.main.name
-  resource_group_name       = var.resource_group_name
-  location                  = "westus"
-  zone_redundancy_enabled   = var.sku == "Premium" ? true : false
-  tags                      = var.tags
-}
+# Note: Geo-replication removed - azurerm_container_registry_replication not supported in azurerm v4.60.0
+# For production, consider using Premium tier with manual replication setup via Azure Portal

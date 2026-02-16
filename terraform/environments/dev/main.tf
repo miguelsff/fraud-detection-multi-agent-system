@@ -170,7 +170,8 @@ module "container_apps" {
   subnet_workload_id            = module.networking.subnet_workload_id
 
   # Container Registry
-  container_registry_server     = module.container_registry.login_server
+  container_registry_id          = module.container_registry.id
+  container_registry_server      = module.container_registry.login_server
   container_registry_identity_id = module.container_registry.identity_principal_id
 
   # Storage (ChromaDB)
@@ -180,6 +181,11 @@ module "container_apps" {
 
   # Key Vault
   key_vault_id                  = module.key_vault.id
+  key_vault_secrets = {
+    "database-url"          = module.database.connection_string
+    "azure-openai-endpoint" = module.azure_openai.endpoint
+    "azure-openai-key"      = module.azure_openai.primary_key
+  }
 
   # Monitoring
   app_insights_connection_string = module.monitoring.connection_string

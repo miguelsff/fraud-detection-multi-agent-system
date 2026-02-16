@@ -32,6 +32,11 @@ variable "subnet_workload_id" {
 }
 
 # Container Registry
+variable "container_registry_id" {
+  description = "ACR resource ID (for role assignment)"
+  type        = string
+}
+
 variable "container_registry_server" {
   description = "ACR login server URL"
   type        = string

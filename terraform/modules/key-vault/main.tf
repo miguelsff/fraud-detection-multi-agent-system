@@ -44,7 +44,7 @@ resource "azurerm_key_vault_access_policy" "terraform" {
 
 # Store secrets
 resource "azurerm_key_vault_secret" "secrets" {
-  for_each = var.secrets
+  for_each = nonsensitive(var.secrets)
 
   name         = each.key
   value        = each.value

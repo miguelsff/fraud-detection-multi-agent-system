@@ -31,7 +31,7 @@ resource "azurerm_user_assigned_identity" "container_apps" {
 
 # Role assignment: AcrPull for Container Registry
 resource "azurerm_role_assignment" "acr_pull" {
-  scope                = var.container_registry_server # Should be ACR resource ID
+  scope                = var.container_registry_id # ACR resource ID
   role_definition_name = "AcrPull"
   principal_id         = azurerm_user_assigned_identity.container_apps.principal_id
 }

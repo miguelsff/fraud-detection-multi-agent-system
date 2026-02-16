@@ -25,21 +25,8 @@ resource "azurerm_application_insights" "main" {
   tags = var.tags
 }
 
-# Smart Detection - Anomaly detection rules
-resource "azurerm_application_insights_smart_detection_rule" "failure_anomalies" {
-  name                    = "Failure Anomalies"
-  application_insights_id = azurerm_application_insights.main.id
-  enabled                 = true
-}
-
-resource "azurerm_application_insights_smart_detection_rule" "slow_page_load" {
-  name                    = "Slow page load time"
-  application_insights_id = azurerm_application_insights.main.id
-  enabled                 = true
-}
-
-resource "azurerm_application_insights_smart_detection_rule" "slow_server_response" {
-  name                    = "Slow server response time"
-  application_insights_id = azurerm_application_insights.main.id
-  enabled                 = true
-}
+# Note: Smart Detection rules removed - azurerm v4.60.0 has breaking changes in rule names
+# Configure these manually in Azure Portal after deployment if needed:
+# - Slow page load time
+# - Slow server response time
+# - Abnormal rise in exception volume

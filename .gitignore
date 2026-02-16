@@ -52,6 +52,13 @@ terraform.rc
 *~
 .DS_Store
 
+# Claude Code
+.claude/settings.local.json
+.claude/mcp.json
+.claude/cache/
+.claude/sessions/
+.claude/shortcuts.json
+
 # ChromaDB
 backend/data/chroma/
 

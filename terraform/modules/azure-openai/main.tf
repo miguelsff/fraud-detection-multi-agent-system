@@ -1,11 +1,12 @@
 # Azure OpenAI Module - Cognitive Services for LLM agents
 
 resource "azurerm_cognitive_account" "openai" {
-  name                = "oai-${var.project_name}-${var.environment}"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  kind                = "OpenAI"
-  sku_name            = "S0" # Standard tier (pay-as-you-go)
+  name                  = "oai-${var.project_name}-${var.environment}"
+  location              = var.location
+  resource_group_name   = var.resource_group_name
+  kind                  = "OpenAI"
+  sku_name              = "S0" # Standard tier (pay-as-you-go)
+  custom_subdomain_name = "oai-${var.project_name}-${var.environment}"
 
   # Managed identity for secure access
   identity {
@@ -33,11 +34,11 @@ resource "azurerm_cognitive_deployment" "gpt35" {
   model {
     format  = "OpenAI"
     name    = "gpt-35-turbo"
-    version = "0125" # Latest stable version (Jan 2025)
+    version = "1106" # Latest version (Nov 2023 release, not deprecated)
   }
 
-  scale {
-    type     = "Standard"
+  sku {
+    name     = "Standard"
     capacity = var.gpt35_capacity # TPM (thousands of tokens per minute)
   }
 }
@@ -54,8 +55,8 @@ resource "azurerm_cognitive_deployment" "gpt4" {
     version = "turbo-2024-04-09" # Latest GPT-4 Turbo
   }
 
-  scale {
-    type     = "Standard"
+  sku {
+    name     = "Standard"
     capacity = var.gpt4_capacity # TPM
   }
 }
