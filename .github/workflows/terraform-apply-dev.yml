@@ -1,0 +1,116 @@
+name: Deploy to Dev
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'terraform/**'
+      - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/terraform-apply-dev.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  ACR_NAME: acrfrauddetectiondev
+  ENVIRONMENT: dev
+
+jobs:
+  build-images:
+    name: Build and Push Images
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.meta.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+
+      - name: Login to ACR
+        run: az acr login --name ${{ env.ACR_NAME }}
+
+      - name: Generate image tag
+        id: meta
+        run: echo "version=sha-${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+
+      - name: Build and push backend image
+        working-directory: backend
+        run: |
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/fraud-backend:${{ steps.meta.outputs.version }} .
+          docker push ${{ env.ACR_NAME }}.azurecr.io/fraud-backend:${{ steps.meta.outputs.version }}
+          docker tag ${{ env.ACR_NAME }}.azurecr.io/fraud-backend:${{ steps.meta.outputs.version }} \
+            ${{ env.ACR_NAME }}.azurecr.io/fraud-backend:latest
+          docker push ${{ env.ACR_NAME }}.azurecr.io/fraud-backend:latest
+
+      - name: Build and push frontend image
+        working-directory: frontend
+        run: |
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/fraud-frontend:${{ steps.meta.outputs.version }} .
+          docker push ${{ env.ACR_NAME }}.azurecr.io/fraud-frontend:${{ steps.meta.outputs.version }}
+          docker tag ${{ env.ACR_NAME }}.azurecr.io/fraud-frontend:${{ steps.meta.outputs.version }} \
+            ${{ env.ACR_NAME }}.azurecr.io/fraud-frontend:latest
+          docker push ${{ env.ACR_NAME }}.azurecr.io/fraud-frontend:latest
+
+  deploy-infrastructure:
+    name: Deploy Infrastructure (Dev)
+    runs-on: ubuntu-latest
+    needs: build-images
+    environment:
+      name: dev
+      url: https://ca-fraud-frontend-dev.azurecontainerapps.io
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.0
+
+      - name: Terraform Init
+        working-directory: terraform/environments/dev
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: terraform/environments/dev
+        run: |
+          terraform apply -auto-approve \
+            -var="backend_image_tag=${{ needs.build-images.outputs.image-tag }}" \
+            -var="frontend_image_tag=${{ needs.build-images.outputs.image-tag }}"
+
+      - name: Get outputs
+        id: terraform
+        working-directory: terraform/environments/dev
+        run: |
+          echo "backend_url=$(terraform output -raw backend_url)" >> $GITHUB_OUTPUT
+          echo "frontend_url=$(terraform output -raw frontend_url)" >> $GITHUB_OUTPUT
+
+      - name: Health check
+        run: |
+          sleep 60 # Wait for containers to start
+          curl --fail --max-time 30 ${{ steps.terraform.outputs.backend_url }}/api/v1/health || exit 1
+
+      - name: Comment on commit
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: `✅ Deployed to **dev** environment\n\n🔗 **Frontend:** ${{ steps.terraform.outputs.frontend_url }}\n🔗 **Backend:** ${{ steps.terraform.outputs.backend_url }}\n📦 **Image tag:** \`${{ needs.build-images.outputs.image-tag }}\``
+            })
