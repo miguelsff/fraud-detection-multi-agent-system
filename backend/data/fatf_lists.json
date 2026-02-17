@@ -1,0 +1,124 @@
+{
+  "last_updated": "2025-02-01",
+  "source": "FATF - https://www.fatf-gafi.org/en/countries/black-and-grey-lists.html",
+  "blacklist": {
+    "KP": {
+      "name": "North Korea",
+      "risk_score": 1.0,
+      "reason": "FATF blacklist - High-risk jurisdiction with strategic AML/CFT deficiencies",
+      "since": "2011"
+    },
+    "IR": {
+      "name": "Iran",
+      "risk_score": 1.0,
+      "reason": "FATF blacklist - Terrorism financing and strategic AML deficiencies",
+      "since": "2008"
+    },
+    "MM": {
+      "name": "Myanmar",
+      "risk_score": 0.95,
+      "reason": "FATF blacklist - Strategic AML/CFT deficiencies",
+      "since": "2022"
+    }
+  },
+  "graylist": {
+    "VE": {
+      "name": "Venezuela",
+      "risk_score": 0.80,
+      "reason": "FATF graylist - Weak AML/CFT controls",
+      "since": "2020"
+    },
+    "PK": {
+      "name": "Pakistan",
+      "risk_score": 0.75,
+      "reason": "FATF monitoring - Terrorism financing concerns",
+      "since": "2018"
+    },
+    "SY": {
+      "name": "Syria",
+      "risk_score": 0.85,
+      "reason": "FATF graylist - Conflict zone and sanctions",
+      "since": "2010"
+    },
+    "YE": {
+      "name": "Yemen",
+      "risk_score": 0.80,
+      "reason": "FATF graylist - Conflict zone with weak financial controls",
+      "since": "2010"
+    },
+    "NG": {
+      "name": "Nigeria",
+      "risk_score": 0.70,
+      "reason": "FATF graylist - Strategic AML deficiencies",
+      "since": "2023"
+    },
+    "AL": {
+      "name": "Albania",
+      "risk_score": 0.65,
+      "reason": "FATF graylist - AML/CFT deficiencies",
+      "since": "2023"
+    },
+    "MZ": {
+      "name": "Mozambique",
+      "risk_score": 0.70,
+      "reason": "FATF graylist - Money laundering risks",
+      "since": "2022"
+    }
+  },
+  "elevated_risk": {
+    "RU": {
+      "name": "Russia",
+      "risk_score": 0.75,
+      "reason": "OFAC sanctions - Restricted financial activity",
+      "since": "2022"
+    },
+    "BY": {
+      "name": "Belarus",
+      "risk_score": 0.70,
+      "reason": "EU/US sanctions - Associated with Russia",
+      "since": "2022"
+    },
+    "CN": {
+      "name": "China",
+      "risk_score": 0.45,
+      "reason": "Capital controls - Unusual cross-border transaction monitoring",
+      "since": "N/A"
+    },
+    "BR": {
+      "name": "Brazil",
+      "risk_score": 0.40,
+      "reason": "Elevated e-commerce fraud rates",
+      "since": "N/A"
+    },
+    "MX": {
+      "name": "Mexico",
+      "risk_score": 0.45,
+      "reason": "Organized crime financial activity",
+      "since": "N/A"
+    },
+    "ID": {
+      "name": "Indonesia",
+      "risk_score": 0.40,
+      "reason": "Identity theft and fraud concerns",
+      "since": "N/A"
+    },
+    "PH": {
+      "name": "Philippines",
+      "risk_score": 0.35,
+      "reason": "Social engineering fraud",
+      "since": "N/A"
+    },
+    "IN": {
+      "name": "India",
+      "risk_score": 0.35,
+      "reason": "High volume of card testing attacks",
+      "since": "N/A"
+    },
+    "ZA": {
+      "name": "South Africa",
+      "risk_score": 0.40,
+      "reason": "Organized financial crime",
+      "since": "N/A"
+    }
+  }
+}

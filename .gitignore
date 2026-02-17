@@ -1,0 +1,89 @@
+# Python
+**/__pycache__/
+**/.pytest_cache/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.manifest
+*.spec
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Environment variables (CRÍTICO - NUNCA commitear)
+.env
+backend/.env
+backend/.env.development
+backend/.env.production
+frontend/.env.local
+frontend/.env.production.local
+frontend/.env.development.local
+
+# Allow .env.example files (safe templates)
+!.env.example
+!**/.env.example
+!backend/.env.example
+!frontend/.env.example
+
+# Terraform (infraestructura como código)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+.terraformrc
+terraform.rc
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Claude Code
+.claude/settings.local.json
+.claude/mcp.json
+.claude/cache/
+.claude/sessions/
+.claude/shortcuts.json
+
+# ChromaDB
+backend/data/chroma/
+
+# Logs
+*.log
+logs/
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Azure
+.azure/
+
+# Node (frontend)
+node_modules/
+.next/
+out/
+build/
+.turbo/
+
+# Database
+*.db
+*.sqlite
