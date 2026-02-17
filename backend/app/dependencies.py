@@ -3,9 +3,9 @@
 from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING
 
+from langchain_core.language_models import BaseChatModel
 from langchain_ollama import ChatOllama
 from langchain_openai import AzureChatOpenAI
-from langchain_core.language_models import BaseChatModel
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 if TYPE_CHECKING:
