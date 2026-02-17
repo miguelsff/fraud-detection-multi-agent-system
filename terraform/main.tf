@@ -115,6 +115,35 @@ resource "azurerm_subnet" "postgresql" {
   }
 }
 
+# NAT Gateway — required for Container Apps in VNet to reach external services
+resource "azurerm_public_ip" "nat" {
+  name                = "pip-nat-fraudguard"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  allocation_method   = "Static"
+  sku                 = "Standard"
+  tags                = local.common_tags
+}
+
+resource "azurerm_nat_gateway" "main" {
+  name                    = "natgw-fraudguard"
+  resource_group_name     = azurerm_resource_group.main.name
+  location                = azurerm_resource_group.main.location
+  sku_name                = "Standard"
+  idle_timeout_in_minutes = 10
+  tags                    = local.common_tags
+}
+
+resource "azurerm_nat_gateway_public_ip_association" "main" {
+  nat_gateway_id       = azurerm_nat_gateway.main.id
+  public_ip_address_id = azurerm_public_ip.nat.id
+}
+
+resource "azurerm_subnet_nat_gateway_association" "container_apps" {
+  subnet_id      = azurerm_subnet.container_apps_infra.id
+  nat_gateway_id = azurerm_nat_gateway.main.id
+}
+
 # Private DNS Zone para PostgreSQL
 resource "azurerm_private_dns_zone" "postgresql" {
   name                = "privatelink.postgres.database.azure.com"
