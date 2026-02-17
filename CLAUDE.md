@@ -21,11 +21,11 @@ Detailed architecture documentation (in Spanish) lives in `.claude/docs/arquitec
 ### Tech Stack
 
 - **Backend**: FastAPI + Python 3.13 + LangGraph + Pydantic v2
-- **LLM**: LangChain + LangChain-Ollama (local dev)
+- **LLM**: LangChain + Ollama (dev: qwen3:30b) / Azure OpenAI (prod: gpt-5.2-chat)
 - **Vector DB**: ChromaDB (embedded, for fraud policy RAG)
-- **Database**: PostgreSQL (via SQLAlchemy async + asyncpg + Alembic migrations)
+- **Database**: PostgreSQL (via SQLAlchemy async + asyncpg + Alembic migrations) · Supabase (production)
 - **Frontend**: Next.js 16 + TypeScript + Tailwind + shadcn/ui
-- **Deploy**: Azure Container Apps + Terraform (planned)
+- **Deploy**: Azure Container Apps + Terraform + GitHub Actions CI/CD
 
 ### Key Backend Modules (`backend/app/`)
 
@@ -141,8 +141,15 @@ GET    /api/v1/transactions/{id}/trace       — Get agent trace
 GET    /api/v1/transactions                  — List analyzed transactions
 GET    /api/v1/hitl/queue                    — HITL review queue
 POST   /api/v1/hitl/{id}/resolve            — Resolve HITL case
+GET    /api/v1/policies                      — List fraud policies
+GET    /api/v1/policies/{id}                 — Get fraud policy by ID
+POST   /api/v1/policies                      — Create fraud policy
+PUT    /api/v1/policies/{id}                 — Update fraud policy
+DELETE /api/v1/policies/{id}                 — Delete fraud policy
+POST   /api/v1/policies/reingest             — Re-ingest policies to ChromaDB
+GET    /api/v1/analytics/summary             — Aggregated metrics
 GET    /api/v1/health                        — Health check
-WS     /api/v1/ws/transactions        
+WS     /api/v1/ws/transactions
 
 ## Reglas Críticas Frontend
 1. Server Components por defecto, "use client" SOLO si hay interactividad

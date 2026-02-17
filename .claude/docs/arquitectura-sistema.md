@@ -1,7 +1,7 @@
 # Arquitectura del Sistema Multi-Agente de Detección de Fraude
 
-**Última actualización**: 2026-02-16
-**Refleja commit**: fa32866 (HITL resolution visibility, LLM/RAG trace fields, componentes trace UI, traducción español)
+**Última actualización**: 2026-02-17
+**Refleja commit**: cfbdc81 (Azure deployment, CI/CD, DB connection fix, timeout fix, cleanup)
 **Actualizar este documento cuando**: Se cambien versiones de tech stack, se agreguen nuevos agentes, o se modifique arquitectura core
 
 ## 1. Visión General
@@ -13,7 +13,7 @@ El sistema implementa un pipeline de **8 agentes especializados** orquestados me
 - ✅ HITL (Human-in-the-Loop) queue con resolución manual
 - ✅ Analytics dashboard con métricas en tiempo real
 - ✅ WebSocket para actualizaciones en vivo
-- ✅ Frontend completo con 54 componentes React y 6 páginas
+- ✅ Frontend completo con 69 archivos .tsx (componentes React) y 6 páginas
 - ✅ PostgreSQL async con Alembic migrations
 - ✅ ChromaDB para RAG de políticas internas
 - ✅ Policy CRUD (gestión de políticas con sincronización ChromaDB)
@@ -35,10 +35,10 @@ El sistema implementa un pipeline de **8 agentes especializados** orquestados me
 | **Backend** | FastAPI + Python 3.13 + uv | Async nativo, Pydantic v2 integrado, OpenAPI auto-generado, WebSockets, package manager ultrarrápido |
 | **Frontend** | Next.js 16 + TypeScript + Tailwind + shadcn/ui | SSR/SSG, App Router, React Server Components, componentes copiables sin vendor lock-in |
 | **Vector DB** | ChromaDB (embedded) | Lightweight, embebible, ideal para el volumen de políticas internas, persistencia automática |
-| **LLM** | Ollama (qwen3:30b local) / Azure OpenAI (prod) | Desarrollo local sin costos, Azure OpenAI planeado para despliegue en cloud |
+| **LLM** | Ollama (qwen3:30b local) / Azure OpenAI (prod: gpt-5.2-chat) | Desarrollo local sin costos, Azure OpenAI desplegado en producción (Container Apps) |
 | **Base de datos** | PostgreSQL 16 (async via asyncpg) | Audit trail persistente, SQLAlchemy async, Alembic migrations, soporte tanto local como cloud |
 | **Logging** | structlog | Logs estructurados JSON, contexto automático, ideal para observabilidad |
-| **Deploy** | Docker Compose (local) / Azure Container Apps (planeado) | Containerización con 3 servicios (postgres, backend, frontend), Azure planeado para producción |
+| **Deploy** | Docker Compose (local) / Azure Container Apps (producción) | Containerización con 3 servicios (postgres, backend, frontend), Azure desplegado con Terraform + CI/CD |
 
 ---
 
@@ -122,8 +122,8 @@ graph TB
 - Pipeline completo: ~4-6 segundos
 - Fase paralela: ~2-4 segundos (el agente más lento determina el tiempo)
 - Debate adversarial: ~1-2 segundos
-- Timeout global: 60 segundos
-- Timeout por agente: 30 segundos
+- Timeout global: 480 segundos (8 minutos)
+- Timeout por agente LLM: 120 segundos (2 minutos)
 
 **Manejo de Errores**:
 - Si un agente falla, se registra en trace con `status: "error"`
@@ -527,13 +527,13 @@ graph LR
 |--------|---------------|-------------------|------|---------|
 | **Transaction Context** | `transaction`, `customer_behavior` | `transaction_signals` | Determinístico | Instantáneo |
 | **Behavioral Pattern** | `transaction`, `customer_behavior` | `behavioral_signals` | Determinístico | Instantáneo |
-| **Policy RAG** | `transaction`, `transaction_signals`, `behavioral_signals` | `policy_matches` | LLM + RAG | 30s |
-| **External Threat** | `transaction`, `transaction_signals`, `behavioral_signals` | `threat_intel` | LLM + Multi-Provider (FATF, OSINT, Sanctions) | 30s |
+| **Policy RAG** | `transaction`, `transaction_signals`, `behavioral_signals` | `policy_matches` | LLM + RAG | 120s |
+| **External Threat** | `transaction`, `transaction_signals`, `behavioral_signals` | `threat_intel` | LLM + Multi-Provider (FATF, OSINT, Sanctions) | 120s |
 | **Evidence Aggregation** | `transaction_signals`, `behavioral_signals`, `policy_matches`, `threat_intel` | `evidence` | Determinístico | <100ms |
-| **Debate Pro-Fraud** | `evidence` | `debate.pro_fraud_*` | LLM | 30s |
-| **Debate Pro-Customer** | `evidence` | `debate.pro_customer_*` | LLM | 30s |
-| **Decision Arbiter** | `evidence`, `debate` | `decision` | LLM | 30s |
-| **Explainability** | `decision`, `evidence`, `policy_matches`, `debate` | `explanation` | LLM | 30s |
+| **Debate Pro-Fraud** | `evidence` | `debate.pro_fraud_*` | LLM | 120s |
+| **Debate Pro-Customer** | `evidence` | `debate.pro_customer_*` | LLM | 120s |
+| **Decision Arbiter** | `evidence`, `debate` | `decision` | LLM | 120s |
+| **Explainability** | `decision`, `evidence`, `policy_matches`, `debate` | `explanation` | LLM | 120s |
 
 > **Nota sobre `off_hours`**: `BehavioralPattern` es el dueño exclusivo de la detección de transacciones fuera de horario. Lo reporta como `"off_hours_transaction"` en `behavioral_signals.anomalies[]`. Los agentes `PolicyRAG` y `ExternalThreat` leen este dato desde `behavioral_signals.anomalies`, no desde `transaction_signals`.
 
@@ -793,8 +793,8 @@ Los umbrales están centralizados en `constants.py` (clase `SafetyOverrides`), n
 
 Cada agente LLM tiene timeouts configurables, centralizados en `constants.py` (clase `AgentTimeouts`):
 
-- `llm_call`: 30s (timeout por llamada LLM individual)
-- `pipeline`: 60s (timeout global del pipeline)
+- `llm_call`: 120s (timeout por llamada LLM individual)
+- `pipeline`: 480s (timeout global del pipeline)
 - `provider_lookup`: 15s (timeout por provider de threat intel)
 
 Implementado con el decorador `@timed_agent`:
@@ -809,7 +809,7 @@ def timed_agent(agent_name: str):
             start = time.perf_counter()
             try:
                 # Execute with timeout
-                result = await asyncio.wait_for(func(state), timeout=30.0)
+                result = await asyncio.wait_for(func(state), timeout=AGENT_TIMEOUTS.llm_call)
                 duration_ms = (time.perf_counter() - start) * 1000
 
                 # Add trace entry
@@ -823,7 +823,7 @@ def timed_agent(agent_name: str):
                 return result
 
             except asyncio.TimeoutError:
-                logger.error(f"{agent_name}_timeout", timeout_seconds=30)
+                logger.error(f"{agent_name}_timeout", timeout_seconds=AGENT_TIMEOUTS.llm_call)
                 # Return empty but valid result
                 return {agent_name: None, "trace": [...]}
 
@@ -835,7 +835,7 @@ def timed_agent(agent_name: str):
 ```python
 @timed_agent("policy_rag")
 async def policy_rag_agent(state: OrchestratorState) -> dict:
-    # Si la ejecución toma >30s, timeout automático
+    # Si la ejecución toma >120s (AGENT_TIMEOUTS.llm_call), timeout automático
     ...
 ```
 
@@ -873,7 +873,7 @@ logger.error(
 | **Checkpointing** | ✅ Built-in | ❌ | ❌ | ❌ | ⚠️ No usado (audit trail en PostgreSQL) |
 | **Debugging** | ✅ LangSmith | ⚠️ | ⚠️ | ⚠️ | ✅ Trace logs + structlog |
 | **Estado tipado** | ✅ TypedDict | ❌ | ❌ | ❌ | ✅ OrchestratorState tipado |
-| **Vendor lock-in** | ❌ Agnóstico | ✅ Azure | ✅ AWS | ❌ | ✅ Agnóstico de LLM (Ollama local) |
+| **Vendor lock-in** | ❌ Agnóstico | ✅ Azure | ✅ AWS | ❌ | ✅ Agnóstico de LLM (Ollama dev / Azure OpenAI prod) |
 | **Madurez** | ✅ Producción | ⚠️ Preview | ✅ | ⚠️ | ✅ LangGraph 1.0+ estable |
 
 **Decisión**: LangGraph ofrece el mejor balance entre control granular del flujo, tipado fuerte del estado, paralelismo nativo y trazabilidad. Su integración con LangSmith permite debugging visual del grafo completo, lo cual es crítico para un sistema de detección de fraude donde cada decisión debe ser auditable.
@@ -1002,7 +1002,7 @@ components/
 │   └── PolicyDeleteDialog.tsx
 ├── common/                       # NUEVO: Componentes compartidos
 │   └── WebSocketStatus.tsx
-└── ... (10 directorios, 54 componentes totales)
+└── ... (10 directorios, 69 archivos .tsx totales)
 ```
 
 **Dependencias reales** (solo primitives de Radix UI):
@@ -1031,7 +1031,7 @@ Todos los "magic numbers" del pipeline están centralizados en **6 modelos Pydan
 | `EvidenceWeights` | Pesos del score compuesto | `behavioral: 0.30`, `policy: 0.25` |
 | `RiskThresholds` | Categorías de riesgo (0-100) | `low_max: 30.0`, `high_max: 80.0` |
 | `SafetyOverrides` | Overrides del Decision Arbiter | `critical_risk_threshold: 85.0` |
-| `AgentTimeouts` | Timeouts en segundos | `llm_call: 30.0`, `pipeline: 60.0` |
+| `AgentTimeouts` | Timeouts en segundos | `llm_call: 120.0`, `pipeline: 480.0` |
 
 **Beneficios**:
 - ✅ Validación automática por Pydantic (tipos, rangos)
@@ -1264,23 +1264,26 @@ docker compose -f docker-compose.prod.yml up --build
 
 ---
 
-### 9.3 Despliegue en Azure Cloud (⚠️ PLANIFICADO, NO IMPLEMENTADO)
+### 9.3 Despliegue en Azure Cloud (✅ IMPLEMENTADO)
 
-**Nota**: Este despliegue está planificado pero no implementado. El sistema actual funciona completamente en desarrollo local y Docker Compose producción.
+**Descripción**: Despliegue completo en Azure usando Terraform para infraestructura y GitHub Actions para CI/CD con deploy path-based.
 
 ```mermaid
 graph TB
-    subgraph "Azure Cloud (PLANIFICADO)"
+    subgraph "Azure Cloud (IMPLEMENTADO)"
         subgraph "Azure Container Apps"
             BE[Backend Container<br/>FastAPI + LangGraph]
             FE[Frontend Container<br/>Next.js]
         end
 
         subgraph "Azure Managed Services"
-            AOAI[Azure OpenAI<br/>GPT-4o]
+            AOAI[Azure OpenAI<br/>gpt-5.2-chat]
             KV[Azure Key Vault<br/>Secrets]
-            PG[(Azure PostgreSQL<br/>Flexible Server)]
             ACR[Azure Container<br/>Registry]
+        end
+
+        subgraph "External Services"
+            SUPA[(Supabase<br/>PostgreSQL)]
         end
 
         subgraph "Monitoring"
@@ -1289,40 +1292,40 @@ graph TB
         end
     end
 
-    subgraph "CI/CD"
-        GH[GitHub Actions]
-        TF[Terraform]
+    subgraph "CI/CD (GitHub Actions)"
+        GH_APP[App Deploy<br/>Path-based · Fast]
+        GH_INFRA[Infra Deploy<br/>Terraform]
     end
 
-    GH -->|build & push| ACR
+    GH_APP -->|build & push| ACR
     ACR -->|deploy| BE & FE
-    TF -->|provision| AOAI & KV & PG
+    GH_INFRA -->|provision| AOAI & KV & ACR
     BE --> AOAI
     BE --> KV
-    BE --> PG
-    BE --> FE
+    BE --> SUPA
+    FE -->|API calls| BE
     AI -.-> BE & FE
 
-    style BE fill:#8b5cf6,color:#fff,stroke-dasharray: 5 5
-    style FE fill:#06b6d4,color:#fff,stroke-dasharray: 5 5
-    style AOAI fill:#22c55e,color:#fff,stroke-dasharray: 5 5
-    style PG fill:#3b82f6,color:#fff,stroke-dasharray: 5 5
+    style BE fill:#8b5cf6,color:#fff
+    style FE fill:#06b6d4,color:#fff
+    style AOAI fill:#22c55e,color:#fff
+    style SUPA fill:#3b82f6,color:#fff
+    style ACR fill:#f59e0b,color:#000
 ```
 
-**Componentes planeados**:
-- **Azure Container Apps**: Despliegue serverless de containers
-- **Azure OpenAI**: Reemplazo de Ollama para GPT-4o
-- **Azure PostgreSQL Flexible Server**: Base de datos gestionada
-- **Azure Key Vault**: Gestión segura de secrets
-- **Application Insights**: Telemetría y métricas
-- **Terraform**: IaC para provisión de infraestructura
+**Componentes desplegados**:
+- **Azure Container Apps**: Despliegue serverless de containers (backend + frontend)
+- **Azure OpenAI**: Modelo gpt-5.2-chat para producción (reemplaza Ollama)
+- **Azure Container Registry (ACR)**: Almacenamiento de imágenes Docker
+- **Azure Key Vault**: Gestión segura de secrets (connection strings, API keys)
+- **Application Insights**: Telemetría y métricas (Azure-native observability)
+- **Supabase PostgreSQL**: Base de datos gestionada en producción
+- **Terraform**: IaC para toda la infraestructura Azure (`devops/terraform/`)
 
-**Migración requerida**:
-1. Cambiar `OLLAMA_BASE_URL` → `AZURE_OPENAI_ENDPOINT`
-2. Cambiar modelo `qwen3:30b` → `gpt-4o`
-3. Actualizar `DATABASE_URL` a Azure PostgreSQL connection string
-4. Configurar managed identities para Key Vault
-5. Agregar Application Insights SDK
+**CI/CD con GitHub Actions**:
+- **App deploy** (path-based): Cambios en `backend/` o `frontend/` → build Docker → push ACR → deploy Container Apps (~3-5 min)
+- **Infra deploy**: Cambios en `devops/terraform/` → plan → apply (~5-10 min)
+- **Autenticación**: Managed Identity (DefaultAzureCredential) para Azure OpenAI y Key Vault
 
 ---
 
@@ -1488,7 +1491,7 @@ ws.onmessage = (event) => {
 
 ## 11. Estructura Final del Proyecto
 
-**Nota**: Esta estructura refleja el estado actual del repositorio (commit fa32866).
+**Nota**: Esta estructura refleja el estado actual del repositorio (commit cfbdc81).
 
 ```
 fraud-detection-multi-agent-system/
@@ -1635,7 +1638,7 @@ fraud-detection-multi-agent-system/
 │   │   │   │   └── page.tsx           # Métricas + distribución + trends
 │   │   │   └── policies/
 │   │   │       └── page.tsx           # Gestión CRUD de políticas
-│   │   ├── components/                # 54 componentes React (10 subdirectorios)
+│   │   ├── components/                # 69 archivos .tsx (10 subdirectorios)
 │   │   │   ├── layout/                # Header, Sidebar, MobileSidebar
 │   │   │   ├── dashboard/             # StatsCards, RecentDecisions, RiskDistribution
 │   │   │   ├── transactions/          # TransactionTable, TransactionsClient, TransactionDetailClient,
@@ -1666,8 +1669,9 @@ fraud-detection-multi-agent-system/
 │   ├── next.config.ts                 # Next.js config
 │   └── tsconfig.json                  # TypeScript config (strict mode)
 │
-├── devops/                            # Docker Compose configs
+├── devops/                            # Docker Compose + Terraform + CI/CD
 │   ├── docker-compose.yml             # PostgreSQL 16 para desarrollo local
+│   ├── terraform/                     # IaC para Azure (Container Apps, ACR, Key Vault, OpenAI)
 │   └── README.md                      # Instrucciones de Docker
 │
 ├── docker-compose.prod.yml            # Producción: 3 servicios (postgres, backend, frontend)
@@ -1694,11 +1698,8 @@ fraud-detection-multi-agent-system/
 
 **Conteo de archivos**:
 - **Backend**: ~65 archivos Python (.py)
-- **Frontend**: 54 componentes React (.tsx) + 4 custom hooks
-- **Total componentes frontend**:
-  - 24 componentes UI base (shadcn/ui + JsonViewer)
-  - 30 componentes de dominio (dashboard, transactions, agents, hitl, analytics, policies, common)
-  - 3 componentes de layout
+- **Frontend**: 69 archivos .tsx + 4 custom hooks
+- **Total componentes frontend**: 69 archivos .tsx distribuidos en 10 subdirectorios
 - **Tests**: 21 archivos de test (pytest) en 4 subdirectorios
 - **Migrations**: 2 Alembic migrations (initial schema + LLM/RAG trace fields)
 - **Docker**: 3 Dockerfiles + 2 docker-compose configs
@@ -1725,11 +1726,11 @@ No todos los agentes necesitan un LLM. Diseño híbrido optimizado para costo y 
 | Decision Arbiter | **LLM** | Evaluación balanceada de argumentos | LLM con context window de evidencia completa | `decision_arbiter.py` |
 | Explainability | **LLM** | Generación de lenguaje natural dual | LLM con templates customer/audit | `explainability.py` |
 
-**Impacto en costos** (estimado con Ollama local = $0, Azure OpenAI futuro):
+**Impacto en costos** (estimado con Ollama local = $0, Azure OpenAI producción):
 - 2 agentes determinísticos (0 llamadas LLM) → $0
 - 6 agentes con LLM (1 llamada cada uno) → ~6 llamadas por transacción
-- Con GPT-4o en Azure: ~$0.015/transacción (6 llamadas × $0.0025/llamada promedio)
-- Con Ollama local: $0/transacción
+- Con gpt-5.2-chat en Azure: ~$0.02/transacción (6 llamadas × ~$0.003/llamada promedio)
+- Con Ollama local (qwen3:30b): $0/transacción
 
 **Impacto en latencia**:
 - Agentes determinísticos: <50ms cada uno
@@ -1749,8 +1750,8 @@ def timed_agent(agent_name: str):
         async def wrapper(state: OrchestratorState) -> dict:
             start = time.perf_counter()
             try:
-                # Execute with 30s timeout
-                result = await asyncio.wait_for(func(state), timeout=30.0)
+                # Execute with configurable timeout (AGENT_TIMEOUTS.llm_call = 120s)
+                result = await asyncio.wait_for(func(state), timeout=AGENT_TIMEOUTS.llm_call)
                 duration_ms = (time.perf_counter() - start) * 1000
 
                 # Add successful trace entry
@@ -1765,7 +1766,7 @@ def timed_agent(agent_name: str):
 
             except asyncio.TimeoutError:
                 duration_ms = (time.perf_counter() - start) * 1000
-                logger.error(f"{agent_name}_timeout", timeout_seconds=30)
+                logger.error(f"{agent_name}_timeout", timeout_seconds=AGENT_TIMEOUTS.llm_call)
 
                 # Return safe default with error trace
                 trace_entry = AgentTraceEntry(
@@ -1796,7 +1797,7 @@ def timed_agent(agent_name: str):
 ```python
 @timed_agent("policy_rag")
 async def policy_rag_agent(state: OrchestratorState) -> dict:
-    # Si toma >30s → timeout automático
+    # Si toma >120s → timeout automático (AGENT_TIMEOUTS.llm_call)
     # Si falla → error trace, pipeline continúa
     ...
 ```
@@ -1810,7 +1811,7 @@ async def _call_llm_with_retry(llm: ChatOllama, prompt: str, max_retries: int = 
     """Call LLM with exponential backoff retry."""
     for attempt in range(max_retries):
         try:
-            response = await asyncio.wait_for(llm.ainvoke(prompt), timeout=25.0)
+            response = await asyncio.wait_for(llm.ainvoke(prompt), timeout=AGENT_TIMEOUTS.llm_call)
             return response.content
         except asyncio.TimeoutError:
             if attempt == max_retries - 1:

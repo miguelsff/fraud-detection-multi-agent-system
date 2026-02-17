@@ -38,6 +38,7 @@ graph TB
         AT[Agent Trace Viewer]
         HQ[HITL Queue]
         EP[Explanation Panel]
+        PL[Policy Management]
     end
 
     subgraph "API Gateway — FastAPI"
@@ -75,11 +76,11 @@ graph TB
 
     subgraph "Data Layer"
         CDB[(ChromaDB<br/>Políticas)]
-        SQL[(SQLite/PostgreSQL<br/>Audit Trail)]
+        SQL[(PostgreSQL 16<br/>Audit Trail)]
         SYN[(Datos Sintéticos<br/>JSON)]
     end
 
-    UI --> API
+    UI & PL --> API
     API --> ORC
     ORC --> TCA & BPA & PRA & ETA
     TCA & BPA & PRA & ETA --> EAA
@@ -105,7 +106,7 @@ graph TB
 |------|---------|---------|
 | **Docker** | 20+ | PostgreSQL container |
 | **Python** | 3.13+ | Backend runtime |
-| **Ollama** | Latest | Local LLM inference (llama3.2) |
+| **Ollama** | Latest | Local LLM inference (qwen3:30b) |
 | **uv** | 0.5+ | Fast Python package manager |
 
 **Install uv:**
@@ -127,7 +128,7 @@ curl -fsSL https://ollama.com/install.sh | sh
 
 **Pull LLM model:**
 ```bash
-ollama pull llama3.2
+ollama pull qwen3:30b
 ```
 
 ### Installation
@@ -290,7 +291,7 @@ curl -X POST "http://localhost:8000/api/v1/transactions/analyze" \
 
 | Agent | Type | Input | Output |
 |-------|------|-------|--------|
-| **Transaction Context** | Deterministic | Transaction + CustomerBehavior | TransactionSignals (amount_ratio, is_off_hours, flags) |
+| **Transaction Context** | Deterministic | Transaction + CustomerBehavior | TransactionSignals (amount_ratio, is_foreign, is_unknown_device, channel_risk, flags) |
 | **Behavioral Pattern** | Deterministic | Transaction + CustomerBehavior | BehavioralSignals (deviation_score, anomalies, velocity_alert) |
 | **Policy RAG** | LLM + ChromaDB | Transaction context + behavior | PolicyMatchResult (matching policies, relevance scores) |
 | **External Threat** | LLM + Web Search | Transaction metadata | ThreatIntelResult (threat_level, external sources) |
@@ -361,6 +362,12 @@ Traditional fraud detection systems rely on rigid rules or black-box ML models. 
 | **GET** | `/api/v1/transactions` | List analyzed transactions | ❌ |
 | **GET** | `/api/v1/hitl/queue` | Get HITL review queue | ❌ |
 | **POST** | `/api/v1/hitl/{id}/resolve` | Resolve HITL case | ❌ |
+| **GET** | `/api/v1/policies` | List fraud policies | ❌ |
+| **GET** | `/api/v1/policies/{id}` | Get fraud policy by ID | ❌ |
+| **POST** | `/api/v1/policies` | Create fraud policy | ❌ |
+| **PUT** | `/api/v1/policies/{id}` | Update fraud policy | ❌ |
+| **DELETE** | `/api/v1/policies/{id}` | Delete fraud policy | ❌ |
+| **POST** | `/api/v1/policies/reingest` | Re-ingest policies to ChromaDB | ❌ |
 | **GET** | `/api/v1/analytics/summary` | Aggregated metrics | ❌ |
 | **WS** | `/api/v1/ws/transactions` | Real-time agent updates | ❌ |
 | **GET** | `/api/v1/health` | Health check | ❌ |
@@ -379,7 +386,7 @@ Traditional fraud detection systems rely on rigid rules or black-box ML models. 
 |-----------|-----------|---------|---------|
 | **API Framework** | FastAPI | 0.128+ | High-performance async API with OpenAPI |
 | **Orchestration** | LangGraph | 1.0+ | Agent state machine with checkpointing |
-| **LLM Integration** | LangChain + Ollama | Latest | Local LLM inference (llama3.2) |
+| **LLM Integration** | LangChain + Ollama / Azure OpenAI | Latest | qwen3:30b (dev) · gpt-5.2-chat (prod) |
 | **Vector DB** | ChromaDB | 1.5+ | Embedded policy knowledge base |
 | **Database** | PostgreSQL | 17 | Persistent audit trail storage |
 | **Validation** | Pydantic | 2.12+ | Type-safe models and validation |
@@ -391,9 +398,11 @@ Traditional fraud detection systems rely on rigid rules or black-box ML models. 
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
 | **Containerization** | Docker Compose | Dev: PostgreSQL only / Prod: Full stack |
-| **Deployment** | Azure Container Apps (planned) | Serverless containers |
-| **IaC** | Terraform (planned) | Infrastructure as code |
-| **Monitoring** | (planned) | Observability stack |
+| **Deployment** | Azure Container Apps | Serverless containers with ACR |
+| **IaC** | Terraform | Infrastructure as code (Azure) |
+| **CI/CD** | GitHub Actions | Path-based deploy (fast app updates + terraform for infra) |
+| **Monitoring** | Application Insights | Azure-native observability |
+| **Database (prod)** | Supabase PostgreSQL | Managed PostgreSQL in production |
 
 **Docker Compose Files:**
 - `devops/docker-compose.yml` — Development (PostgreSQL only, backend/frontend run locally)
@@ -475,6 +484,9 @@ make test-integration
 | **Explainability** | 18 tests | ✅ 100% | Unit |
 | **Orchestrator** | 16 tests | ✅ 100% | Unit + Integration |
 | **API Routers** | 11 tests | ✅ 100% | Unit |
+| **Services** | 4 files | ✅ 100% | Unit |
+| **RAG** | 1 file | ✅ 100% | Unit |
+| **Total** | **251 tests** (20 files) | | |
 
 **Test Data:**
 - Synthetic test data: `backend/data/synthetic_data.json` (6 scenarios covering all decision types)
@@ -578,8 +590,8 @@ Humans can **override** agent decisions and provide feedback for model improveme
 - [x] **Phase 4**: API endpoints + WebSocket support
 - [x] **Phase 5**: Comprehensive test suite (250+ tests)
 - [x] **Phase 6**: Frontend dashboard (Next.js + TypeScript + shadcn/ui)
-- [ ] **Phase 7**: Azure deployment (Container Apps + Terraform)
-- [ ] **Phase 8**: Production monitoring + observability
+- [x] **Phase 7**: Azure deployment (Container Apps + Terraform + CI/CD)
+- [x] **Phase 8**: Production monitoring + observability (Application Insights)
 - [ ] **Phase 9**: Model fine-tuning with HITL feedback
 
 ---
