@@ -131,6 +131,7 @@ Run `python seed_test.py` from `backend/` to test the full pipeline against thes
 - Decision outcomes: APPROVE, CHALLENGE, BLOCK, ESCALATE_TO_HUMAN
 - HITL (Human-in-the-Loop) queue handles ESCALATE cases via `/api/v1/hitl/` endpoints
 - WebSocket at `/api/v1/ws/transactions` streams agent progress events in real-time
+- **ALL LLM output must be 100% in Spanish** — every prompt in `backend/app/prompts/` starts with "INSTRUCCIÓN CRÍTICA: Debes responder COMPLETAMENTE en español"
 
 ## API Endpoints
 POST   /api/v1/transactions/analyze          — Full pipeline analysis
@@ -162,6 +163,15 @@ Pages: app/page.tsx (dashboard), app/transactions/, app/hitl/, app/analytics/
 Components: components/{dashboard,transactions,agents,hitl,explanation}/
 API Client: lib/api.ts (fetch wrapper → backend :8000)
 Types: lib/types.ts (mirror de Pydantic schemas del backend)
+
+## Reglas Backend LLM
+**CRÍTICO:** Todo texto generado por LLMs (agentes de debate, decisión, explicabilidad, RAG, threat intel) DEBE estar 100% en español.
+
+Cuando agregues o modifiques prompts en `backend/app/prompts/`:
+1. **SIEMPRE** inicia el prompt con: `INSTRUCCIÓN CRÍTICA: Debes responder COMPLETAMENTE en español. Todo el texto generado debe estar en español, sin excepciones.`
+2. Verifica que todos los ejemplos en el prompt estén en español
+3. Verifica que las instrucciones de formato JSON especifiquen campos en español
+4. NUNCA uses inglés en los prompts para texto que será visible al usuario final o en auditoría
 
 ## Reglas general
 1. Sólo debes crear documentación si te solicita explicitamente y en caso se te solicita debes preguntar para confirmar
