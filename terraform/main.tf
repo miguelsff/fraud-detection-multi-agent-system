@@ -363,6 +363,14 @@ resource "azurerm_key_vault_access_policy" "current_user" {
 # - your-prod-password (Supabase DB password)
 # - your-opensanctions-key
 
+resource "azurerm_key_vault_secret" "azure_openai_api_key" {
+  name         = "azure-openai-api-key"
+  value        = var.azure_openai_api_key
+  key_vault_id = azurerm_key_vault.main.id
+
+  depends_on = [azurerm_key_vault_access_policy.current_user]
+}
+
 # ============================================================================
 # CONTAINER APPS
 # ============================================================================
@@ -470,8 +478,8 @@ resource "azurerm_container_app" "backend" {
       }
 
       env {
-        name  = "AZURE_OPENAI_ENDPOINT"
-        value = "https://migue-mlq261f9-eastus2.cognitiveservices.azure.com"
+        name  = "AZURE_OPENAI_BASE_URL"
+        value = "https://migue-mlq261f9-eastus2.openai.azure.com/openai/v1/"
       }
 
       env {
@@ -480,8 +488,8 @@ resource "azurerm_container_app" "backend" {
       }
 
       env {
-        name  = "AZURE_CLIENT_ID"
-        value = azurerm_user_assigned_identity.container_apps.client_id
+        name        = "AZURE_OPENAI_API_KEY"
+        secret_name = "azure-openai-api-key"
       }
 
       # --- Database connection parts (non-secret) ---
@@ -554,6 +562,12 @@ resource "azurerm_container_app" "backend" {
   secret {
     name                = "your-opensanctions-key"
     key_vault_secret_id = "${azurerm_key_vault.main.vault_uri}secrets/your-opensanctions-key"
+    identity            = azurerm_user_assigned_identity.container_apps.id
+  }
+
+  secret {
+    name                = "azure-openai-api-key"
+    key_vault_secret_id = "${azurerm_key_vault.main.vault_uri}secrets/azure-openai-api-key"
     identity            = azurerm_user_assigned_identity.container_apps.id
   }
 

@@ -40,12 +40,11 @@ def main() -> int:
     # LLM Configuration
     print("\n🤖 LLM Configuration:")
     if settings.use_azure_openai:
-        print(f"   Provider: Azure OpenAI (Managed Identity)")
-        print(f"   Endpoint: {settings.azure_openai_endpoint or '❌ NOT SET'}")
+        print(f"   Provider: Azure OpenAI (API Key)")
+        print(f"   Base URL: {settings.azure_openai_base_url or '❌ NOT SET'}")
         print(f"   Deployment: {settings.azure_openai_deployment}")
-        print(f"   API Version: {settings.azure_openai_api_version}")
-        print(f"   Auth: DefaultAzureCredential"
-              f" (Client ID: {settings.azure_client_id or 'auto-detect'})")
+        has_key = bool(settings.azure_openai_api_key.get_secret_value())
+        print(f"   API Key: {'✅ Set' if has_key else '❌ NOT SET'}")
     else:
         print(f"   Provider: Ollama (local)")
         print(f"   Base URL: {settings.ollama_base_url}")

@@ -34,12 +34,11 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen3:30b"
 
-    # Azure OpenAI (for cloud production via Managed Identity)
-    azure_openai_endpoint: str = ""
+    # Azure OpenAI (OpenAI-compatible endpoint + API key)
+    azure_openai_base_url: str = ""
+    azure_openai_api_key: SecretStr = SecretStr("")
     azure_openai_deployment: str = "gpt-5.2-chat"
-    azure_openai_api_version: str = "2025-03-01-preview"
-    azure_client_id: str = ""  # User Assigned Managed Identity client ID
-    use_azure_openai: bool = False  # Feature flag
+    use_azure_openai: bool = False
 
     # Database - connection parts (production: password from Key Vault)
     database_host: str = "localhost"
