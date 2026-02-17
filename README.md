@@ -386,7 +386,7 @@ Los sistemas tradicionales de detección de fraude dependen de reglas rígidas o
 |------------|-----------|---------|-----------|
 | **Framework API** | FastAPI | 0.128+ | API async de alto rendimiento con OpenAPI |
 | **Orquestación** | LangGraph | 1.0+ | Máquina de estados de agentes con checkpointing |
-| **Integración LLM** | LangChain + Ollama / Azure OpenAI | Latest | qwen3:30b (dev) · gpt-5.2-chat (prod) |
+| **Integración LLM** | LangChain + Ollama / Azure OpenAI (API Key) | Latest | qwen3:30b (dev) · gpt-5.2-chat (prod) |
 | **Vector DB** | ChromaDB | 1.5+ | Base de conocimiento de políticas embebida |
 | **Base de Datos** | PostgreSQL | 17 | Almacenamiento persistente de auditoría |
 | **Validación** | Pydantic | 2.12+ | Modelos y validación con tipos seguros |
