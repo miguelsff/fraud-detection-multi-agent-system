@@ -399,10 +399,12 @@ Los sistemas tradicionales de detección de fraude dependen de reglas rígidas o
 |------------|-----------|-----------|
 | **Contenedores** | Docker Compose | Dev: solo PostgreSQL / Prod: stack completo |
 | **Despliegue** | Azure Container Apps | Contenedores serverless con ACR |
+| **Networking** | Azure NAT Gateway | Internet de salida para contenedores en VNet |
 | **IaC** | Terraform | Infraestructura como código (Azure) |
+| **State Management** | Azure Storage (Terraform backend) | Estado remoto para infraestructura como código |
 | **CI/CD** | GitHub Actions | Deploy path-based (actualizaciones rápidas de app + terraform para infra) |
 | **Monitoreo** | Application Insights | Observabilidad nativa de Azure |
-| **Base de Datos (prod)** | Supabase PostgreSQL | PostgreSQL gestionado en producción |
+| **Base de Datos (prod)** | Supabase PostgreSQL | PostgreSQL gestionado — Session Pooler (IPv4) |
 
 **Archivos Docker Compose:**
 - `devops/docker-compose.yml` — Desarrollo (solo PostgreSQL, backend/frontend corren localmente)
@@ -419,6 +421,15 @@ Los sistemas tradicionales de detección de fraude dependen de reglas rígidas o
 | **Estado** | React hooks + Context | Gestión de estado del cliente |
 | **Cliente API** | Custom fetch wrapper | Llamadas API centralizadas con manejo de errores |
 | **WebSocket** | Native WebSocket API | Actualizaciones de progreso de agentes en tiempo real |
+
+### Infraestructura de Producción
+
+| Aspecto | Solución | Detalle |
+|---------|----------|---------|
+| **Inicialización de BD** | `startup.py` | Script de arranque: crea esquema (`create_all` idempotente) + ejecuta/stamps migraciones Alembic antes de iniciar uvicorn |
+| **Conexión a Supabase** | Session Pooler (IPv4) | Usa `aws-1-us-east-1.pooler.supabase.com` en vez de conexión directa (que resuelve solo a IPv6, incompatible con NAT Gateway) |
+| **Egress de red** | Azure NAT Gateway | Container Apps en VNet requieren NAT Gateway para acceso a internet de salida (Supabase, Azure OpenAI, threat intel APIs) |
+| **Estado de Terraform** | Azure Storage Account | Estado remoto en `stfraudguardtfstate` (container `tfstate`), evita conflictos de estado local en CI/CD |
 
 ---
 
@@ -590,7 +601,7 @@ Los humanos pueden **anular** decisiones de agentes y proporcionar retroalimenta
 - [x] **Fase 4**: Endpoints API + soporte WebSocket
 - [x] **Fase 5**: Suite de tests completa (250+ tests)
 - [x] **Fase 6**: Dashboard frontend (Next.js + TypeScript + shadcn/ui)
-- [x] **Fase 7**: Despliegue en Azure (Container Apps + Terraform + CI/CD)
+- [x] **Fase 7**: Despliegue en Azure (Container Apps + NAT Gateway + Terraform remote state + CI/CD)
 - [x] **Fase 8**: Monitoreo en producción + observabilidad (Application Insights)
 - [ ] **Fase 9**: Fine-tuning del modelo con retroalimentación HITL
 
