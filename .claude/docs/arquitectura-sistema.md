@@ -1,7 +1,7 @@
 # Arquitectura del Sistema Multi-Agente de Detección de Fraude
 
 **Última actualización**: 2026-02-17
-**Refleja commit**: cfbdc81 (Azure deployment, CI/CD, DB connection fix, timeout fix, cleanup)
+**Refleja commit**: e4c5e44 (startup script, DB schema setup, NAT Gateway, Terraform remote state)
 **Actualizar este documento cuando**: Se cambien versiones de tech stack, se agreguen nuevos agentes, o se modifique arquitectura core
 
 ## 1. Visión General
@@ -1271,19 +1271,23 @@ docker compose -f docker-compose.prod.yml up --build
 ```mermaid
 graph TB
     subgraph "Azure Cloud (IMPLEMENTADO)"
-        subgraph "Azure Container Apps"
-            BE[Backend Container<br/>FastAPI + LangGraph]
-            FE[Frontend Container<br/>Next.js]
+        subgraph "VNet (10.0.0.0/16)"
+            subgraph "Azure Container Apps"
+                BE[Backend Container<br/>FastAPI + LangGraph]
+                FE[Frontend Container<br/>Next.js]
+            end
+            NAT[NAT Gateway<br/>IP pública estática]
         end
 
         subgraph "Azure Managed Services"
             AOAI[Azure OpenAI<br/>gpt-5.2-chat]
             KV[Azure Key Vault<br/>Secrets]
             ACR[Azure Container<br/>Registry]
+            TFSTATE[Azure Storage<br/>Terraform State]
         end
 
         subgraph "External Services"
-            SUPA[(Supabase<br/>PostgreSQL)]
+            SUPA[(Supabase<br/>PostgreSQL<br/>Session Pooler IPv4)]
         end
 
         subgraph "Monitoring"
@@ -1300,9 +1304,11 @@ graph TB
     GH_APP -->|build & push| ACR
     ACR -->|deploy| BE & FE
     GH_INFRA -->|provision| AOAI & KV & ACR
-    BE --> AOAI
+    GH_INFRA -->|read/write state| TFSTATE
+    BE -->|via NAT Gateway| AOAI
     BE --> KV
-    BE --> SUPA
+    BE -->|via NAT Gateway| SUPA
+    NAT -->|egress IPv4| SUPA & AOAI
     FE -->|API calls| BE
     AI -.-> BE & FE
 
@@ -1311,21 +1317,98 @@ graph TB
     style AOAI fill:#22c55e,color:#fff
     style SUPA fill:#3b82f6,color:#fff
     style ACR fill:#f59e0b,color:#000
+    style NAT fill:#ef4444,color:#fff
+    style TFSTATE fill:#6b7280,color:#fff
 ```
 
 **Componentes desplegados**:
-- **Azure Container Apps**: Despliegue serverless de containers (backend + frontend)
+- **Azure Container Apps**: Despliegue serverless de containers (backend + frontend) en VNet
+- **Azure NAT Gateway**: IP pública estática para egress de containers en VNet (requerido para alcanzar Supabase y Azure OpenAI)
 - **Azure OpenAI**: Modelo gpt-5.2-chat para producción (reemplaza Ollama)
 - **Azure Container Registry (ACR)**: Almacenamiento de imágenes Docker
 - **Azure Key Vault**: Gestión segura de secrets (connection strings, API keys)
+- **Azure Storage Account**: Estado remoto de Terraform (`stfraudguardtfstate`)
 - **Application Insights**: Telemetría y métricas (Azure-native observability)
-- **Supabase PostgreSQL**: Base de datos gestionada en producción
+- **Supabase PostgreSQL**: Base de datos gestionada en producción (Session Pooler IPv4)
 - **Terraform**: IaC para toda la infraestructura Azure (`devops/terraform/`)
+
+**Networking**:
+- Container Apps desplegados dentro de VNet (`10.0.0.0/16`) con subnet dedicada (`10.0.0.0/23`)
+- NAT Gateway asociado a la subnet de Container Apps para tráfico de salida
+- Supabase accedido vía Session Pooler (IPv4) — la conexión directa resuelve solo a IPv6, incompatible con NAT Gateway
 
 **CI/CD con GitHub Actions**:
 - **App deploy** (path-based): Cambios en `backend/` o `frontend/` → build Docker → push ACR → deploy Container Apps (~3-5 min)
 - **Infra deploy**: Cambios en `devops/terraform/` → plan → apply (~5-10 min)
 - **Autenticación**: Managed Identity (DefaultAzureCredential) para Azure OpenAI y Key Vault
+
+---
+
+### 9.4 Inicialización de Base de Datos en Producción
+
+**Problema**: El proyecto no tenía una migración Alembic inicial de `CREATE TABLE` (las tablas se creaban vía `create_all()` de SQLAlchemy). En un despliegue fresh en producción, Alembic no podía correr migraciones incrementales porque las tablas no existían.
+
+**Solución**: Script `startup.py` que se ejecuta antes de uvicorn:
+
+```python
+# backend/startup.py (simplificado)
+async def setup_database():
+    # 1. create_all() — idempotente, crea tablas solo si no existen
+    await init_db()
+
+    # 2. Si alembic_version no existe o está vacío → stamp head
+    #    Si ya existe → alembic upgrade head (migraciones pendientes)
+    if no_alembic_version:
+        subprocess.run(["alembic", "stamp", "head"])
+    else:
+        subprocess.run(["alembic", "upgrade", "head"])
+```
+
+**Dockerfile CMD**:
+```dockerfile
+CMD ["sh", "-c", "python -m uv run python startup.py && python -m uv run uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+```
+
+**Flujo de inicialización**:
+1. **Container arranca** → ejecuta `startup.py`
+2. `create_all()` crea tablas si no existen (idempotente)
+3. Si BD es nueva → `alembic stamp head` (marca como actualizada sin ejecutar migraciones)
+4. Si BD existente → `alembic upgrade head` (ejecuta migraciones pendientes)
+5. **uvicorn arranca** → `lifespan` ejecuta `init_db()` de nuevo (también idempotente)
+
+**Nota**: `init_db()` también se ejecuta en el `lifespan` de FastAPI en todos los entornos (no solo development), como red de seguridad adicional.
+
+---
+
+### 9.5 Lecciones de Infraestructura
+
+Lecciones clave aprendidas durante el despliegue en Azure:
+
+**1. Supabase IPv6 vs NAT Gateway IPv4**
+- La conexión directa de Supabase (`db.*.supabase.co`) resuelve **solo a IPv6**
+- Azure NAT Gateway soporta **solo IPv4**
+- **Solución**: Usar el Session Pooler de Supabase (`aws-1-us-east-1.pooler.supabase.com`) que sí resuelve a IPv4
+- Sin NAT Gateway, Container Apps en VNet no tienen egress a internet
+
+**2. `timestamp()` en tags de Terraform causa drift**
+- Usar `timestamp()` en tags de recursos Azure genera un valor diferente en cada `plan`
+- Terraform detecta cambios en cada ejecución → actualizaciones innecesarias
+- **Solución**: Usar tags estáticos (ej. `managed_by = "terraform"`) sin timestamps dinámicos
+
+**3. `random_string` en Terraform causa reemplazos en cascada**
+- Usar `random_string` para sufijos de nombres de recursos causa que si el estado se pierde, Terraform genera un nuevo sufijo
+- Esto provoca **reemplazos destructivos** de todos los recursos que usan ese sufijo
+- **Solución**: Hardcodear el sufijo una vez generado (ej. `name_suffix = "ytxme4"`)
+
+**4. Container Apps Environment requiere `workload_profile`**
+- Cuando se especifica `infrastructure_resource_group_name`, Azure requiere un bloque `workload_profile` explícito
+- Sin él, el `plan` falla silenciosamente o genera drift
+- **Solución**: Agregar bloque `workload_profile { name = "Consumption" ... }` al Container Apps Environment
+
+**5. Terraform remote state debe inicializarse antes de importar recursos**
+- Si se migra de estado local a remoto (Azure Storage), primero hay que hacer `terraform init -migrate-state`
+- Luego importar recursos existentes con `terraform import`
+- El orden inverso causa pérdida de referencia a recursos existentes
 
 ---
 
@@ -1616,7 +1699,8 @@ fraud-detection-multi-agent-system/
 │   │   │   └── test_threat_intel_manager.py
 │   │   └── test_rag/                  # Tests de RAG
 │   │       └── test_vector_store.py
-│   ├── Dockerfile                     # Multi-stage build (uv + Python 3.13)
+│   ├── startup.py                     # DB schema setup: create_all + Alembic stamp/upgrade
+│   ├── Dockerfile                     # Multi-stage build (uv + Python 3.13), CMD: startup.py → uvicorn
 │   ├── .env.example                   # Environment variables template
 │   ├── pyproject.toml                 # uv project definition (Python >=3.13)
 │   └── README.md                      # Backend documentation
@@ -1671,7 +1755,7 @@ fraud-detection-multi-agent-system/
 │
 ├── devops/                            # Docker Compose + Terraform + CI/CD
 │   ├── docker-compose.yml             # PostgreSQL 16 para desarrollo local
-│   ├── terraform/                     # IaC para Azure (Container Apps, ACR, Key Vault, OpenAI)
+│   ├── terraform/                     # IaC para Azure (Container Apps, NAT Gateway, ACR, Key Vault, remote state)
 │   └── README.md                      # Instrucciones de Docker
 │
 ├── docker-compose.prod.yml            # Producción: 3 servicios (postgres, backend, frontend)
