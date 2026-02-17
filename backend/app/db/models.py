@@ -102,7 +102,9 @@ class AgentTrace(Base):
     duration_ms: Mapped[int] = mapped_column(Integer, nullable=False)
     input_summary: Mapped[str] = mapped_column(Text, nullable=True)
     output_summary: Mapped[str] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(String(20), nullable=False)  # "success", "error", "timeout", "skipped", "fallback"
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # "success", "error", "timeout", "skipped", "fallback"
 
     # LLM interaction fields (nullable for non-LLM agents)
     llm_prompt: Mapped[str | None] = mapped_column(Text, nullable=True)

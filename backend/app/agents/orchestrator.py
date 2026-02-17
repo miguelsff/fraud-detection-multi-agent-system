@@ -46,7 +46,9 @@ logger = get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 
-async def _broadcast(config: RunnableConfig, event: str, agent: str | None = None, data: dict | None = None):
+async def _broadcast(
+    config: RunnableConfig, event: str, agent: str | None = None, data: dict | None = None
+):
     """Send a WebSocket event if a broadcast function was provided via config."""
     fn = config.get("configurable", {}).get("broadcast_fn")
     transaction_id = config.get("configurable", {}).get("transaction_id", "")
@@ -57,9 +59,7 @@ async def _broadcast(config: RunnableConfig, event: str, agent: str | None = Non
             pass  # Never crash the pipeline because of WS
 
 
-async def _run_agent(
-    config: RunnableConfig, name: str, agent_fn, state: OrchestratorState
-) -> dict:
+async def _run_agent(config: RunnableConfig, name: str, agent_fn, state: OrchestratorState) -> dict:
     """Wrap an agent call with independent start/complete broadcasts."""
     await _broadcast(config, "agent_started", name)
     try:
@@ -319,10 +319,14 @@ async def respond(state: OrchestratorState, config: RunnableConfig) -> dict:
     """Terminal node — set final status and broadcast decision."""
     decision = state.get("decision")
     if decision:
-        await _broadcast(config, "decision_ready", data={
-            "decision": decision.decision,
-            "confidence": float(decision.confidence),
-        })
+        await _broadcast(
+            config,
+            "decision_ready",
+            data={
+                "decision": decision.decision,
+                "confidence": float(decision.confidence),
+            },
+        )
 
     if state.get("status") == "escalated":
         return {}

@@ -44,7 +44,9 @@ async def analyze(
         return decision
     except asyncio.TimeoutError:
         logger.error("analysis_timeout", transaction_id=request.transaction.transaction_id)
-        raise HTTPException(status_code=504, detail="Analysis timeout (exceeded configured pipeline timeout)")
+        raise HTTPException(
+            status_code=504, detail="Analysis timeout (exceeded configured pipeline timeout)"
+        )
     except Exception as e:
         logger.error(
             "analysis_error",
