@@ -9,26 +9,26 @@
 [![ChromaDB](https://img.shields.io/badge/ChromaDB-1.5-orange.svg)](https://www.trychroma.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> **An intelligent fraud detection pipeline using 8 specialized AI agents orchestrated via LangGraph.** Analyzes ambiguous financial transactions through parallel evidence collection, adversarial debate, and explainable decision-making with full audit trail support.
+> **Pipeline inteligente de detección de fraude con 8 agentes de IA especializados orquestados vía LangGraph.** Analiza transacciones financieras ambiguas mediante recolección paralela de evidencia, debate adversarial y toma de decisiones explicable con soporte completo de auditoría.
 
 ---
 
-## 🎯 Overview
+## 🎯 Descripción General
 
-This system implements a **multi-agent architecture** for detecting fraudulent transactions in real-time. Unlike traditional rule-based systems, it uses **collaborative AI agents** that collect evidence, debate opposing viewpoints, and make explainable decisions backed by internal policies and external threat intelligence.
+Este sistema implementa una **arquitectura multi-agente** para detectar transacciones fraudulentas en tiempo real. A diferencia de los sistemas tradicionales basados en reglas, utiliza **agentes de IA colaborativos** que recolectan evidencia, debaten puntos de vista opuestos y toman decisiones explicables respaldadas por políticas internas e inteligencia de amenazas externas.
 
-**Key Features:**
-- 🤖 **8 Specialized Agents** — Transaction context, behavioral analysis, policy RAG, threat intel, debate, decision arbiter, explainability
-- ⚡ **Parallel Execution** — Phase 1 agents run concurrently using LangGraph's async orchestration
-- 🧠 **Adversarial Debate** — Pro-fraud vs Pro-customer agents argue opposing positions before decision
-- 📊 **Real-time Updates** — WebSocket support for live agent progress tracking
-- 🔍 **Full Traceability** — Every decision includes agent execution trace and audit trail
-- 🔬 **LLM/RAG Trace Inspection** — View LLM interactions and RAG queries directly in the UI via `LLMInteractionViewer` and `RAGQueryViewer` components
-- 🎨 **Explainability** — Customer-facing and audit explanations for regulatory compliance
+**Características Principales:**
+- 🤖 **8 Agentes Especializados** — Contexto transaccional, análisis conductual, Policy RAG, threat intel, debate, árbitro de decisión, explicabilidad
+- ⚡ **Ejecución Paralela** — Los agentes de Fase 1 se ejecutan concurrentemente usando la orquestación async de LangGraph
+- 🧠 **Debate Adversarial** — Agentes Pro-fraude vs Pro-cliente argumentan posiciones opuestas antes de la decisión
+- 📊 **Actualizaciones en Tiempo Real** — Soporte WebSocket para seguimiento en vivo del progreso de agentes
+- 🔍 **Trazabilidad Completa** — Cada decisión incluye traza de ejecución de agentes y registro de auditoría
+- 🔬 **Inspección de Trazas LLM/RAG** — Visualización de interacciones LLM y queries RAG directamente en la UI vía `LLMInteractionViewer` y `RAGQueryViewer`
+- 🎨 **Explicabilidad** — Explicaciones orientadas al cliente y para auditoría, cumpliendo requisitos regulatorios
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Arquitectura
 
 ```mermaid
 graph TB
@@ -98,18 +98,18 @@ graph TB
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Inicio Rápido
 
-### Prerequisites
+### Prerequisitos
 
-| Tool | Version | Purpose |
-|------|---------|---------|
-| **Docker** | 20+ | PostgreSQL container |
-| **Python** | 3.13+ | Backend runtime |
-| **Ollama** | Latest | Local LLM inference (qwen3:30b) |
-| **uv** | 0.5+ | Fast Python package manager |
+| Herramienta | Versión | Propósito |
+|-------------|---------|-----------|
+| **Docker** | 20+ | Contenedor PostgreSQL |
+| **Python** | 3.13+ | Runtime del backend |
+| **Ollama** | Latest | Inferencia LLM local (qwen3:30b) |
+| **uv** | 0.5+ | Gestor de paquetes Python ultrarrápido |
 
-**Install uv:**
+**Instalar uv:**
 ```bash
 # macOS/Linux
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -118,7 +118,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-**Install Ollama:**
+**Instalar Ollama:**
 ```bash
 # macOS/Linux
 curl -fsSL https://ollama.com/install.sh | sh
@@ -126,42 +126,42 @@ curl -fsSL https://ollama.com/install.sh | sh
 # Windows: Download from https://ollama.com/download
 ```
 
-**Pull LLM model:**
+**Descargar modelo LLM:**
 ```bash
 ollama pull qwen3:30b
 ```
 
-### Installation
+### Instalación
 
 ```bash
-# 1. Clone repository
+# 1. Clonar repositorio
 git clone https://github.com/yourusername/fraud-detection-multi-agent-system.git
 cd fraud-detection-multi-agent-system
 
-# 2. Start PostgreSQL + Install dependencies
+# 2. Iniciar PostgreSQL + Instalar dependencias
 make setup
 
-# 3. Ingest fraud policies into ChromaDB
+# 3. Ingestar políticas de fraude en ChromaDB
 make ingest
 
-# 4. (Optional) Seed synthetic test data
+# 4. (Opcional) Cargar datos sintéticos de prueba
 make seed
 
-# 5. Start Ollama in separate terminal
+# 5. Iniciar Ollama en terminal separada
 make ollama
 
-# 6. Start development server
+# 6. Iniciar servidor de desarrollo
 make dev
 ```
 
-The API will be available at:
+La API estará disponible en:
 - **API**: http://localhost:8000
 - **Docs**: http://localhost:8000/docs
 - **Redoc**: http://localhost:8000/redoc
 
-### Example API Request
+### Ejemplo de Solicitud API
 
-**Analyze a high-risk transaction:**
+**Analizar una transacción de alto riesgo:**
 
 ```bash
 curl -X POST "http://localhost:8000/api/v1/transactions/analyze" \
@@ -189,7 +189,7 @@ curl -X POST "http://localhost:8000/api/v1/transactions/analyze" \
 ```
 
 <details>
-<summary><b>📄 Complete Response (Click to expand)</b></summary>
+<summary><b>📄 Respuesta Completa (Click para expandir)</b></summary>
 
 ```json
 {
@@ -253,7 +253,7 @@ curl -X POST "http://localhost:8000/api/v1/transactions/analyze" \
 }
 ```
 
-**Debate Arguments (from `/api/v1/transactions/T-9999/trace`):**
+**Argumentos del Debate (desde `/api/v1/transactions/T-9999/trace`):**
 
 ```json
 {
@@ -287,160 +287,160 @@ curl -X POST "http://localhost:8000/api/v1/transactions/analyze" \
 
 ---
 
-## 🤖 Agents
+## 🤖 Agentes
 
-| Agent | Type | Input | Output |
-|-------|------|-------|--------|
-| **Transaction Context** | Deterministic | Transaction + CustomerBehavior | TransactionSignals (amount_ratio, is_foreign, is_unknown_device, channel_risk, flags) |
-| **Behavioral Pattern** | Deterministic | Transaction + CustomerBehavior | BehavioralSignals (deviation_score, anomalies, velocity_alert) |
-| **Policy RAG** | LLM + ChromaDB | Transaction context + behavior | PolicyMatchResult (matching policies, relevance scores) |
-| **External Threat** | LLM + Web Search | Transaction metadata | ThreatIntelResult (threat_level, external sources) |
-| **Evidence Aggregation** | Deterministic | All signals from Phase 1 | AggregatedEvidence (composite_risk_score, risk_category) |
-| **Debate Pro-Fraud** | LLM | Aggregated evidence | Pro-fraud argument + confidence + evidence list |
-| **Debate Pro-Customer** | LLM | Aggregated evidence | Pro-customer argument + confidence + evidence list |
-| **Decision Arbiter** | LLM | Debate arguments + evidence | FraudDecision (APPROVE/CHALLENGE/BLOCK/ESCALATE) |
-| **Explainability** | LLM | Decision + full context | ExplanationResult (customer + audit explanations) |
+| Agente | Tipo | Entrada | Salida |
+|--------|------|---------|--------|
+| **Transaction Context** | Determinístico | Transaction + CustomerBehavior | TransactionSignals (amount_ratio, is_foreign, is_unknown_device, channel_risk, flags) |
+| **Behavioral Pattern** | Determinístico | Transaction + CustomerBehavior | BehavioralSignals (deviation_score, anomalies, velocity_alert) |
+| **Policy RAG** | LLM + ChromaDB | Contexto transaccional + comportamiento | PolicyMatchResult (políticas coincidentes, scores de relevancia) |
+| **External Threat** | LLM + Web Search | Metadatos de transacción | ThreatIntelResult (threat_level, fuentes externas) |
+| **Evidence Aggregation** | Determinístico | Todas las señales de Fase 1 | AggregatedEvidence (composite_risk_score, risk_category) |
+| **Debate Pro-Fraud** | LLM | Evidencia agregada | Argumento pro-fraude + confianza + lista de evidencia |
+| **Debate Pro-Customer** | LLM | Evidencia agregada | Argumento pro-cliente + confianza + lista de evidencia |
+| **Decision Arbiter** | LLM | Argumentos del debate + evidencia | FraudDecision (APPROVE/CHALLENGE/BLOCK/ESCALATE) |
+| **Explainability** | LLM | Decisión + contexto completo | ExplanationResult (explicaciones cliente + auditoría) |
 
-**Execution Flow:**
-1. **Phase 1 (Parallel)**: Transaction Context, Behavioral Pattern, Policy RAG, External Threat run concurrently
-2. **Phase 2 (Sequential)**: Evidence Aggregation consolidates all signals
-3. **Phase 3 (Parallel)**: Debate agents argue opposing positions simultaneously
-4. **Phase 4 (Sequential)**: Decision Arbiter evaluates debate arguments
-5. **Phase 5 (Sequential)**: Explainability generates customer/audit explanations
-
----
-
-## 🏛️ Architecture Highlights
-
-This system showcases several advanced software engineering patterns and design decisions:
-
-### 1. **Blackboard Pattern for Agent Communication**
-- Agents communicate exclusively through **LangGraph's shared state** (`OrchestratorState` TypedDict)
-- No message passing or hidden channels — every state transition is auditable
-- Critical for regulatory compliance in financial fraud detection
-- Enables full reproducibility: same input → same state transitions → same output
-
-### 2. **Adversarial Debate for Decision Quality**
-- **Pro-Fraud** and **Pro-Customer** agents argue opposing positions before decision
-- Reduces single-point-of-failure bias inherent in single-LLM systems
-- Decision Arbiter evaluates both arguments objectively using structured criteria
-- Inspired by red-team/blue-team security exercises and judicial debate systems
-
-### 3. **Hybrid Agent Architecture (Deterministic + LLM)**
-- **Deterministic agents** (Transaction Context, Behavioral Pattern) use pure Python logic for speed and cost
-- **RAG agents** (Policy RAG) combine LLM reasoning with vector search over internal policies
-- **LLM agents** (Debate, Arbiter, Explainability) handle tasks requiring deep reasoning
-- Strategic placement of LLMs only where needed — **not every agent is an LLM call**
-
-### 4. **Safety Overrides to Prevent LLM Hallucinations**
-- **Critical Risk Override**: Composite risk score ≥ 80 → force BLOCK (overrides LLM if it says APPROVE)
-- **Low Confidence Escalation**: Decision confidence < 0.5 → force ESCALATE_TO_HUMAN
-- **Policy Violation Rules**: Certain policy matches trigger mandatory actions (e.g., FP-13 → always BLOCK)
-- Prevents catastrophic false negatives where LLM incorrectly approves high-risk fraud
-
-### 5. **Human-in-the-Loop (HITL) Escalation Queue**
-- Ambiguous cases (conflicting evidence, low confidence) escalated to `/api/v1/hitl/queue`
-- Human reviewers can override decisions and provide feedback
-- **HITL resolution visible in transaction detail** — `GET /transactions/{id}/result` includes `hitl` field with `case_id`, `status`, `resolution`, and `resolved_at` when a HITL case exists
-- Original decision preserved with "Escalado" badge + human resolution section in the frontend
-- Enables **active learning**: HITL resolutions feed back into model fine-tuning
-- Production-ready workflow with status tracking (pending → resolved → archived)
-
-**Why This Matters:**
-Traditional fraud detection systems rely on rigid rules or black-box ML models. This architecture combines the **explainability of rules**, the **adaptability of LLMs**, and the **reliability of deterministic logic** — achieving a balance rarely seen in production AI systems.
+**Flujo de Ejecución:**
+1. **Fase 1 (Paralela)**: Transaction Context, Behavioral Pattern, Policy RAG, External Threat se ejecutan concurrentemente
+2. **Fase 2 (Secuencial)**: Evidence Aggregation consolida todas las señales
+3. **Fase 3 (Paralela)**: Agentes de debate argumentan posiciones opuestas simultáneamente
+4. **Fase 4 (Secuencial)**: Decision Arbiter evalúa los argumentos del debate
+5. **Fase 5 (Secuencial)**: Explainability genera explicaciones para cliente y auditoría
 
 ---
 
-## 📡 API Endpoints
+## 🏛️ Aspectos Destacados de la Arquitectura
 
-| Method | Endpoint | Description | Auth |
+Este sistema demuestra varios patrones avanzados de ingeniería de software y decisiones de diseño:
+
+### 1. **Blackboard Pattern para Comunicación entre Agentes**
+- Los agentes se comunican exclusivamente a través del **estado compartido de LangGraph** (`OrchestratorState` TypedDict)
+- Sin paso de mensajes ni canales ocultos — cada transición de estado es auditable
+- Crítico para el cumplimiento regulatorio en detección de fraude financiero
+- Permite reproducibilidad total: misma entrada → mismas transiciones de estado → misma salida
+
+### 2. **Debate Adversarial para Calidad de Decisión**
+- Los agentes **Pro-Fraud** y **Pro-Customer** argumentan posiciones opuestas antes de la decisión
+- Reduce el sesgo de punto único de fallo inherente en sistemas de un solo LLM
+- El Decision Arbiter evalúa ambos argumentos objetivamente usando criterios estructurados
+- Inspirado en ejercicios de seguridad red-team/blue-team y sistemas de debate judicial
+
+### 3. **Arquitectura Híbrida de Agentes (Determinísticos + LLM)**
+- **Agentes determinísticos** (Transaction Context, Behavioral Pattern) usan lógica Python pura para velocidad y costo
+- **Agentes RAG** (Policy RAG) combinan razonamiento LLM con búsqueda vectorial sobre políticas internas
+- **Agentes LLM** (Debate, Arbiter, Explainability) manejan tareas que requieren razonamiento profundo
+- Colocación estratégica de LLMs solo donde se necesitan — **no todo agente es una llamada LLM**
+
+### 4. **Safety Overrides para Prevenir Alucinaciones LLM**
+- **Override de Riesgo Crítico**: Score de riesgo compuesto ≥ 80 → forzar BLOCK (anula al LLM si dice APPROVE)
+- **Escalación por Baja Confianza**: Confianza de decisión < 0.5 → forzar ESCALATE_TO_HUMAN
+- **Reglas de Violación de Políticas**: Ciertas coincidencias de políticas disparan acciones obligatorias (ej. FP-13 → siempre BLOCK)
+- Previene falsos negativos catastróficos donde el LLM aprueba incorrectamente fraude de alto riesgo
+
+### 5. **Cola de Escalación Human-in-the-Loop (HITL)**
+- Casos ambiguos (evidencia conflictiva, baja confianza) se escalan a `/api/v1/hitl/queue`
+- Los revisores humanos pueden anular decisiones y proporcionar retroalimentación
+- **Resolución HITL visible en detalle de transacción** — `GET /transactions/{id}/result` incluye campo `hitl` con `case_id`, `status`, `resolution` y `resolved_at` cuando existe un caso HITL
+- Decisión original preservada con badge "Escalado" + sección de resolución humana en el frontend
+- Habilita **aprendizaje activo**: las resoluciones HITL alimentan el fine-tuning del modelo
+- Flujo de trabajo listo para producción con seguimiento de estado (pending → resolved → archived)
+
+**¿Por qué es Importante?**
+Los sistemas tradicionales de detección de fraude dependen de reglas rígidas o modelos ML de caja negra. Esta arquitectura combina la **explicabilidad de las reglas**, la **adaptabilidad de los LLMs** y la **fiabilidad de la lógica determinística** — logrando un equilibrio pocas veces visto en sistemas de IA en producción.
+
+---
+
+## 📡 Endpoints API
+
+| Método | Endpoint | Descripción | Auth |
 |--------|----------|-------------|------|
-| **POST** | `/api/v1/transactions/analyze` | Analyze single transaction | ❌ |
-| **POST** | `/api/v1/transactions/analyze/batch` | Batch analysis (up to 100) | ❌ |
-| **GET** | `/api/v1/transactions/{id}/result` | Get analysis result by ID (includes `hitl` field if HITL case exists) | ❌ |
-| **GET** | `/api/v1/transactions/{id}/trace` | Get agent execution trace | ❌ |
-| **GET** | `/api/v1/transactions` | List analyzed transactions | ❌ |
-| **GET** | `/api/v1/hitl/queue` | Get HITL review queue | ❌ |
-| **POST** | `/api/v1/hitl/{id}/resolve` | Resolve HITL case | ❌ |
-| **GET** | `/api/v1/policies` | List fraud policies | ❌ |
-| **GET** | `/api/v1/policies/{id}` | Get fraud policy by ID | ❌ |
-| **POST** | `/api/v1/policies` | Create fraud policy | ❌ |
-| **PUT** | `/api/v1/policies/{id}` | Update fraud policy | ❌ |
-| **DELETE** | `/api/v1/policies/{id}` | Delete fraud policy | ❌ |
-| **POST** | `/api/v1/policies/reingest` | Re-ingest policies to ChromaDB | ❌ |
-| **GET** | `/api/v1/analytics/summary` | Aggregated metrics | ❌ |
-| **WS** | `/api/v1/ws/transactions` | Real-time agent updates | ❌ |
-| **GET** | `/api/v1/health` | Health check | ❌ |
+| **POST** | `/api/v1/transactions/analyze` | Analizar transacción individual | ❌ |
+| **POST** | `/api/v1/transactions/analyze/batch` | Análisis por lotes (hasta 100) | ❌ |
+| **GET** | `/api/v1/transactions/{id}/result` | Obtener resultado por ID (incluye campo `hitl` si existe caso HITL) | ❌ |
+| **GET** | `/api/v1/transactions/{id}/trace` | Obtener traza de ejecución de agentes | ❌ |
+| **GET** | `/api/v1/transactions` | Listar transacciones analizadas | ❌ |
+| **GET** | `/api/v1/hitl/queue` | Obtener cola de revisión HITL | ❌ |
+| **POST** | `/api/v1/hitl/{id}/resolve` | Resolver caso HITL | ❌ |
+| **GET** | `/api/v1/policies` | Listar políticas de fraude | ❌ |
+| **GET** | `/api/v1/policies/{id}` | Obtener política por ID | ❌ |
+| **POST** | `/api/v1/policies` | Crear política de fraude | ❌ |
+| **PUT** | `/api/v1/policies/{id}` | Actualizar política de fraude | ❌ |
+| **DELETE** | `/api/v1/policies/{id}` | Eliminar política de fraude | ❌ |
+| **POST** | `/api/v1/policies/reingest` | Re-ingestar políticas en ChromaDB | ❌ |
+| **GET** | `/api/v1/analytics/summary` | Métricas agregadas | ❌ |
+| **WS** | `/api/v1/ws/transactions` | Actualizaciones de agentes en tiempo real | ❌ |
+| **GET** | `/api/v1/health` | Verificación de salud | ❌ |
 
-**Interactive Documentation:**
+**Documentación Interactiva:**
 - Swagger UI: http://localhost:8000/docs
 - ReDoc: http://localhost:8000/redoc
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ Stack Tecnológico
 
 ### Backend
 
-| Component | Technology | Version | Purpose |
-|-----------|-----------|---------|---------|
-| **API Framework** | FastAPI | 0.128+ | High-performance async API with OpenAPI |
-| **Orchestration** | LangGraph | 1.0+ | Agent state machine with checkpointing |
-| **LLM Integration** | LangChain + Ollama / Azure OpenAI | Latest | qwen3:30b (dev) · gpt-5.2-chat (prod) |
-| **Vector DB** | ChromaDB | 1.5+ | Embedded policy knowledge base |
-| **Database** | PostgreSQL | 17 | Persistent audit trail storage |
-| **Validation** | Pydantic | 2.12+ | Type-safe models and validation |
-| **Logging** | Structlog | 25.5+ | Structured JSON logging |
-| **Package Manager** | uv | 0.5+ | Fast dependency resolution |
+| Componente | Tecnología | Versión | Propósito |
+|------------|-----------|---------|-----------|
+| **Framework API** | FastAPI | 0.128+ | API async de alto rendimiento con OpenAPI |
+| **Orquestación** | LangGraph | 1.0+ | Máquina de estados de agentes con checkpointing |
+| **Integración LLM** | LangChain + Ollama / Azure OpenAI | Latest | qwen3:30b (dev) · gpt-5.2-chat (prod) |
+| **Vector DB** | ChromaDB | 1.5+ | Base de conocimiento de políticas embebida |
+| **Base de Datos** | PostgreSQL | 17 | Almacenamiento persistente de auditoría |
+| **Validación** | Pydantic | 2.12+ | Modelos y validación con tipos seguros |
+| **Logging** | Structlog | 25.5+ | Logs estructurados en JSON |
+| **Gestor de Paquetes** | uv | 0.5+ | Resolución rápida de dependencias |
 
-### Infrastructure
+### Infraestructura
 
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| **Containerization** | Docker Compose | Dev: PostgreSQL only / Prod: Full stack |
-| **Deployment** | Azure Container Apps | Serverless containers with ACR |
-| **IaC** | Terraform | Infrastructure as code (Azure) |
-| **CI/CD** | GitHub Actions | Path-based deploy (fast app updates + terraform for infra) |
-| **Monitoring** | Application Insights | Azure-native observability |
-| **Database (prod)** | Supabase PostgreSQL | Managed PostgreSQL in production |
+| Componente | Tecnología | Propósito |
+|------------|-----------|-----------|
+| **Contenedores** | Docker Compose | Dev: solo PostgreSQL / Prod: stack completo |
+| **Despliegue** | Azure Container Apps | Contenedores serverless con ACR |
+| **IaC** | Terraform | Infraestructura como código (Azure) |
+| **CI/CD** | GitHub Actions | Deploy path-based (actualizaciones rápidas de app + terraform para infra) |
+| **Monitoreo** | Application Insights | Observabilidad nativa de Azure |
+| **Base de Datos (prod)** | Supabase PostgreSQL | PostgreSQL gestionado en producción |
 
-**Docker Compose Files:**
-- `devops/docker-compose.yml` — Development (PostgreSQL only, backend/frontend run locally)
-- `docker-compose.prod.yml` — Production (PostgreSQL + Backend + Frontend containerized)
+**Archivos Docker Compose:**
+- `devops/docker-compose.yml` — Desarrollo (solo PostgreSQL, backend/frontend corren localmente)
+- `docker-compose.prod.yml` — Producción (PostgreSQL + Backend + Frontend containerizados)
 
 ### Frontend
 
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| **Framework** | Next.js 16 | React with App Router + SSR |
-| **Language** | TypeScript 5.7 | Type-safe frontend with strict mode |
-| **UI Library** | shadcn/ui | Radix UI + Tailwind components |
-| **Styling** | Tailwind CSS | Utility-first styling |
-| **State** | React hooks + Context | Client state management |
-| **API Client** | Custom fetch wrapper | Centralized API calls with error handling |
-| **WebSocket** | Native WebSocket API | Real-time agent progress updates |
+| Componente | Tecnología | Propósito |
+|------------|-----------|-----------|
+| **Framework** | Next.js 16 | React con App Router + SSR |
+| **Lenguaje** | TypeScript 5.7 | Frontend con tipos seguros y modo estricto |
+| **Librería UI** | shadcn/ui | Componentes Radix UI + Tailwind |
+| **Estilos** | Tailwind CSS | Estilos utility-first |
+| **Estado** | React hooks + Context | Gestión de estado del cliente |
+| **Cliente API** | Custom fetch wrapper | Llamadas API centralizadas con manejo de errores |
+| **WebSocket** | Native WebSocket API | Actualizaciones de progreso de agentes en tiempo real |
 
 ---
 
 ## 🧪 Testing
 
-### End-to-End Demo
+### Demo End-to-End
 
-Run the complete pipeline demo to see all 8 agents in action:
+Ejecutar la demo completa del pipeline para ver los 8 agentes en acción:
 
 ```bash
 cd backend
 uv run python scripts/demo.py
 ```
 
-**What it does:**
-1. ✅ **Ingests fraud policies** into ChromaDB vector store
-2. 📊 **Loads 6 synthetic test transactions** (covering all decision types)
-3. 🤖 **Analyzes each transaction sequentially** through the full agent pipeline
-4. 📈 **Displays formatted results** with decision, confidence, and processing time
-5. 💬 **Shows a complete adversarial debate** (Pro-Fraud vs Pro-Customer arguments)
+**Qué hace:**
+1. ✅ **Ingesta políticas de fraude** en el vector store ChromaDB
+2. 📊 **Carga 6 transacciones sintéticas de prueba** (cubriendo todos los tipos de decisión)
+3. 🤖 **Analiza cada transacción secuencialmente** a través del pipeline completo de agentes
+4. 📈 **Muestra resultados formateados** con decisión, confianza y tiempo de procesamiento
+5. 💬 **Muestra un debate adversarial completo** (argumentos Pro-Fraud vs Pro-Customer)
 
-**Example Output:**
+**Ejemplo de Salida:**
 ```
 Step 3: Analyzing transactions (sequential)
 
@@ -459,7 +459,7 @@ Summary Statistics:
   Average Processing Time: 4.48s
 ```
 
-### Test Suite
+### Suite de Tests
 
 ```bash
 # Run all tests (unit + integration)
@@ -472,9 +472,9 @@ make test-unit
 make test-integration
 ```
 
-### Test Coverage
+### Cobertura de Tests
 
-| Module | Tests | Coverage | Type |
+| Módulo | Tests | Cobertura | Tipo |
 |--------|-------|----------|------|
 | **Transaction Context** | 6 tests | ✅ 100% | Unit |
 | **Behavioral Pattern** | 5 tests | ✅ 100% | Unit |
@@ -488,12 +488,12 @@ make test-integration
 | **RAG** | 1 file | ✅ 100% | Unit |
 | **Total** | **251 tests** (20 files) | | |
 
-**Test Data:**
-- Synthetic test data: `backend/data/synthetic_data.json` (6 scenarios covering all decision types)
-- Shared fixtures: `backend/tests/conftest.py` (database mocks, LLM mocks, state fixtures)
-- Test markers: `unit`, `integration`, `llm`, `db`
+**Datos de Prueba:**
+- Datos sintéticos: `backend/data/synthetic_data.json` (6 escenarios cubriendo todos los tipos de decisión)
+- Fixtures compartidos: `backend/tests/conftest.py` (mocks de base de datos, LLM y estado)
+- Marcadores de test: `unit`, `integration`, `llm`, `db`
 
-**Quick Test Commands:**
+**Comandos Rápidos de Test:**
 ```bash
 # Specific test file
 pytest tests/test_agents/test_decision_arbiter.py -v
@@ -507,9 +507,9 @@ pytest --cov=app --cov-report=html
 
 ---
 
-## 📋 Development Commands
+## 📋 Comandos de Desarrollo
 
-Full list of available Make commands:
+Lista completa de comandos Make disponibles:
 
 ```bash
 make help              # Show all available commands
@@ -528,200 +528,200 @@ make all               # Full setup pipeline
 
 ---
 
-## 🎨 Design Decisions
+## 🎨 Decisiones de Diseño
 
-This project implements several advanced architectural patterns:
+Este proyecto implementa varios patrones arquitectónicos avanzados:
 
-### 🔹 Blackboard Pattern (Shared State)
-Agents communicate **only through LangGraph's shared state** (`OrchestratorState` TypedDict), not via message passing. This ensures:
-- ✅ **Full auditability** — Every state transition is logged
-- ✅ **No hidden channels** — All communication is traceable
-- ✅ **Regulatory compliance** — Critical for financial fraud detection
+### 🔹 Blackboard Pattern (Estado Compartido)
+Los agentes se comunican **únicamente a través del estado compartido de LangGraph** (`OrchestratorState` TypedDict), no vía paso de mensajes. Esto garantiza:
+- ✅ **Auditabilidad completa** — Cada transición de estado se registra
+- ✅ **Sin canales ocultos** — Toda comunicación es rastreable
+- ✅ **Cumplimiento regulatorio** — Crítico para detección de fraude financiero
 
-### 🔹 Adversarial Debate
-Unlike single-LLM decision systems, we use **two opposing debate agents**:
-- **Pro-Fraud Agent** — Argues the transaction is fraudulent
-- **Pro-Customer Agent** — Argues the transaction is legitimate
-- **Decision Arbiter** — Evaluates both arguments objectively
+### 🔹 Debate Adversarial
+A diferencia de sistemas de decisión con un solo LLM, usamos **dos agentes de debate opuestos**:
+- **Agente Pro-Fraud** — Argumenta que la transacción es fraudulenta
+- **Agente Pro-Customer** — Argumenta que la transacción es legítima
+- **Decision Arbiter** — Evalúa ambos argumentos objetivamente
 
-This reduces single-point-of-failure bias and improves decision quality.
+Esto reduce el sesgo de punto único de fallo y mejora la calidad de las decisiones.
 
-### 🔹 Hybrid Agent Types
-Not all agents use LLMs:
-- **Deterministic Agents** — Transaction Context, Behavioral Pattern (pure Python logic)
-- **RAG Agents** — Policy RAG (LLM + ChromaDB vector search)
-- **LLM Agents** — Debate, Arbiter, Explainability (require reasoning)
+### 🔹 Tipos de Agentes Híbridos
+No todos los agentes usan LLMs:
+- **Agentes Determinísticos** — Transaction Context, Behavioral Pattern (lógica Python pura)
+- **Agentes RAG** — Policy RAG (LLM + búsqueda vectorial en ChromaDB)
+- **Agentes LLM** — Debate, Arbiter, Explainability (requieren razonamiento)
 
-This balances **cost, speed, and intelligence** based on each agent's requirements.
+Esto equilibra **costo, velocidad e inteligencia** según los requisitos de cada agente.
 
 ### 🔹 Safety Overrides
-Decision Arbiter includes hardcoded safety rules:
-- **Critical Risk Override** — Composite score ≥ 80 → force BLOCK (even if LLM says APPROVE)
-- **Low Confidence Escalation** — Confidence < 0.5 → force ESCALATE_TO_HUMAN
-- **Policy Violation Override** — Certain policy matches trigger automatic actions
+El Decision Arbiter incluye reglas de seguridad hardcodeadas:
+- **Override de Riesgo Crítico** — Score compuesto ≥ 80 → forzar BLOCK (aun si el LLM dice APPROVE)
+- **Escalación por Baja Confianza** — Confianza < 0.5 → forzar ESCALATE_TO_HUMAN
+- **Override por Violación de Política** — Ciertas coincidencias de políticas disparan acciones automáticas
 
-This prevents LLM hallucinations from causing false negatives in high-risk scenarios.
+Esto previene que las alucinaciones del LLM causen falsos negativos en escenarios de alto riesgo.
 
 ### 🔹 Human-in-the-Loop (HITL)
-Ambiguous cases are **escalated to human reviewers** via `/api/v1/hitl/` endpoints:
-- Cases with low confidence (< 0.5)
-- Conflicting evidence (equal debate confidence)
-- Policy-mandated manual review
+Los casos ambiguos se **escalan a revisores humanos** vía endpoints `/api/v1/hitl/`:
+- Casos con baja confianza (< 0.5)
+- Evidencia conflictiva (confianza de debate igual)
+- Revisión manual requerida por política
 
-Humans can **override** agent decisions and provide feedback for model improvement.
-
----
-
-## 📚 Documentation
-
-- **Architecture Deep Dive**: [`.claude/docs/arquitectura-sistema.md`](.claude/docs/arquitectura-sistema.md)
-- **API Reference**: http://localhost:8000/docs (when server is running)
-- **Agent Specifications**: See individual agent files in `backend/app/agents/`
-- **Policy Examples**: [`backend/policies/fraud_policies.md`](backend/policies/fraud_policies.md)
-- **Test Data**: [`backend/data/README.md`](backend/data/README.md)
+Los humanos pueden **anular** decisiones de agentes y proporcionar retroalimentación para mejorar el modelo.
 
 ---
 
-## 🗺️ Roadmap
+## 📚 Documentación
 
-- [x] **Phase 1**: Agent pipeline implementation (8 agents)
-- [x] **Phase 2**: Evidence aggregation + debate mechanism
-- [x] **Phase 3**: Decision arbiter + explainability
-- [x] **Phase 4**: API endpoints + WebSocket support
-- [x] **Phase 5**: Comprehensive test suite (250+ tests)
-- [x] **Phase 6**: Frontend dashboard (Next.js + TypeScript + shadcn/ui)
-- [x] **Phase 7**: Azure deployment (Container Apps + Terraform + CI/CD)
-- [x] **Phase 8**: Production monitoring + observability (Application Insights)
-- [ ] **Phase 9**: Model fine-tuning with HITL feedback
+- **Arquitectura en Profundidad**: [`.claude/docs/arquitectura-sistema.md`](.claude/docs/arquitectura-sistema.md)
+- **Referencia API**: http://localhost:8000/docs (cuando el servidor está corriendo)
+- **Especificaciones de Agentes**: Ver archivos individuales en `backend/app/agents/`
+- **Ejemplos de Políticas**: [`backend/policies/fraud_policies.md`](backend/policies/fraud_policies.md)
+- **Datos de Prueba**: [`backend/data/README.md`](backend/data/README.md)
 
 ---
 
-## 💡 What I Learned (Portfolio Insights)
+## 🗺️ Hoja de Ruta
 
-Building this multi-agent fraud detection system taught me several critical lessons about production AI systems:
-
-### Technical Deep Dives
-
-**1. LangGraph State Management is Powerful but Tricky**
-- LangGraph's `TypedDict` state with `Annotated[list, operator.add]` reducers took time to master
-- Learned the difference between **stateful checkpointing** (for conversational agents) vs **stateless orchestration** (for pipeline agents)
-- Key insight: **Not every agent problem needs LangGraph** — simple pipelines can use plain `asyncio.gather`
-
-**2. RAG is More Than "Embed + Search"**
-- Initial ChromaDB implementation had poor policy retrieval (60% relevance)
-- Fixed by: chunking strategies (500-token overlap), query rewriting, and relevance score thresholds
-- Learned to **inspect what the LLM actually sees** — added citation tracking to verify RAG context quality
-
-**3. Testing LLM Agents Requires Creative Strategies**
-- Unit tests mock LLM calls with deterministic responses (`@pytest.fixture`)
-- Integration tests use **real Ollama** but with temperature=0 for reproducibility
-- Discovered **property-based testing** (Hypothesis) catches edge cases traditional tests miss
-
-**4. FastAPI + Async SQLAlchemy is a Minefield**
-- Hit classic pitfalls: session scope issues, uncommitted transactions, `await` on sync operations
-- Solution: strict session lifecycle with `async with` context managers, explicit `flush()` vs `commit()`
-- Performance win: parallel agent execution with `asyncio.gather` reduced latency by 3.2x (12s → 3.7s)
-
-**5. Type Safety Saves Hours of Debugging**
-- Pydantic v2 caught 40+ bugs at validation time (vs runtime crashes in production)
-- TypeScript strict mode on frontend prevented 30+ null reference errors
-- Investment in `strict=True` and `no-any` rules paid off **immediately**
-
-### Architecture Lessons
-
-**1. Adversarial Debate is Underrated**
-- Single LLM decisions showed 23% overconfidence bias (high confidence on wrong answers)
-- Debate mechanism reduced overconfidence to 8% — forcing agents to **justify** improves quality
-- Key: Arbiter must see **both** arguments blindly (no agent names), prevents anchoring bias
-
-**2. Not Every Problem Needs an LLM**
-- Initial design: 8 LLM agents → final: 5 LLM + 3 deterministic agents
-- Transaction Context and Behavioral Pattern are **pure Python** — 100x faster, zero cost
-- Rule of thumb: **If you can unit test it exhaustively, don't use an LLM**
-
-**3. Observability is Non-Negotiable**
-- Structured logging with `structlog` made debugging possible (JSON logs → Elasticsearch → Kibana)
-- Agent trace saved to DB for **every transaction** — cost of storage < cost of debugging production issues
-- WebSocket real-time updates were critical for frontend — users need to **see agents thinking**
-
-**4. Safety Overrides Prevent Catastrophic Failures**
-- Early version: LLM arbiter approved a $50k transaction to Nigeria (test data) — false negative
-- Added hardcoded rule: `composite_risk_score >= 80 → force BLOCK`
-- Lesson: **LLMs are tools, not oracles** — critical systems need guardrails
-
-**5. HITL is a Product Decision, Not Just a Feature**
-- Initially treated HITL as "edge case handler" — wrong framing
-- HITL queue is the **training data pipeline** for model improvement
-- Production insight: 15% of transactions escalate → human feedback → fine-tune debate agents
-
-### Mistakes and Course Corrections
-
-**❌ Mistake #1**: Tried to build frontend before backend was stable → wasted 2 weeks on API contract changes
-**✅ Fix**: API-first development with OpenAPI schemas, then auto-generate TypeScript types
-
-**❌ Mistake #2**: Used SQLite in development, PostgreSQL in production → subtle JSON field serialization bugs
-**✅ Fix**: Docker Compose PostgreSQL from day 1 — development = production parity
-
-**❌ Mistake #3**: Wrote 200 lines of custom WebSocket connection pooling → buggy and complex
-**✅ Fix**: FastAPI's built-in WebSocket manager handles it — **don't reinvent the wheel**
-
-**❌ Mistake #4**: Tried to make agents "smart" by passing entire conversation history (10k tokens)
-**✅ Fix**: Agents only see **their input slice** of state — smaller context = faster + cheaper
-
-**❌ Mistake #5**: Skipped writing tests for "simple" aggregation logic → bugs in production
-**✅ Fix**: **Test everything** — even "obvious" logic has edge cases (null values, empty lists, timezone bugs)
-
-### If I Built This Again
-
-**I would:**
-- ✅ Start with `uv` from day 1 (not `pip` → `poetry` → `uv` migration)
-- ✅ Use Pydantic for **config management** too (not just data models)
-- ✅ Implement **feature flags** early (toggle debate on/off, RAG on/off for A/B testing)
-- ✅ Add **distributed tracing** (OpenTelemetry) from the start, not retrofitted
-- ✅ Write ADRs (Architecture Decision Records) — saved me twice when revisiting design choices 3 months later
-
-**I would NOT:**
-- ❌ Overengineer early — initial design had 12 agents (overkill), simplified to 8
-- ❌ Optimize prematurely — spent 3 days optimizing ChromaDB queries that weren't the bottleneck
-- ❌ Build custom abstractions over LangChain — their APIs change fast, abstractions become liabilities
-
-### Key Takeaway
-
-**Production LLM systems are 20% prompt engineering, 80% software engineering.**
-The hard parts aren't getting the LLM to output JSON — it's handling async errors, managing state consistency, testing non-deterministic behavior, and building UIs that make AI decisions **trustworthy**.
-
-This project taught me that **AI agents are infrastructure**, not magic. They need monitoring, error budgets, rollback strategies, and the same rigor as any distributed system.
+- [x] **Fase 1**: Implementación del pipeline de agentes (8 agentes)
+- [x] **Fase 2**: Agregación de evidencia + mecanismo de debate
+- [x] **Fase 3**: Árbitro de decisión + explicabilidad
+- [x] **Fase 4**: Endpoints API + soporte WebSocket
+- [x] **Fase 5**: Suite de tests completa (250+ tests)
+- [x] **Fase 6**: Dashboard frontend (Next.js + TypeScript + shadcn/ui)
+- [x] **Fase 7**: Despliegue en Azure (Container Apps + Terraform + CI/CD)
+- [x] **Fase 8**: Monitoreo en producción + observabilidad (Application Insights)
+- [ ] **Fase 9**: Fine-tuning del modelo con retroalimentación HITL
 
 ---
 
-## 📄 License
+## 💡 Lo que Aprendí (Reflexiones de Portafolio)
 
-MIT License - see [LICENSE](LICENSE) file for details.
+Construir este sistema multi-agente de detección de fraude me enseñó varias lecciones críticas sobre sistemas de IA en producción:
+
+### Inmersiones Técnicas
+
+**1. La gestión de estado de LangGraph es potente pero compleja**
+- El estado `TypedDict` de LangGraph con reducers `Annotated[list, operator.add]` tomó tiempo dominar
+- Aprendí la diferencia entre **checkpointing con estado** (para agentes conversacionales) vs **orquestación sin estado** (para agentes de pipeline)
+- Insight clave: **No todo problema de agentes necesita LangGraph** — pipelines simples pueden usar `asyncio.gather`
+
+**2. RAG es más que "Embed + Search"**
+- La implementación inicial de ChromaDB tenía mala recuperación de políticas (60% relevancia)
+- Solucionado con: estrategias de chunking (500 tokens de overlap), reescritura de queries y umbrales de score de relevancia
+- Aprendí a **inspeccionar lo que el LLM realmente ve** — agregué tracking de citaciones para verificar calidad del contexto RAG
+
+**3. Testear agentes LLM requiere estrategias creativas**
+- Los tests unitarios mockean llamadas LLM con respuestas determinísticas (`@pytest.fixture`)
+- Los tests de integración usan **Ollama real** pero con temperature=0 para reproducibilidad
+- Descubrí que el **property-based testing** (Hypothesis) captura edge cases que los tests tradicionales no detectan
+
+**4. FastAPI + Async SQLAlchemy es un campo minado**
+- Caí en trampas clásicas: problemas de scope de sesión, transacciones sin commit, `await` en operaciones sync
+- Solución: ciclo de vida estricto de sesión con context managers `async with`, `flush()` vs `commit()` explícitos
+- Ganancia de rendimiento: ejecución paralela de agentes con `asyncio.gather` redujo latencia 3.2x (12s → 3.7s)
+
+**5. La seguridad de tipos ahorra horas de debugging**
+- Pydantic v2 capturó 40+ bugs en tiempo de validación (vs crashes en runtime en producción)
+- El modo estricto de TypeScript en el frontend previno 30+ errores de referencia nula
+- La inversión en `strict=True` y reglas `no-any` rindió frutos **inmediatamente**
+
+### Lecciones de Arquitectura
+
+**1. El debate adversarial está subestimado**
+- Las decisiones de un solo LLM mostraron 23% de sesgo de sobreconfianza (alta confianza en respuestas incorrectas)
+- El mecanismo de debate redujo la sobreconfianza al 8% — forzar a los agentes a **justificar** mejora la calidad
+- Clave: el Arbiter debe ver **ambos** argumentos de forma ciega (sin nombres de agentes), previene sesgo de anclaje
+
+**2. No todo problema necesita un LLM**
+- Diseño inicial: 8 agentes LLM → final: 5 LLM + 3 determinísticos
+- Transaction Context y Behavioral Pattern son **Python puro** — 100x más rápidos, cero costo
+- Regla de oro: **Si puedes testearlo exhaustivamente con unit tests, no uses un LLM**
+
+**3. La observabilidad no es negociable**
+- El logging estructurado con `structlog` hizo posible el debugging (logs JSON → Elasticsearch → Kibana)
+- Traza de agentes guardada en BD para **cada transacción** — costo de almacenamiento < costo de debuggear problemas en producción
+- Las actualizaciones WebSocket en tiempo real fueron críticas para el frontend — los usuarios necesitan **ver a los agentes pensando**
+
+**4. Los Safety Overrides previenen fallas catastróficas**
+- Versión temprana: el LLM arbiter aprobó una transacción de $50k a Nigeria (datos de prueba) — falso negativo
+- Se agregó regla hardcodeada: `composite_risk_score >= 80 → forzar BLOCK`
+- Lección: **Los LLMs son herramientas, no oráculos** — los sistemas críticos necesitan guardarraíles
+
+**5. HITL es una decisión de producto, no solo una funcionalidad**
+- Inicialmente traté HITL como "manejador de edge cases" — enfoque equivocado
+- La cola HITL es el **pipeline de datos de entrenamiento** para mejorar el modelo
+- Insight de producción: 15% de transacciones se escalan → retroalimentación humana → fine-tune de agentes de debate
+
+### Errores y Correcciones de Rumbo
+
+**❌ Error #1**: Intenté construir el frontend antes de que el backend fuera estable → 2 semanas perdidas en cambios de contrato API
+**✅ Corrección**: Desarrollo API-first con schemas OpenAPI, luego auto-generar tipos TypeScript
+
+**❌ Error #2**: Usé SQLite en desarrollo, PostgreSQL en producción → bugs sutiles de serialización de campos JSON
+**✅ Corrección**: Docker Compose con PostgreSQL desde el día 1 — desarrollo = paridad con producción
+
+**❌ Error #3**: Escribí 200 líneas de connection pooling custom para WebSocket → buggy y complejo
+**✅ Corrección**: El WebSocket manager integrado de FastAPI lo maneja — **no reinventar la rueda**
+
+**❌ Error #4**: Intenté hacer agentes "inteligentes" pasando todo el historial de conversación (10k tokens)
+**✅ Corrección**: Los agentes solo ven **su porción de entrada** del estado — contexto más pequeño = más rápido + más barato
+
+**❌ Error #5**: Omití escribir tests para lógica de agregación "simple" → bugs en producción
+**✅ Corrección**: **Testear todo** — incluso la lógica "obvia" tiene edge cases (valores nulos, listas vacías, bugs de timezone)
+
+### Si Lo Construyera de Nuevo
+
+**Haría:**
+- ✅ Empezar con `uv` desde el día 1 (no migración `pip` → `poetry` → `uv`)
+- ✅ Usar Pydantic para **gestión de configuración** también (no solo modelos de datos)
+- ✅ Implementar **feature flags** temprano (toggle debate on/off, RAG on/off para A/B testing)
+- ✅ Agregar **tracing distribuido** (OpenTelemetry) desde el inicio, no retrofitted
+- ✅ Escribir ADRs (Architecture Decision Records) — me salvó dos veces al revisar decisiones de diseño 3 meses después
+
+**NO haría:**
+- ❌ Sobre-ingeniería temprana — el diseño inicial tenía 12 agentes (excesivo), simplificado a 8
+- ❌ Optimizar prematuramente — pasé 3 días optimizando queries de ChromaDB que no eran el cuello de botella
+- ❌ Construir abstracciones custom sobre LangChain — sus APIs cambian rápido, las abstracciones se vuelven pasivos
+
+### Conclusión Clave
+
+**Los sistemas LLM en producción son 20% ingeniería de prompts, 80% ingeniería de software.**
+Lo difícil no es hacer que el LLM genere JSON — es manejar errores async, gestionar consistencia de estado, testear comportamiento no-determinístico y construir UIs que hagan que las decisiones de IA sean **confiables**.
+
+Este proyecto me enseñó que **los agentes de IA son infraestructura**, no magia. Necesitan monitoreo, presupuestos de error, estrategias de rollback y el mismo rigor que cualquier sistema distribuido.
 
 ---
 
-## 👨‍💻 Author
+## 📄 Licencia
 
-**Miguel** - AI/ML Engineer
-- Portfolio: [Your Portfolio URL]
+Licencia MIT - ver archivo [LICENSE](LICENSE) para detalles.
+
+---
+
+## 👨‍💻 Autor
+
+**Miguel** - Ingeniero AI/ML
+- Portafolio: [Your Portfolio URL]
 - LinkedIn: [Your LinkedIn]
 - GitHub: [@yourusername](https://github.com/yourusername)
 
 ---
 
-## 🙏 Acknowledgments
+## 🙏 Agradecimientos
 
-- **LangChain Team** — For LangGraph orchestration framework
-- **FastAPI Team** — For the excellent async API framework
-- **ChromaDB Team** — For lightweight vector database
-- **Ollama Team** — For local LLM inference
+- **Equipo LangChain** — Por el framework de orquestación LangGraph
+- **Equipo FastAPI** — Por el excelente framework de API async
+- **Equipo ChromaDB** — Por la base de datos vectorial ligera
+- **Equipo Ollama** — Por la inferencia LLM local
 
 ---
 
 <div align="center">
 
-**⭐ Star this repo if you find it useful!**
+**⭐ Dale estrella a este repo si te resulta útil!**
 
-Built with ❤️ using Python, FastAPI, and LangGraph
+Construido con ❤️ usando Python, FastAPI y LangGraph
 
 </div>
