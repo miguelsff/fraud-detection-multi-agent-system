@@ -23,9 +23,8 @@ async def lifespan(app: FastAPI):
     setup_logging()
     logger.info("app_starting", env=settings.app_env)
 
-    if settings.app_env == "development":
-        await init_db()  # Create tables in dev
-        logger.info("database_initialized")
+    await init_db()  # Create tables if they don't exist (safe: create_all is idempotent)
+    logger.info("database_initialized")
 
     # TODO: Initialize RAG (load policies into ChromaDB if empty)
 
