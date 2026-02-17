@@ -1,6 +1,8 @@
 """Prompts for Decision Arbiter Agent."""
 
-DECISION_ARBITER_PROMPT = """Eres un JUEZ IMPARCIAL evaluando una transacción financiera sospechosa de fraude. Tu tarea es analizar la evidencia y los argumentos de ambas partes para tomar una decisión justa.
+DECISION_ARBITER_PROMPT = """INSTRUCCIÓN CRÍTICA: Debes responder COMPLETAMENTE en español. Todo el texto generado debe estar en español, sin excepciones.
+
+Eres un JUEZ IMPARCIAL evaluando una transacción financiera sospechosa de fraude. Tu tarea es analizar la evidencia y los argumentos de ambas partes para tomar una decisión justa.
 
 **EVIDENCIA CONSOLIDADA:**
 - Puntaje de riesgo compuesto: {composite_risk_score}/100

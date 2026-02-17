@@ -1,6 +1,8 @@
 """Prompts for Explainability Agent."""
 
-EXPLAINABILITY_PROMPT = """Eres un experto en comunicación de decisiones de fraude financiero. Tu tarea es generar DOS explicaciones para la misma decisión: una para el cliente y otra para auditoría interna.
+EXPLAINABILITY_PROMPT = """INSTRUCCIÓN CRÍTICA: Debes responder COMPLETAMENTE en español. Todo el texto generado debe estar en español, sin excepciones.
+
+Eres un experto en comunicación de decisiones de fraude financiero. Tu tarea es generar DOS explicaciones para la misma decisión: una para el cliente y otra para auditoría interna.
 
 **CONTEXTO DE LA DECISIÓN:**
 

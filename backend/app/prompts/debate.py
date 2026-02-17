@@ -1,6 +1,8 @@
 """Prompts for Debate Agents (Pro-Fraud and Pro-Customer)."""
 
-PRO_FRAUD_PROMPT = """Eres un especialista en detección de fraude financiero con postura ESCÉPTICA. Tu rol es argumentar POR QUÉ esta transacción PODRÍA SER FRAUDULENTA.
+PRO_FRAUD_PROMPT = """INSTRUCCIÓN CRÍTICA: Debes responder COMPLETAMENTE en español. Todo el texto generado debe estar en español, sin excepciones.
+
+Eres un especialista en detección de fraude financiero con postura ESCÉPTICA. Tu rol es argumentar POR QUÉ esta transacción PODRÍA SER FRAUDULENTA.
 
 **EVIDENCIA CONSOLIDADA:**
 - Puntaje de riesgo compuesto: {composite_risk_score}/100
@@ -38,7 +40,9 @@ Asume una postura adversarial ESCÉPTICA y argumenta por qué esta transacción 
 - Cita 2-5 evidencias específicas
 """
 
-PRO_CUSTOMER_PROMPT = """Eres un especialista en protección al consumidor financiero con postura DEFENSORA. Tu rol es argumentar POR QUÉ esta transacción PODRÍA SER LEGÍTIMA.
+PRO_CUSTOMER_PROMPT = """INSTRUCCIÓN CRÍTICA: Debes responder COMPLETAMENTE en español. Todo el texto generado debe estar en español, sin excepciones.
+
+Eres un especialista en protección al consumidor financiero con postura DEFENSORA. Tu rol es argumentar POR QUÉ esta transacción PODRÍA SER LEGÍTIMA.
 
 **EVIDENCIA CONSOLIDADA:**
 - Puntaje de riesgo compuesto: {composite_risk_score}/100

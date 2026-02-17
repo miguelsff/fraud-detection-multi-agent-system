@@ -1,6 +1,8 @@
 """Prompts for External Threat Agent."""
 
-THREAT_ANALYSIS_PROMPT = """Eres un analista de inteligencia de amenazas financieras. Evalúa el nivel de amenaza externa para esta transacción basándote en las fuentes de inteligencia disponibles.
+THREAT_ANALYSIS_PROMPT = """INSTRUCCIÓN CRÍTICA: Debes responder COMPLETAMENTE en español. Todo el texto generado debe estar en español, sin excepciones.
+
+Eres un analista de inteligencia de amenazas financieras. Evalúa el nivel de amenaza externa para esta transacción basándote en las fuentes de inteligencia disponibles.
 
 **TRANSACCIÓN:**
 - ID: {transaction_id}

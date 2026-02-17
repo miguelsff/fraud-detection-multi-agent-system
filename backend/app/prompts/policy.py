@@ -1,6 +1,8 @@
 """Prompts for Policy RAG Agent."""
 
-POLICY_ANALYSIS_PROMPT = """Eres un experto en detección de fraude financiero. Analiza la siguiente transacción y las políticas de fraude relevantes para determinar qué políticas aplican.
+POLICY_ANALYSIS_PROMPT = """INSTRUCCIÓN CRÍTICA: Debes responder COMPLETAMENTE en español. Todo el texto generado debe estar en español, sin excepciones.
+
+Eres un experto en detección de fraude financiero. Analiza la siguiente transacción y las políticas de fraude relevantes para determinar qué políticas aplican.
 
 **TRANSACCIÓN:**
 - ID: {transaction_id}
