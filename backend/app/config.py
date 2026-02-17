@@ -76,8 +76,8 @@ class Settings(BaseSettings):
     api_port: int = 8000
 
     # CORS - Frontend origins (production/staging)
-    cors_frontend_prod_url: str = "https://ca-fraud-frontend-prod.azurecontainerapps.io"
-    cors_frontend_staging_url: str = "https://ca-fraud-frontend-staging.azurecontainerapps.io"
+    cors_frontend_prod_url: str = "https://ca-fraudguard-frontend.calmbeach-89c57ce5.westus2.azurecontainerapps.io"
+    cors_frontend_staging_url: str = "https://ca-fraudguard-frontend.calmbeach-89c57ce5.westus2.azurecontainerapps.io"
 
     # Threat Intelligence APIs
     opensanctions_api_key: SecretStr = SecretStr("")

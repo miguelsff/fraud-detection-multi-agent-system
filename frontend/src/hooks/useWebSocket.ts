@@ -104,7 +104,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
           if (connectionAttemptsRef.current >= maxConnectionAttempts) {
             if (process.env.NODE_ENV === "development") {
               console.warn(
-                "[WebSocket] Backend not available. Make sure the backend server is running on http://localhost:8000"
+                "[WebSocket] Backend not available. Connection attempts exhausted."
               );
             }
             shouldConnectRef.current = false;

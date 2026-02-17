@@ -68,7 +68,7 @@ export function TransactionsClient({
         <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg">
           <p className="font-medium">Error al cargar transacciones</p>
           <p className="text-sm mt-1">{error}</p>
-          <p className="text-sm mt-1">Asegúrate de que el backend esté ejecutándose en http://localhost:8000</p>
+          <p className="text-sm mt-1">Verifica tu conexión de red o intenta de nuevo más tarde.</p>
         </div>
       )}
 

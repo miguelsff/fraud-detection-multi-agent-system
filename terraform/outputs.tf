@@ -14,12 +14,12 @@ output "container_registry_login_server" {
 
 output "backend_url" {
   description = "Backend API URL"
-  value       = "https://${azurerm_container_app.backend.ingress[0].fqdn}"
+  value       = "https://${local.backend_fqdn}"
 }
 
 output "frontend_url" {
   description = "Frontend application URL"
-  value       = "https://${azurerm_container_app.frontend.ingress[0].fqdn}"
+  value       = "https://${local.frontend_fqdn}"
 }
 
 # PostgreSQL outputs disabled - using Supabase

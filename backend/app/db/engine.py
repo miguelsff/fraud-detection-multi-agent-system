@@ -9,7 +9,7 @@ from app.db.models import Base
 
 # Create async engine
 engine = create_async_engine(
-    settings.database_url.get_secret_value(),
+    settings.effective_database_url,
     echo=settings.app_env == "development",  # Log SQL in development
     pool_pre_ping=True,  # Verify connections before using them
     pool_size=10,

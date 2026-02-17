@@ -6,6 +6,12 @@ FROM node:20-alpine AS builder
 # Set working directory
 WORKDIR /app
 
+# Build args for Next.js (baked at compile time)
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ARG NEXT_PUBLIC_WS_URL=ws://localhost:8000
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
+
 # Copy package files
 COPY package*.json ./
 
@@ -44,11 +50,9 @@ USER nextjs
 # Expose port
 EXPOSE 3000
 
-# Set environment variables (can be overridden at runtime)
+# Set environment variables
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
-ENV NEXT_PUBLIC_API_URL=http://localhost:8000
-ENV NEXT_PUBLIC_WS_URL=ws://localhost:8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \

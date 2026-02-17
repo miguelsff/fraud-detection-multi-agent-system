@@ -16,7 +16,7 @@ from app.db.models import Base
 config = context.config
 
 # Override sqlalchemy.url from settings (supports async URL)
-config.set_main_option("sqlalchemy.url", settings.database_url.get_secret_value())
+config.set_main_option("sqlalchemy.url", settings.effective_database_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

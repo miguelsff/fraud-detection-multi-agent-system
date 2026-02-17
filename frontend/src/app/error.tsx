@@ -56,7 +56,7 @@ export default function Error({
             <ul className="text-sm text-blue-800 dark:text-blue-200 mt-2 space-y-1 list-disc list-inside">
               <li>Actualizar la página usando el botón de abajo</li>
               <li>Verificar tu conexión a internet</li>
-              <li>Verificar que el backend esté ejecutándose (http://localhost:8000)</li>
+              <li>Verificar que el servidor esté disponible</li>
               <li>Volver al panel e intentar de nuevo</li>
             </ul>
           </div>

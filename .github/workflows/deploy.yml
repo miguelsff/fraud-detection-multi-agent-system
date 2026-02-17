@@ -9,25 +9,58 @@ on:
       - 'frontend/**'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
+    inputs:
+      force_terraform:
+        description: 'Force Terraform apply (even without infra changes)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 permissions:
   contents: read
   packages: write
 
 env:
-  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-  ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
   ACR_NAME: acrfraudguard
+  RESOURCE_GROUP: rg-fraudguard
+  CAE_NAME: cae-fraudguard
 
 jobs:
   # -------------------------------------------------------
-  # CI checks must pass before deploying
+  # Detect which directories changed
+  # -------------------------------------------------------
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      terraform: ${{ steps.filter.outputs.terraform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+            frontend:
+              - 'frontend/**'
+            terraform:
+              - 'terraform/**'
+
+  # -------------------------------------------------------
+  # CI checks (only if backend changed)
   # -------------------------------------------------------
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     defaults:
       run:
         working-directory: backend
@@ -54,6 +87,8 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     defaults:
       run:
         working-directory: backend
@@ -75,20 +110,28 @@ jobs:
         run: uv run pytest -v --tb=short
 
   # -------------------------------------------------------
-  # Build and push Docker images to ACR
+  # Build and push backend image
   # -------------------------------------------------------
-  build-and-push:
-    name: Build & Push Images
+  build-backend:
+    name: Build Backend
     runs-on: ubuntu-latest
-    needs: [lint, test]
+    needs: [changes, lint, test]
+    if: |
+      always() &&
+      needs.changes.outputs.backend == 'true' &&
+      (needs.lint.result == 'success' || needs.lint.result == 'skipped') &&
+      (needs.test.result == 'success' || needs.test.result == 'skipped')
     outputs:
       image-tag: ${{ steps.meta.outputs.version }}
     environment:
       name: production
-
+    env:
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -110,28 +153,138 @@ jobs:
             -t ${{ env.ACR_NAME }}.azurecr.io/fraudguard-backend:latest .
           docker push ${{ env.ACR_NAME }}.azurecr.io/fraudguard-backend --all-tags
 
+  # -------------------------------------------------------
+  # Build and push frontend image (with backend URL baked in)
+  # -------------------------------------------------------
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    outputs:
+      image-tag: ${{ steps.meta.outputs.version }}
+    environment:
+      name: production
+    env:
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+
+      - name: Login to ACR
+        run: az acr login --name ${{ env.ACR_NAME }}
+
+      - name: Generate image tag
+        id: meta
+        run: echo "version=sha-${GITHUB_SHA::8}" >> $GITHUB_OUTPUT
+
+      - name: Get backend URL from environment
+        id: urls
+        run: |
+          DEFAULT_DOMAIN=$(az containerapp env show \
+            --name ${{ env.CAE_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "properties.defaultDomain" -o tsv)
+          echo "api_url=https://ca-fraudguard-backend.${DEFAULT_DOMAIN}" >> $GITHUB_OUTPUT
+          echo "ws_url=wss://ca-fraudguard-backend.${DEFAULT_DOMAIN}" >> $GITHUB_OUTPUT
+
       - name: Build and push frontend image
         working-directory: frontend
         run: |
           docker build \
+            --build-arg NEXT_PUBLIC_API_URL=${{ steps.urls.outputs.api_url }} \
+            --build-arg NEXT_PUBLIC_WS_URL=${{ steps.urls.outputs.ws_url }} \
             -t ${{ env.ACR_NAME }}.azurecr.io/fraudguard-frontend:${{ steps.meta.outputs.version }} \
             -t ${{ env.ACR_NAME }}.azurecr.io/fraudguard-frontend:latest .
           docker push ${{ env.ACR_NAME }}.azurecr.io/fraudguard-frontend --all-tags
 
   # -------------------------------------------------------
-  # Deploy infrastructure and containers
+  # Fast deploy: az containerapp update (no Terraform)
   # -------------------------------------------------------
-  deploy:
-    name: Deploy Infrastructure
+  deploy-apps:
+    name: Deploy Apps (Fast)
     runs-on: ubuntu-latest
-    needs: build-and-push
+    needs: [changes, build-backend, build-frontend]
+    if: |
+      always() &&
+      needs.changes.outputs.terraform != 'true' &&
+      (needs.build-backend.result == 'success' || needs.build-frontend.result == 'success') &&
+      (needs.build-backend.result != 'failure') &&
+      (needs.build-frontend.result != 'failure')
     environment:
       name: production
-      url: ${{ steps.terraform.outputs.frontend_url }}
-
+    env:
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+
+      - name: Update backend container
+        if: needs.build-backend.result == 'success'
+        run: |
+          az containerapp update \
+            --name ca-fraudguard-backend \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.ACR_NAME }}.azurecr.io/fraudguard-backend:${{ needs.build-backend.outputs.image-tag }}
+
+      - name: Update frontend container
+        if: needs.build-frontend.result == 'success'
+        run: |
+          az containerapp update \
+            --name ca-fraudguard-frontend \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --image ${{ env.ACR_NAME }}.azurecr.io/fraudguard-frontend:${{ needs.build-frontend.outputs.image-tag }}
+
+      - name: Health check
+        run: |
+          DEFAULT_DOMAIN=$(az containerapp env show \
+            --name ${{ env.CAE_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query "properties.defaultDomain" -o tsv)
+          BACKEND_URL="https://ca-fraudguard-backend.${DEFAULT_DOMAIN}"
+          echo "Waiting 30s for containers to start..."
+          sleep 30
+          curl --fail --retry 3 --retry-delay 10 --max-time 30 \
+            "${BACKEND_URL}/api/v1/health" || exit 1
+
+  # -------------------------------------------------------
+  # Infra deploy: Terraform apply (only when terraform/** changes)
+  # -------------------------------------------------------
+  deploy-infra:
+    name: Deploy Infrastructure
+    runs-on: ubuntu-latest
+    needs: [changes, build-backend, build-frontend]
+    if: |
+      always() &&
+      (needs.changes.outputs.terraform == 'true' || github.event.inputs.force_terraform == 'true') &&
+      (needs.build-backend.result != 'failure') &&
+      (needs.build-frontend.result != 'failure')
+    environment:
+      name: production
+    env:
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -149,28 +302,11 @@ jobs:
             -var="azure_subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}" \
             -var="azure_tenant_id=${{ secrets.AZURE_TENANT_ID }}"
 
-      - name: Get outputs
-        id: terraform
+      - name: Health check
         working-directory: terraform
         run: |
-          echo "backend_url=$(terraform output -raw backend_url)" >> $GITHUB_OUTPUT
-          echo "frontend_url=$(terraform output -raw frontend_url)" >> $GITHUB_OUTPUT
-
-      - name: Health check
-        run: |
+          BACKEND_URL=$(terraform output -raw backend_url)
           echo "Waiting 60s for containers to start..."
           sleep 60
           curl --fail --retry 3 --retry-delay 10 --max-time 30 \
-            "${{ steps.terraform.outputs.backend_url }}/api/v1/health" || exit 1
-
-      - name: Deployment summary
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            github.rest.repos.createCommitComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              commit_sha: context.sha,
-              body: `✅ Deployed to **production**\n\n🔗 **Frontend:** ${{ steps.terraform.outputs.frontend_url }}\n🔗 **Backend:** ${{ steps.terraform.outputs.backend_url }}\n📦 **Image tag:** \`${{ needs.build-and-push.outputs.image-tag }}\``
-            })
+            "${BACKEND_URL}/api/v1/health" || exit 1

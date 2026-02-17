@@ -42,6 +42,9 @@ locals {
     ManagedBy  = "Terraform"
     DeployedAt = timestamp()
   }
+  # Derive URLs from environment domain (no circular dependency)
+  backend_fqdn  = "ca-fraudguard-backend.${azurerm_container_app_environment.main.default_domain}"
+  frontend_fqdn = "ca-fraudguard-frontend.${azurerm_container_app_environment.main.default_domain}"
 }
 
 # ============================================================================
@@ -490,6 +493,11 @@ resource "azurerm_container_app" "backend" {
         value = azurerm_application_insights.main.connection_string
       }
 
+      env {
+        name  = "CORS_FRONTEND_PROD_URL"
+        value = "https://${local.frontend_fqdn}"
+      }
+
       volume_mounts {
         name = "chromadb-data"
         path = "/app/data/chroma"
@@ -561,7 +569,12 @@ resource "azurerm_container_app" "frontend" {
 
       env {
         name  = "NEXT_PUBLIC_API_URL"
-        value = "https://${azurerm_container_app.backend.ingress[0].fqdn}"
+        value = "https://${local.backend_fqdn}"
+      }
+
+      env {
+        name  = "NEXT_PUBLIC_WS_URL"
+        value = "wss://${local.backend_fqdn}"
       }
 
       env {
@@ -579,9 +592,4 @@ resource "azurerm_container_app" "frontend" {
       latest_revision = true
     }
   }
-
-  depends_on = [
-    # azurerm_role_assignment.acr_pull,  # Commented out - already exists
-    azurerm_container_app.backend
-  ]
 }
