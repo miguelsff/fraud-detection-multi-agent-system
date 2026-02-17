@@ -368,13 +368,18 @@ resource "azurerm_key_vault_access_policy" "current_user" {
 # ============================================================================
 
 resource "azurerm_container_app_environment" "main" {
-  name                           = "cae-fraudguard"
-  resource_group_name            = azurerm_resource_group.main.name
-  location                       = azurerm_resource_group.main.location
-  log_analytics_workspace_id     = azurerm_log_analytics_workspace.main.id
-  infrastructure_subnet_id       = azurerm_subnet.container_apps_infra.id
+  name                               = "cae-fraudguard"
+  resource_group_name                = azurerm_resource_group.main.name
+  location                           = azurerm_resource_group.main.location
+  log_analytics_workspace_id         = azurerm_log_analytics_workspace.main.id
+  infrastructure_subnet_id           = azurerm_subnet.container_apps_infra.id
   infrastructure_resource_group_name = "ME_cae-fraudguard_rg-fraudguard_westus2"
-  tags                           = local.common_tags
+  tags                               = local.common_tags
+
+  workload_profile {
+    name                  = "Consumption"
+    workload_profile_type = "Consumption"
+  }
 }
 
 # Storage mount para ChromaDB
