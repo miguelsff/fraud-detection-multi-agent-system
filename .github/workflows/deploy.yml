@@ -300,7 +300,8 @@ jobs:
         run: |
           terraform apply -auto-approve \
             -var="azure_subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}" \
-            -var="azure_tenant_id=${{ secrets.AZURE_TENANT_ID }}"
+            -var="azure_tenant_id=${{ secrets.AZURE_TENANT_ID }}" \
+            -var="azure_openai_api_key=${{ secrets.AZURE_OPENAI_API_KEY }}"
 
       - name: Health check
         working-directory: terraform

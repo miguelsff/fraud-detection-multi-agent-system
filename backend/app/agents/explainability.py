@@ -144,7 +144,7 @@ async def _call_llm_for_explanation(
     # Initialize LLM trace metadata
     llm_trace = {
         "llm_prompt": prompt,
-        "llm_model": llm.model,
+        "llm_model": getattr(llm, "model", None) or getattr(llm, "deployment_name", "unknown"),
         "llm_temperature": 0.0,
     }
 

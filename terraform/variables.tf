@@ -25,6 +25,12 @@ variable "location" {
   }
 }
 
+variable "azure_openai_api_key" {
+  description = "API key for Azure OpenAI (stored in Key Vault)"
+  type        = string
+  sensitive   = true
+}
+
 variable "azure_ai_services_resource_id" {
   description = "Resource ID of the Azure AI Services account (created via AI Foundry)"
   type        = string

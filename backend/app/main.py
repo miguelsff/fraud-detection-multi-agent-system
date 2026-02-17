@@ -10,6 +10,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .config import settings
 from .db.engine import init_db
+from .rag.vector_store import ingest_policies
 from .routers import health, hitl, policies, transactions, websocket
 from .utils.logger import get_logger, setup_logging
 
@@ -26,7 +27,18 @@ async def lifespan(app: FastAPI):
     await init_db()  # Create tables if they don't exist (safe: create_all is idempotent)
     logger.info("database_initialized")
 
-    # TODO: Initialize RAG (load policies into ChromaDB if empty)
+    # Auto-ingest policies into ChromaDB if collection is empty (idempotent via upsert)
+    try:
+        from pathlib import Path
+
+        policies_dir = Path(__file__).parent.parent / "policies"
+        if policies_dir.exists():
+            count = ingest_policies(str(policies_dir))
+            logger.info("rag_policies_ingested", count=count)
+        else:
+            logger.warning("policies_directory_not_found", path=str(policies_dir))
+    except Exception as e:
+        logger.error("rag_ingestion_failed", error=str(e))
 
     yield
 
