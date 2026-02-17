@@ -40,10 +40,12 @@ def main() -> int:
     # LLM Configuration
     print("\n🤖 LLM Configuration:")
     if settings.use_azure_openai:
-        print(f"   Provider: Azure OpenAI")
+        print(f"   Provider: Azure OpenAI (Managed Identity)")
         print(f"   Endpoint: {settings.azure_openai_endpoint or '❌ NOT SET'}")
         print(f"   Deployment: {settings.azure_openai_deployment}")
-        print(f"   API Key: {'✅ Set' if settings.azure_openai_key.get_secret_value() else '❌ NOT SET'}")
+        print(f"   API Version: {settings.azure_openai_api_version}")
+        print(f"   Auth: DefaultAzureCredential"
+              f" (Client ID: {settings.azure_client_id or 'auto-detect'})")
     else:
         print(f"   Provider: Ollama (local)")
         print(f"   Base URL: {settings.ollama_base_url}")
@@ -51,17 +53,26 @@ def main() -> int:
 
     # Database
     print("\n💾 Database:")
-    db_url = settings.database_url.get_secret_value()
-    if db_url:
-        # Hide password in output
-        if "@" in db_url:
-            parts = db_url.split("@")
-            masked = parts[0].rsplit(":", 1)[0] + ":***@" + parts[1]
-            print(f"   URL: {masked}")
-        else:
-            print(f"   URL: {db_url}")
+    has_password = bool(settings.database_password.get_secret_value())
+    if has_password:
+        print(f"   Mode: Connection parts (password from env/Key Vault)")
+        print(f"   Host: {settings.database_host}")
+        print(f"   Port: {settings.database_port}")
+        print(f"   User: {settings.database_user}")
+        print(f"   Database: {settings.database_name}")
+        print(f"   Password: ✅ Set")
     else:
-        print("   ❌ DATABASE_URL not set")
+        print(f"   Mode: Direct URL (DATABASE_PASSWORD not set)")
+    effective_url = settings.effective_database_url
+    if effective_url:
+        if "@" in effective_url:
+            parts = effective_url.split("@")
+            masked = parts[0].rsplit(":", 1)[0] + ":***@" + parts[1]
+            print(f"   Effective URL: {masked}")
+        else:
+            print(f"   Effective URL: {effective_url}")
+    else:
+        print("   ❌ No database URL configured")
 
     # ChromaDB
     print("\n📚 ChromaDB:")
@@ -96,8 +107,10 @@ def main() -> int:
             warnings.append("⚠️  Production is using Ollama instead of Azure OpenAI")
         if settings.log_level == "DEBUG":
             warnings.append("⚠️  Production is using DEBUG log level (should be INFO)")
-        if "localhost" in db_url:
+        if "localhost" in effective_url:
             warnings.append("⚠️  Production is using localhost database")
+        if not has_password:
+            warnings.append("⚠️  DATABASE_PASSWORD not set (expected from Key Vault in Azure)")
 
     if warnings:
         print("\n⚠️  Warnings:")

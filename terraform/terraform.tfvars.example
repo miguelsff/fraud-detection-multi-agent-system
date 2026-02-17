@@ -7,5 +7,5 @@ azure_subscription_id = "00000000-0000-0000-0000-000000000000"
 azure_tenant_id       = "00000000-0000-0000-0000-000000000000"
 location              = "eastus"
 
-# Azure OpenAI API Key (sensitive - do not commit terraform.tfvars)
-azure_openai_key = "your-azure-openai-key-here"
+# Azure AI Services resource ID (created via AI Foundry, used for role assignment)
+# azure_ai_services_resource_id uses default value from variables.tf

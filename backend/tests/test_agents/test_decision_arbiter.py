@@ -493,11 +493,12 @@ async def test_call_llm_for_decision_success():
 ```"""
     mock_llm.ainvoke.return_value = mock_response
 
-    decision, confidence, reasoning = await _call_llm_for_decision(mock_llm, evidence, debate)
+    decision, confidence, reasoning, llm_trace = await _call_llm_for_decision(mock_llm, evidence, debate)
 
     assert decision == "BLOCK"
     assert confidence == 0.82
     assert reasoning == "Evidencia fuerte de fraude"
+    assert isinstance(llm_trace, dict)
 
 
 @pytest.mark.asyncio
@@ -523,11 +524,12 @@ async def test_call_llm_for_decision_timeout():
     mock_llm.ainvoke.side_effect = TimeoutError("LLM timeout")
 
     with patch("app.agents.decision_arbiter.asyncio.wait_for", side_effect=TimeoutError):
-        decision, confidence, reasoning = await _call_llm_for_decision(mock_llm, evidence, debate)
+        decision, confidence, reasoning, llm_trace = await _call_llm_for_decision(mock_llm, evidence, debate)
 
     assert decision is None
     assert confidence is None
     assert reasoning is None
+    assert isinstance(llm_trace, dict)
 
 
 # ============================================================================
@@ -571,12 +573,14 @@ async def test_decision_arbiter_agent_success():
 
     with patch("app.agents.decision_arbiter.get_llm") as mock_get_llm:
         mock_llm = AsyncMock()
+        mock_llm.model = "test-model"
         mock_response = MagicMock()
         mock_response.content = json.dumps({
             "decision": "BLOCK",
             "confidence": 0.85,
             "reasoning": "Evidencia fuerte de fraude",
         })
+        del mock_response.response_metadata
         mock_llm.ainvoke.return_value = mock_response
         mock_get_llm.return_value = mock_llm
 
@@ -625,6 +629,7 @@ async def test_decision_arbiter_agent_llm_timeout_uses_fallback():
     with patch("app.agents.decision_arbiter.get_llm") as mock_get_llm, \
          patch("app.agents.decision_arbiter.asyncio.wait_for", side_effect=TimeoutError):
         mock_llm = AsyncMock()
+        mock_llm.model = "test-model"
         mock_get_llm.return_value = mock_llm
 
         result = await decision_arbiter_agent(state)
@@ -670,6 +675,7 @@ async def test_decision_arbiter_agent_safety_override_critical():
 
     with patch("app.agents.decision_arbiter.get_llm") as mock_get_llm:
         mock_llm = AsyncMock()
+        mock_llm.model = "test-model"
         mock_response = MagicMock()
         # LLM suggests CHALLENGE, but should be overridden to BLOCK
         mock_response.content = json.dumps({
@@ -677,6 +683,7 @@ async def test_decision_arbiter_agent_safety_override_critical():
             "confidence": 0.70,
             "reasoning": "Test",
         })
+        del mock_response.response_metadata
         mock_llm.ainvoke.return_value = mock_response
         mock_get_llm.return_value = mock_llm
 

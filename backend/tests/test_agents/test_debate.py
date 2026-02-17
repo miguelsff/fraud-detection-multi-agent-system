@@ -274,6 +274,7 @@ async def test_call_llm_for_debate_success():
 
     # Mock LLM response
     mock_llm = AsyncMock()
+    mock_llm.model = "test-model"
     mock_response = MagicMock()
     mock_response.content = """```json
 {
@@ -282,9 +283,10 @@ async def test_call_llm_for_debate_success():
   "evidence_cited": ["high_amount", "off_hours", "FP-01"]
 }
 ```"""
+    del mock_response.response_metadata
     mock_llm.ainvoke.return_value = mock_response
 
-    argument, confidence, evidence_cited = await _call_llm_for_debate(
+    argument, confidence, evidence_cited, llm_trace = await _call_llm_for_debate(
         mock_llm,
         evidence,
         PRO_FRAUD_PROMPT,
@@ -293,6 +295,7 @@ async def test_call_llm_for_debate_success():
     assert argument == "Transacción de alto riesgo con múltiples señales."
     assert confidence == 0.78
     assert evidence_cited == ["high_amount", "off_hours", "FP-01"]
+    assert isinstance(llm_trace, dict)
     mock_llm.ainvoke.assert_called_once()
 
 
@@ -311,7 +314,7 @@ async def test_call_llm_for_debate_timeout():
     mock_llm.ainvoke.side_effect = TimeoutError("LLM timeout")
 
     with patch("app.utils.debate_utils.asyncio.wait_for", side_effect=TimeoutError):
-        argument, confidence, evidence_cited = await _call_llm_for_debate(
+        argument, confidence, evidence_cited, llm_trace = await _call_llm_for_debate(
             mock_llm,
             evidence,
             PRO_FRAUD_PROMPT,
@@ -320,6 +323,7 @@ async def test_call_llm_for_debate_timeout():
     assert argument is None
     assert confidence is None
     assert evidence_cited == []
+    assert isinstance(llm_trace, dict)
 
 
 @pytest.mark.asyncio
@@ -336,7 +340,7 @@ async def test_call_llm_for_debate_exception():
     mock_llm = AsyncMock()
     mock_llm.ainvoke.side_effect = Exception("LLM error")
 
-    argument, confidence, evidence_cited = await _call_llm_for_debate(
+    argument, confidence, evidence_cited, llm_trace = await _call_llm_for_debate(
         mock_llm,
         evidence,
         PRO_FRAUD_PROMPT,
@@ -345,6 +349,7 @@ async def test_call_llm_for_debate_exception():
     assert argument is None
     assert confidence is None
     assert evidence_cited == []
+    assert isinstance(llm_trace, dict)
 
 
 # ============================================================================
@@ -367,12 +372,14 @@ async def test_debate_pro_fraud_agent_success():
     # Mock LLM
     with patch("app.agents.debate.get_llm") as mock_get_llm:
         mock_llm = AsyncMock()
+        mock_llm.model = "test-model"
         mock_response = MagicMock()
         mock_response.content = json.dumps({
             "argument": "Alta probabilidad de fraude.",
             "confidence": 0.80,
             "evidence_cited": ["high_amount", "unknown_device"],
         })
+        del mock_response.response_metadata
         mock_llm.ainvoke.return_value = mock_response
         mock_get_llm.return_value = mock_llm
 
@@ -401,12 +408,14 @@ async def test_debate_pro_customer_agent_success():
     # Mock LLM
     with patch("app.agents.debate.get_llm") as mock_get_llm:
         mock_llm = AsyncMock()
+        mock_llm.model = "test-model"
         mock_response = MagicMock()
         mock_response.content = json.dumps({
             "argument": "Transacción probablemente legítima.",
             "confidence": 0.65,
             "evidence_cited": ["customer_history"],
         })
+        del mock_response.response_metadata
         mock_llm.ainvoke.return_value = mock_response
         mock_get_llm.return_value = mock_llm
 
@@ -549,12 +558,14 @@ async def test_debate_agents_partial_state_update():
 
     with patch("app.agents.debate.get_llm") as mock_get_llm:
         mock_llm = AsyncMock()
+        mock_llm.model = "test-model"
         mock_response = MagicMock()
         mock_response.content = json.dumps({
             "argument": "Test",
             "confidence": 0.7,
             "evidence_cited": ["test"],
         })
+        del mock_response.response_metadata
         mock_llm.ainvoke.return_value = mock_response
         mock_get_llm.return_value = mock_llm
 

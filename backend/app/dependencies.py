@@ -17,7 +17,7 @@ from .config import settings
 # SQLAlchemy async engine & session factory (module-level singletons)
 # ---------------------------------------------------------------------------
 engine = create_async_engine(
-    settings.database_url.get_secret_value(), echo=(settings.app_env == "development")
+    settings.effective_database_url, echo=(settings.app_env == "development")
 )
 async_session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
@@ -29,49 +29,56 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 # ---------------------------------------------------------------------------
+# Azure AD Token Provider (lazy singleton — same pattern as get_chroma)
+# ---------------------------------------------------------------------------
+_token_provider = None
+
+
+def _get_azure_token_provider():
+    """Return a cached Azure AD token provider for Cognitive Services."""
+    global _token_provider
+    if _token_provider is None:
+        from azure.identity import DefaultAzureCredential, get_bearer_token_provider
+
+        credential = DefaultAzureCredential(
+            managed_identity_client_id=settings.azure_client_id or None,
+        )
+        _token_provider = get_bearer_token_provider(
+            credential, "https://cognitiveservices.azure.com/.default"
+        )
+    return _token_provider
+
+
+# ---------------------------------------------------------------------------
 # LLM Factory (Ollama for local dev, Azure OpenAI for cloud production)
 # ---------------------------------------------------------------------------
 def get_llm(use_gpt4: bool = False) -> BaseChatModel:
     """Return LLM instance based on configuration.
 
     Args:
-        use_gpt4: DEPRECATED - Ignored when using single Azure OpenAI deployment.
-                  Kept for backward compatibility.
+        use_gpt4: DEPRECATED - Ignored. Kept for backward compatibility.
 
     Returns:
         BaseChatModel: Either ChatOllama (local) or AzureChatOpenAI (cloud)
-
-    Note:
-        When using Azure OpenAI with a single advanced model (e.g., GPT-5.2),
-        the use_gpt4 parameter is ignored as the same deployment handles all requests.
     """
     if settings.use_azure_openai:
-        # Azure OpenAI for cloud production
-        if not settings.azure_openai_endpoint or not settings.azure_openai_key.get_secret_value():
+        if not settings.azure_openai_endpoint:
             raise ValueError(
-                "USE_AZURE_OPENAI=true but AZURE_OPENAI_ENDPOINT or AZURE_OPENAI_KEY not configured"
+                "USE_AZURE_OPENAI=true but AZURE_OPENAI_ENDPOINT not configured"
             )
 
-        # Use single deployment for all LLM requests
-        # Fallback to deprecated config for backward compatibility
-        deployment_name = (
-            settings.azure_openai_deployment or
-            settings.azure_openai_gpt4_deployment or
-            settings.azure_openai_gpt35_deployment
-        )
-
+        deployment_name = settings.azure_openai_deployment
         if not deployment_name:
             raise ValueError("AZURE_OPENAI_DEPLOYMENT not configured")
 
         return AzureChatOpenAI(
             azure_endpoint=settings.azure_openai_endpoint,
-            api_key=settings.azure_openai_key.get_secret_value(),
+            azure_ad_token_provider=_get_azure_token_provider(),
             deployment_name=deployment_name,
-            api_version="2025-01-01-preview-preview",  # Updated for GPT-5.2 support
-            temperature=0.1,  # Low temperature for deterministic fraud detection
+            api_version=settings.azure_openai_api_version,
+            temperature=0.1,
         )
     else:
-        # Ollama for local development
         return ChatOllama(
             base_url=settings.ollama_base_url,
             model=settings.ollama_model,

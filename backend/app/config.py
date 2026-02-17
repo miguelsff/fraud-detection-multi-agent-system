@@ -34,23 +34,40 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen3:30b"
 
-    # Azure OpenAI (for cloud production)
+    # Azure OpenAI (for cloud production via Managed Identity)
     azure_openai_endpoint: str = ""
-    azure_openai_key: SecretStr = SecretStr("")
-    azure_openai_deployment: str = "gpt-5.2-chat"  # Single deployment name
-    azure_openai_gpt4_deployment: str = ""  # DEPRECATED: Use azure_openai_deployment
-    azure_openai_gpt35_deployment: str = ""  # DEPRECATED: Use azure_openai_deployment
+    azure_openai_deployment: str = "gpt-5.2-chat"
+    azure_openai_api_version: str = "2025-03-01-preview"
+    azure_client_id: str = ""  # User Assigned Managed Identity client ID
     use_azure_openai: bool = False  # Feature flag
 
-    # Database
+    # Database - connection parts (production: password from Key Vault)
+    database_host: str = "localhost"
+    database_port: int = 5432
+    database_user: str = "fraud_user"
+    database_name: str = "fraud_detection"
+    database_password: SecretStr = SecretStr("")
+
+    # Database - full URL (development fallback)
     database_url: SecretStr = SecretStr(
         "postgresql+asyncpg://fraud_user:fraud_pass_dev@localhost:5432/fraud_detection"
     )
 
+    @property
+    def effective_database_url(self) -> str:
+        """Build database URL from parts if password is set, else use direct URL."""
+        pwd = self.database_password.get_secret_value()
+        if pwd:
+            return (
+                f"postgresql+asyncpg://{self.database_user}:{pwd}"
+                f"@{self.database_host}:{self.database_port}/{self.database_name}"
+            )
+        return self.database_url.get_secret_value()
+
     # ChromaDB
     chroma_persist_dir: str = "./data/chroma"
     chroma_azure_storage_account: str = ""
-    chroma_azure_share_name: str = "chromadb-share"
+    chroma_azure_share_name: str = "chromadb"
 
     # App
     app_env: Literal["development", "production"] = "development"

@@ -177,15 +177,6 @@ resource "azurerm_storage_share" "chromadb" {
 }
 
 # ============================================================================
-# POSTGRESQL
-# ============================================================================
-
-resource "random_password" "postgresql_admin" {
-  length  = 24
-  special = true
-}
-
-# ============================================================================
 # POSTGRESQL - DISABLED (Using Supabase instead)
 # ============================================================================
 # PostgreSQL is hosted on Supabase - no Azure deployment needed
@@ -338,22 +329,9 @@ resource "azurerm_key_vault_access_policy" "current_user" {
   ]
 }
 
-# Secretos
-# Database URL secret disabled - using Supabase PostgreSQL
-# Set DATABASE_URL manually in Azure Portal after deployment
-
-# Azure OpenAI secret (existing deployment in eastus2)
-resource "azurerm_key_vault_secret" "azure_openai_key" {
-  name         = "azure-openai-key"
-  value        = var.azure_openai_key  # ← Use variable instead of hardcoded secret
-  key_vault_id = azurerm_key_vault.main.id
-
-  depends_on = [azurerm_key_vault_access_policy.current_user]
-
-  lifecycle {
-    ignore_changes = [value]  # Allow manual key rotation without Terraform detecting drift
-  }
-}
+# Secrets managed manually in Key Vault (not in Terraform)
+# - your-prod-password (Supabase DB password)
+# - your-opensanctions-key
 
 # ============================================================================
 # CONTAINER APPS
@@ -384,6 +362,13 @@ resource "azurerm_user_assigned_identity" "container_apps" {
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
   tags                = local.common_tags
+}
+
+# Permisos para acceder a Azure AI Services (Managed Identity auth)
+resource "azurerm_role_assignment" "cognitive_services_user" {
+  scope                = var.azure_ai_services_resource_id
+  role_definition_name = "Cognitive Services OpenAI User"
+  principal_id         = azurerm_user_assigned_identity.container_apps.principal_id
 }
 
 # Permisos para acceder al Container Registry
@@ -431,13 +416,23 @@ resource "azurerm_container_app" "backend" {
       cpu    = 0.5
       memory = "1Gi"
 
-      # Feature flags
+      # --- Secrets from Key Vault ---
+      env {
+        name        = "DATABASE_PASSWORD"
+        secret_name = "your-prod-password"
+      }
+
+      env {
+        name        = "OPENSANCTIONS_API_KEY"
+        secret_name = "your-opensanctions-key"
+      }
+
+      # --- Azure OpenAI configuration ---
       env {
         name  = "USE_AZURE_OPENAI"
         value = "true"
       }
 
-      # Azure OpenAI configuration
       env {
         name  = "AZURE_OPENAI_ENDPOINT"
         value = "https://migue-mlq261f9-eastus2.cognitiveservices.azure.com"
@@ -449,17 +444,45 @@ resource "azurerm_container_app" "backend" {
       }
 
       env {
-        name        = "AZURE_OPENAI_KEY"
-        secret_name = "azure-openai-key"
+        name  = "AZURE_CLIENT_ID"
+        value = azurerm_user_assigned_identity.container_apps.client_id
       }
 
-      # Database URL - Supabase PostgreSQL (optional - can be set manually after deployment)
-      dynamic "env" {
-        for_each = var.supabase_database_url != "" ? [1] : []
-        content {
-          name  = "DATABASE_URL"
-          value = var.supabase_database_url
-        }
+      # --- Database connection parts (non-secret) ---
+      env {
+        name  = "DATABASE_HOST"
+        value = "db.hlvydcvhekukmjvvmfnr.supabase.co"
+      }
+
+      env {
+        name  = "DATABASE_PORT"
+        value = "5432"
+      }
+
+      env {
+        name  = "DATABASE_USER"
+        value = "postgres"
+      }
+
+      env {
+        name  = "DATABASE_NAME"
+        value = "postgres"
+      }
+
+      # --- App config ---
+      env {
+        name  = "APP_ENV"
+        value = "production"
+      }
+
+      env {
+        name  = "LOG_LEVEL"
+        value = "INFO"
+      }
+
+      env {
+        name  = "CHROMA_PERSIST_DIR"
+        value = "/app/data/chroma"
       }
 
       env {
@@ -480,13 +503,16 @@ resource "azurerm_container_app" "backend" {
     }
   }
 
-  # Database URL secret disabled - using Supabase PostgreSQL (set via env vars)
-  # TODO: Add DATABASE_URL manually in Azure Portal after deployment
-
-  # Azure OpenAI secret (existing deployment)
+  # Secrets from Key Vault (referenced by URI)
   secret {
-    name                = "azure-openai-key"
-    key_vault_secret_id = azurerm_key_vault_secret.azure_openai_key.id
+    name                = "your-prod-password"
+    key_vault_secret_id = "${azurerm_key_vault.main.vault_uri}secrets/your-prod-password"
+    identity            = azurerm_user_assigned_identity.container_apps.id
+  }
+
+  secret {
+    name                = "your-opensanctions-key"
+    key_vault_secret_id = "${azurerm_key_vault.main.vault_uri}secrets/your-opensanctions-key"
     identity            = azurerm_user_assigned_identity.container_apps.id
   }
 

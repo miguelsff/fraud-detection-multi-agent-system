@@ -25,16 +25,9 @@ variable "location" {
   }
 }
 
-variable "supabase_database_url" {
-  description = "Supabase PostgreSQL connection string (use asyncpg driver for async support)"
+variable "azure_ai_services_resource_id" {
+  description = "Resource ID of the Azure AI Services account (created via AI Foundry)"
   type        = string
-  sensitive   = true
-  default     = ""  # Optional - can be set manually in Azure Portal after deployment
+  default     = "/subscriptions/053c0308-de35-4b7e-b556-063e93e25407/resourceGroups/rg-fraudguard/providers/Microsoft.CognitiveServices/accounts/migue-mlq261f9-eastus2"
 }
 
-variable "azure_openai_key" {
-  description = "Azure OpenAI API key (sensitive - do not commit)"
-  type        = string
-  sensitive   = true
-  # No default - must be provided via terraform.tfvars or environment variable
-}

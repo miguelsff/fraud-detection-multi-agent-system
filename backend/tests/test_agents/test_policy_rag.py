@@ -240,6 +240,8 @@ async def test_policy_rag_agent_success(mock_get_llm, mock_query_policies):
 
     # Mock LLM
     mock_llm = AsyncMock()
+    mock_llm.model = "test-model"
+    mock_llm.temperature = 0.0
     mock_response = Mock()
     mock_response.content = """{
   "matches": [
@@ -250,6 +252,7 @@ async def test_policy_rag_agent_success(mock_get_llm, mock_query_policies):
     }
   ]
 }"""
+    del mock_response.response_metadata
     mock_llm.ainvoke = AsyncMock(return_value=mock_response)
     mock_get_llm.return_value = mock_llm
 

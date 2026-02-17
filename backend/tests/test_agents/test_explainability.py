@@ -548,7 +548,7 @@ async def test_call_llm_for_explanation_success():
 ```"""
     mock_llm.ainvoke.return_value = mock_response
 
-    customer, audit, factors, actions = await _call_llm_for_explanation(
+    customer, audit, factors, actions, llm_trace = await _call_llm_for_explanation(
         mock_llm,
         decision,
         evidence,
@@ -560,6 +560,7 @@ async def test_call_llm_for_explanation_success():
     assert audit == "Transacción T-001 requiere verificación adicional."
     assert factors == ["monto_elevado"]
     assert actions == ["verificar_sms"]
+    assert isinstance(llm_trace, dict)
 
 
 @pytest.mark.asyncio
@@ -599,7 +600,7 @@ async def test_call_llm_for_explanation_timeout():
     mock_llm.ainvoke.side_effect = TimeoutError("LLM timeout")
 
     with patch("app.agents.explainability.asyncio.wait_for", side_effect=TimeoutError):
-        customer, audit, factors, actions = await _call_llm_for_explanation(
+        customer, audit, factors, actions, llm_trace = await _call_llm_for_explanation(
             mock_llm,
             decision,
             evidence,
@@ -611,6 +612,7 @@ async def test_call_llm_for_explanation_timeout():
     assert audit is None
     assert factors == []
     assert actions == []
+    assert isinstance(llm_trace, dict)
 
 
 # ============================================================================
@@ -665,6 +667,7 @@ async def test_explainability_agent_success():
 
     with patch("app.agents.explainability.get_llm") as mock_get_llm:
         mock_llm = AsyncMock()
+        mock_llm.model = "test-model"
         mock_response = MagicMock()
         mock_response.content = json.dumps({
             "customer_explanation": "Necesitamos verificar esta transacción.",
@@ -672,6 +675,7 @@ async def test_explainability_agent_success():
             "key_factors": ["monto"],
             "recommended_actions": ["verificar"],
         })
+        del mock_response.response_metadata
         mock_llm.ainvoke.return_value = mock_response
         mock_get_llm.return_value = mock_llm
 
@@ -719,6 +723,7 @@ async def test_explainability_agent_llm_timeout_uses_fallback():
     with patch("app.agents.explainability.get_llm") as mock_get_llm, \
          patch("app.agents.explainability.asyncio.wait_for", side_effect=TimeoutError):
         mock_llm = AsyncMock()
+        mock_llm.model = "test-model"
         mock_get_llm.return_value = mock_llm
 
         result = await explainability_agent(state)
@@ -766,6 +771,7 @@ async def test_explainability_agent_sanitizes_customer_explanation():
 
     with patch("app.agents.explainability.get_llm") as mock_get_llm:
         mock_llm = AsyncMock()
+        mock_llm.model = "test-model"
         mock_response = MagicMock()
         # LLM returns explanation with internal details (should be sanitized)
         mock_response.content = json.dumps({
@@ -774,6 +780,7 @@ async def test_explainability_agent_sanitizes_customer_explanation():
             "key_factors": [],
             "recommended_actions": [],
         })
+        del mock_response.response_metadata
         mock_llm.ainvoke.return_value = mock_response
         mock_get_llm.return_value = mock_llm
 

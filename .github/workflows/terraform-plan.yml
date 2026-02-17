@@ -2,7 +2,7 @@ name: Terraform Plan
 
 on:
   pull_request:
-    branches: [main, develop]
+    branches: [main]
     paths:
       - 'terraform/**'
       - '.github/workflows/terraform-*.yml'
@@ -11,20 +11,16 @@ permissions:
   contents: read
   pull-requests: write
 
+env:
+  ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+
 jobs:
   terraform-plan:
-    name: Plan (${{ matrix.environment }})
+    name: Plan
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        environment: [dev, staging, prod]
-      fail-fast: false
-
-    env:
-      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
 
     steps:
       - name: Checkout code
@@ -37,24 +33,27 @@ jobs:
 
       - name: Terraform Format Check
         id: fmt
-        working-directory: terraform/environments/${{ matrix.environment }}
+        working-directory: terraform
         run: terraform fmt -check -recursive
         continue-on-error: true
 
       - name: Terraform Init
         id: init
-        working-directory: terraform/environments/${{ matrix.environment }}
+        working-directory: terraform
         run: terraform init
 
       - name: Terraform Validate
         id: validate
-        working-directory: terraform/environments/${{ matrix.environment }}
+        working-directory: terraform
         run: terraform validate -no-color
 
       - name: Terraform Plan
         id: plan
-        working-directory: terraform/environments/${{ matrix.environment }}
-        run: terraform plan -no-color -input=false
+        working-directory: terraform
+        run: |
+          terraform plan -no-color -input=false \
+            -var="azure_subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}" \
+            -var="azure_tenant_id=${{ secrets.AZURE_TENANT_ID }}"
         continue-on-error: true
 
       - name: Comment PR with Plan
@@ -65,7 +64,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const output = `#### Terraform Plan for \`${{ matrix.environment }}\` 🪐
+            const output = `#### Terraform Plan 🪐
 
             <details><summary>Show Plan</summary>
 

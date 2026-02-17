@@ -145,6 +145,15 @@ async def test_get_trace_success(mock_db_session, test_client):
     mock_trace1.input_summary = "Transaction T-001"
     mock_trace1.output_summary = "6 signals generated"
     mock_trace1.created_at = datetime.now(timezone.utc)
+    mock_trace1.llm_prompt = None
+    mock_trace1.llm_response_raw = None
+    mock_trace1.llm_model = None
+    mock_trace1.llm_temperature = None
+    mock_trace1.llm_tokens_used = None
+    mock_trace1.rag_query = None
+    mock_trace1.rag_scores = None
+    mock_trace1.fallback_reason = None
+    mock_trace1.error_details = None
 
     mock_trace2 = Mock()
     mock_trace2.agent_name = "evidence_aggregation"
@@ -153,6 +162,15 @@ async def test_get_trace_success(mock_db_session, test_client):
     mock_trace2.input_summary = "Signals from 3 sources"
     mock_trace2.output_summary = "Composite score: 45.0"
     mock_trace2.created_at = datetime.now(timezone.utc)
+    mock_trace2.llm_prompt = None
+    mock_trace2.llm_response_raw = None
+    mock_trace2.llm_model = None
+    mock_trace2.llm_temperature = None
+    mock_trace2.llm_tokens_used = None
+    mock_trace2.rag_query = None
+    mock_trace2.rag_scores = None
+    mock_trace2.fallback_reason = None
+    mock_trace2.error_details = None
 
     # Result.scalars() is synchronous, returns ScalarResult.
     # ScalarResult.all() is synchronous.
