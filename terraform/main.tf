@@ -487,7 +487,7 @@ resource "azurerm_container_app" "backend" {
       # --- Database connection parts (non-secret) ---
       env {
         name  = "DATABASE_HOST"
-        value = "db.hlvydcvhekukmjvvmfnr.supabase.co"
+        value = "aws-1-us-east-1.pooler.supabase.com"
       }
 
       env {
@@ -497,7 +497,7 @@ resource "azurerm_container_app" "backend" {
 
       env {
         name  = "DATABASE_USER"
-        value = "postgres"
+        value = "postgres.hlvydcvhekukmjvvmfnr"
       }
 
       env {
