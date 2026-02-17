@@ -1,5 +1,6 @@
 """Central configuration loaded from environment variables / .env file."""
 
+import os
 from pathlib import Path
 from typing import Literal
 
@@ -10,11 +11,21 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Application settings populated from environment variables.
 
-    Reads from a ``.env`` file located in the backend directory.
+    Reads from environment-specific .env files:
+    - .env.development (local development)
+    - .env.production (production/Azure)
+
+    Falls back to .env if environment-specific file doesn't exist.
+    Environment variables always take precedence over .env files.
     """
 
     model_config = SettingsConfigDict(
-        env_file=Path(__file__).resolve().parent.parent / ".env",
+        env_file=[
+            # Base configuration (lowest priority)
+            Path(__file__).resolve().parent.parent / ".env",
+            # Environment-specific (higher priority, overrides base)
+            Path(__file__).resolve().parent.parent / f".env.{os.getenv('APP_ENV', 'development')}",
+        ],
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -26,8 +37,9 @@ class Settings(BaseSettings):
     # Azure OpenAI (for cloud production)
     azure_openai_endpoint: str = ""
     azure_openai_key: SecretStr = SecretStr("")
-    azure_openai_gpt4_deployment: str = "gpt-4-deployment"
-    azure_openai_gpt35_deployment: str = "gpt-35-turbo-deployment"
+    azure_openai_deployment: str = "gpt-5.2-chat"  # Single deployment name
+    azure_openai_gpt4_deployment: str = ""  # DEPRECATED: Use azure_openai_deployment
+    azure_openai_gpt35_deployment: str = ""  # DEPRECATED: Use azure_openai_deployment
     use_azure_openai: bool = False  # Feature flag
 
     # Database
@@ -41,7 +53,7 @@ class Settings(BaseSettings):
     chroma_azure_share_name: str = "chromadb-share"
 
     # App
-    app_env: Literal["development", "staging", "production"] = "development"
+    app_env: Literal["development", "production"] = "development"
     log_level: str = "DEBUG"
     api_host: str = "0.0.0.0"
     api_port: int = 8000

@@ -23,6 +23,8 @@ ENV/
 # Environment variables (CRÍTICO - NUNCA commitear)
 .env
 backend/.env
+backend/.env.development
+backend/.env.production
 frontend/.env.local
 frontend/.env.production.local
 frontend/.env.development.local

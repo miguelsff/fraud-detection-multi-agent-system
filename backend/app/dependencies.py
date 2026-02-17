@@ -35,18 +35,15 @@ def get_llm(use_gpt4: bool = False) -> BaseChatModel:
     """Return LLM instance based on configuration.
 
     Args:
-        use_gpt4: If True and using Azure OpenAI, return GPT-4 deployment.
-                  If False, return GPT-3.5 Turbo deployment (cheaper).
-                  Ignored when using Ollama.
+        use_gpt4: DEPRECATED - Ignored when using single Azure OpenAI deployment.
+                  Kept for backward compatibility.
 
     Returns:
         BaseChatModel: Either ChatOllama (local) or AzureChatOpenAI (cloud)
 
-    Cost-optimized strategy (Azure OpenAI):
-        - Simple agents (PolicyRAG, ExternalThreat, ProFraud, ProCustomer):
-          use_gpt4=False → GPT-3.5 Turbo (~$0.002/1K tokens)
-        - Critical agents (DecisionArbiter, Explainability):
-          use_gpt4=True → GPT-4 (~$0.03/1K tokens)
+    Note:
+        When using Azure OpenAI with a single advanced model (e.g., GPT-5.2),
+        the use_gpt4 parameter is ignored as the same deployment handles all requests.
     """
     if settings.use_azure_openai:
         # Azure OpenAI for cloud production
@@ -55,16 +52,22 @@ def get_llm(use_gpt4: bool = False) -> BaseChatModel:
                 "USE_AZURE_OPENAI=true but AZURE_OPENAI_ENDPOINT or AZURE_OPENAI_KEY not configured"
             )
 
+        # Use single deployment for all LLM requests
+        # Fallback to deprecated config for backward compatibility
         deployment_name = (
-            settings.azure_openai_gpt4_deployment if use_gpt4
-            else settings.azure_openai_gpt35_deployment
+            settings.azure_openai_deployment or
+            settings.azure_openai_gpt4_deployment or
+            settings.azure_openai_gpt35_deployment
         )
+
+        if not deployment_name:
+            raise ValueError("AZURE_OPENAI_DEPLOYMENT not configured")
 
         return AzureChatOpenAI(
             azure_endpoint=settings.azure_openai_endpoint,
             api_key=settings.azure_openai_key.get_secret_value(),
             deployment_name=deployment_name,
-            api_version="2024-02-01",
+            api_version="2025-01-01-preview-preview",  # Updated for GPT-5.2 support
             temperature=0.1,  # Low temperature for deterministic fraud detection
         )
     else:

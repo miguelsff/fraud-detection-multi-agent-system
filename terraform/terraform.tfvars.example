@@ -1,0 +1,11 @@
+# ============================================================================
+# TERRAFORM VARIABLES - Example Configuration
+# ============================================================================
+# Copiar este archivo a terraform.tfvars y rellenar con valores reales
+
+azure_subscription_id = "00000000-0000-0000-0000-000000000000"
+azure_tenant_id       = "00000000-0000-0000-0000-000000000000"
+location              = "eastus"
+
+# Azure OpenAI API Key (sensitive - do not commit terraform.tfvars)
+azure_openai_key = "your-azure-openai-key-here"

@@ -38,6 +38,41 @@ Detailed architecture documentation (in Spanish) lives in `.claude/docs/arquitec
 - `utils/` — Structured logging (structlog), timing decorators
 - `data/` — Synthetic test data for pipeline validation
 
+## Environment Configuration
+
+This project uses **2 environment-specific configuration files**:
+
+```bash
+backend/
+├── .env.development   # Local development (default)
+├── .env.production    # Production/Azure
+└── .env.example       # Template (committed to git)
+```
+
+**Setup:**
+```bash
+cd backend
+cp .env.example .env.development  # First time only
+# Edit .env.development with your local config
+```
+
+**Running different environments:**
+```bash
+# Development (default) - Local with Ollama
+python -m uv run uvicorn app.main:app --reload
+
+# Production - Azure with Azure OpenAI
+APP_ENV=production python -m uv run uvicorn app.main:app
+```
+
+**Validate configuration:**
+```bash
+python check_config.py                    # Check development config
+APP_ENV=production python check_config.py # Check production config
+```
+
+See `backend/ENV_SETUP.md` for detailed documentation.
+
 ## Build & Development Commands
 
 ```bash
