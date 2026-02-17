@@ -1,7 +1,7 @@
 # Arquitectura del Sistema Multi-Agente de Detección de Fraude
 
 **Última actualización**: 2026-02-17
-**Refleja commit**: e4c5e44 (startup script, DB schema setup, NAT Gateway, Terraform remote state)
+**Refleja commit**: a5fa440 (migración LLM: AzureChatOpenAI Managed Identity → ChatOpenAI API Key)
 **Actualizar este documento cuando**: Se cambien versiones de tech stack, se agreguen nuevos agentes, o se modifique arquitectura core
 
 ## 1. Visión General
@@ -35,7 +35,7 @@ El sistema implementa un pipeline de **8 agentes especializados** orquestados me
 | **Backend** | FastAPI + Python 3.13 + uv | Async nativo, Pydantic v2 integrado, OpenAPI auto-generado, WebSockets, package manager ultrarrápido |
 | **Frontend** | Next.js 16 + TypeScript + Tailwind + shadcn/ui | SSR/SSG, App Router, React Server Components, componentes copiables sin vendor lock-in |
 | **Vector DB** | ChromaDB (embedded) | Lightweight, embebible, ideal para el volumen de políticas internas, persistencia automática |
-| **LLM** | Ollama (qwen3:30b local) / Azure OpenAI (prod: gpt-5.2-chat) | Desarrollo local sin costos, Azure OpenAI desplegado en producción (Container Apps) |
+| **LLM** | Ollama (qwen3:30b local) / Azure OpenAI via API Key (prod: gpt-5.2-chat) | Desarrollo local sin costos, Azure OpenAI con endpoint OpenAI-compatible + API Key en producción |
 | **Base de datos** | PostgreSQL 16 (async via asyncpg) | Audit trail persistente, SQLAlchemy async, Alembic migrations, soporte tanto local como cloud |
 | **Logging** | structlog | Logs estructurados JSON, contexto automático, ideal para observabilidad |
 | **Deploy** | Docker Compose (local) / Azure Container Apps (producción) | Containerización con 3 servicios (postgres, backend, frontend), Azure desplegado con Terraform + CI/CD |
@@ -1324,9 +1324,9 @@ graph TB
 **Componentes desplegados**:
 - **Azure Container Apps**: Despliegue serverless de containers (backend + frontend) en VNet
 - **Azure NAT Gateway**: IP pública estática para egress de containers en VNet (requerido para alcanzar Supabase y Azure OpenAI)
-- **Azure OpenAI**: Modelo gpt-5.2-chat para producción (reemplaza Ollama)
+- **Azure OpenAI**: Modelo gpt-5.2-chat para producción via endpoint OpenAI-compatible + API Key (reemplaza Ollama)
 - **Azure Container Registry (ACR)**: Almacenamiento de imágenes Docker
-- **Azure Key Vault**: Gestión segura de secrets (connection strings, API keys)
+- **Azure Key Vault**: Gestión segura de secrets (DB password, OpenSanctions key, Azure OpenAI API key)
 - **Azure Storage Account**: Estado remoto de Terraform (`stfraudguardtfstate`)
 - **Application Insights**: Telemetría y métricas (Azure-native observability)
 - **Supabase PostgreSQL**: Base de datos gestionada en producción (Session Pooler IPv4)
@@ -1340,7 +1340,8 @@ graph TB
 **CI/CD con GitHub Actions**:
 - **App deploy** (path-based): Cambios en `backend/` o `frontend/` → build Docker → push ACR → deploy Container Apps (~3-5 min)
 - **Infra deploy**: Cambios en `devops/terraform/` → plan → apply (~5-10 min)
-- **Autenticación**: Managed Identity (DefaultAzureCredential) para Azure OpenAI y Key Vault
+- **Autenticación LLM**: API Key (almacenada en Key Vault, inyectada como secret en Container Apps) — usa endpoint OpenAI-compatible de Azure
+- **Autenticación infra**: Managed Identity para Key Vault y ACR
 
 ---
 
