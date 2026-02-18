@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from langchain_core.language_models import BaseChatModel
 from langchain_ollama import ChatOllama
-from langchain_openai import AzureChatOpenAI
+from langchain_openai import ChatOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 if TYPE_CHECKING:
@@ -38,17 +38,19 @@ def get_llm(use_gpt4: bool = False) -> BaseChatModel:
         use_gpt4: DEPRECATED - Ignored. Kept for backward compatibility.
 
     Returns:
-        BaseChatModel: Either ChatOllama (local) or AzureChatOpenAI (API key)
+        BaseChatModel: Either ChatOllama (local) or ChatOpenAI (Azure endpoint)
     """
     if settings.use_azure_openai:
         if not settings.azure_openai_endpoint:
             raise ValueError("USE_AZURE_OPENAI=true but AZURE_OPENAI_ENDPOINT not configured")
 
-        return AzureChatOpenAI(
-            azure_endpoint=settings.azure_openai_endpoint,
+        # Azure OpenAI via OpenAI-compatible endpoint (/openai/v1/)
+        base_url = settings.azure_openai_endpoint.rstrip('/') + '/openai/v1/'
+
+        return ChatOpenAI(
+            base_url=base_url,
             api_key=settings.azure_openai_api_key.get_secret_value(),
-            deployment_name=settings.azure_openai_deployment,
-            api_version="2024-10-21",
+            model=settings.azure_openai_deployment,  # deployment name as model
             temperature=0.1,
         )
     else:
