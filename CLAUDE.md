@@ -183,4 +183,3 @@ Cuando agregues o modifiques prompts en `backend/app/prompts/`:
 ## Reglas general
 1. Sólo debes crear documentación si te solicita explicitamente y en caso se te solicita debes preguntar para confirmar
 2. Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask
-
