@@ -6,7 +6,7 @@ FROM python:3.13-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies (g++ required to compile chroma-hnswlib)
+# Install system dependencies (g++ required to compile hnswlib from sdist)
 RUN apt-get update && apt-get install -y \
     curl \
     g++ \
