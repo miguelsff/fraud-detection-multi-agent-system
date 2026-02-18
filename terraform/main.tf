@@ -530,6 +530,11 @@ resource "azurerm_container_app" "backend" {
       }
 
       env {
+        name  = "CHROMA_API_IMPL"
+        value = "chromadb.api.segment.SegmentAPI"
+      }
+
+      env {
         name  = "APPLICATIONINSIGHTS_CONNECTION_STRING"
         value = azurerm_application_insights.main.connection_string
       }
