@@ -42,9 +42,7 @@ def get_llm(use_gpt4: bool = False) -> BaseChatModel:
     """
     if settings.use_azure_openai:
         if not settings.azure_openai_endpoint:
-            raise ValueError(
-                "USE_AZURE_OPENAI=true but AZURE_OPENAI_ENDPOINT not configured"
-            )
+            raise ValueError("USE_AZURE_OPENAI=true but AZURE_OPENAI_ENDPOINT not configured")
 
         # Azure OpenAI via OpenAI-compatible endpoint (/openai/v1/)
         base_url = settings.azure_openai_endpoint.rstrip("/") + "/openai/v1/"
