@@ -521,7 +521,7 @@ resource "azurerm_container_app" "backend" {
 
       env {
         name  = "LOG_LEVEL"
-        value = "INFO"
+        value = "DEBUG"
       }
 
       env {
