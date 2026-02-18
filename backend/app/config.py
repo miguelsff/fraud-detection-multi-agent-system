@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     ollama_model: str = "qwen3:30b"
 
     # Azure OpenAI (OpenAI-compatible endpoint + API key)
-    azure_openai_base_url: str = ""
+    azure_openai_endpoint: str = ""  # Base endpoint without /openai/v1/
     azure_openai_api_key: SecretStr = SecretStr("")
     azure_openai_deployment: str = "gpt-5.2-chat"
     use_azure_openai: bool = False

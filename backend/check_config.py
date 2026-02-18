@@ -41,7 +41,7 @@ def main() -> int:
     print("\n🤖 LLM Configuration:")
     if settings.use_azure_openai:
         print(f"   Provider: Azure OpenAI (API Key)")
-        print(f"   Base URL: {settings.azure_openai_base_url or '❌ NOT SET'}")
+        print(f"   Endpoint: {settings.azure_openai_endpoint or '❌ NOT SET'}")
         print(f"   Deployment: {settings.azure_openai_deployment}")
         has_key = bool(settings.azure_openai_api_key.get_secret_value())
         print(f"   API Key: {'✅ Set' if has_key else '❌ NOT SET'}")

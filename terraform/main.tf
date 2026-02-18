@@ -478,8 +478,8 @@ resource "azurerm_container_app" "backend" {
       }
 
       env {
-        name  = "AZURE_OPENAI_BASE_URL"
-        value = "https://migue-mlq261f9-eastus2.openai.azure.com/openai/v1/"
+        name  = "AZURE_OPENAI_ENDPOINT"
+        value = "https://migue-mlq261f9-eastus2.openai.azure.com/"
       }
 
       env {
