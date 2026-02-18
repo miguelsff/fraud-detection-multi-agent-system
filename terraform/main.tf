@@ -543,6 +543,25 @@ resource "azurerm_container_app" "backend" {
         name = "chromadb-data"
         path = "/app/data/chroma"
       }
+
+      startup_probe {
+        transport = "HTTP"
+        port      = 8000
+        path      = "/api/v1/health"
+        initial_delay_seconds = 10
+        timeout_seconds       = 3
+        failure_threshold     = 10
+        interval_seconds      = 3
+      }
+
+      liveness_probe {
+        transport = "HTTP"
+        port      = 8000
+        path      = "/api/v1/health"
+        timeout_seconds   = 5
+        failure_threshold = 3
+        interval_seconds  = 30
+      }
     }
 
     volume {
