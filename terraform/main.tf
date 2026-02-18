@@ -543,6 +543,7 @@ resource "azurerm_container_app" "backend" {
         name = "chromadb-data"
         path = "/app/data/chroma"
       }
+
     }
 
     volume {
