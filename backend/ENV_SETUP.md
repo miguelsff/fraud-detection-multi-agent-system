@@ -71,35 +71,30 @@ If you DON'T have `DATABASE_URL` in system env:
 - **CORS**: Allow `http://localhost:3000`
 - **API**: http://localhost:8000
 
-### Production (`.env.production`)
+### Production (`terraform/main.tf` → Azure Container Apps)
 
 - **LLM**: Azure OpenAI
-- **Database**: Azure PostgreSQL Flexible Server
-- **ChromaDB**: Azure Files Share (`/mnt/chromadb`)
-- **Log Level**: INFO
-- **CORS**: Production frontend URL (Azure Container Apps)
-- **API**: https://ca-fraudguard-backend.blacksea-a48ea308.westus2.azurecontainerapps.io
+- **Database**: Supabase PostgreSQL (via pooler)
+- **ChromaDB**: Azure Files Share (`/app/data/chroma`)
+- **Log Level**: INFO (configurable in Terraform)
+- **CORS**: Production frontend URL (dynamic via Terraform)
+- **Secrets**: Azure Key Vault (referenced by Terraform)
 
-## 🔐 Azure Container Apps
+> `.env.production` mirrors these values for local simulation only.
 
-When deploying to Azure Container Apps, you can:
+## 🔐 Azure Container Apps (Production)
 
-1. **Option A**: Include `.env.production` in the container image (not recommended for secrets)
-2. **Option B**: Set environment variables in Azure Container Apps (recommended)
+**Single Source of Truth**: `terraform/main.tf` defines all production environment variables.
 
-Azure Container Apps environment variables will **override** values in `.env.production`.
+- Non-secret values → hardcoded in Terraform `env {}` blocks
+- Secrets (`DATABASE_PASSWORD`, `AZURE_OPENAI_API_KEY`, etc.) → Azure Key Vault, referenced via `secret_name` in Terraform
 
-### Setting Environment Variables in Azure
-
+`.env.production` is **NOT deployed** to Azure (excluded by `.dockerignore`). It exists only for local simulation of production mode:
 ```bash
-az containerapp update \
-  --name ca-fraudguard-backend \
-  --resource-group rg-fraudguard-dev \
-  --set-env-vars \
-    APP_ENV=production \
-    DATABASE_URL=secretref:database-url \
-    AZURE_OPENAI_KEY=secretref:azure-openai-key
+APP_ENV=production python -m uv run uvicorn app.main:app
 ```
+
+If values in `.env.production` and `terraform/main.tf` differ, **Terraform wins** — it's what actually runs in Azure.
 
 ## 📋 Required Variables
 

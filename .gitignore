@@ -24,6 +24,7 @@ ENV/
 .env
 backend/.env
 backend/.env.development
+backend/.env.development.docker
 backend/.env.production
 frontend/.env.local
 frontend/.env.production.local
