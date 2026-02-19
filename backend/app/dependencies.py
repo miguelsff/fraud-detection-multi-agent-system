@@ -66,10 +66,12 @@ def get_llm(use_gpt4: bool = False) -> BaseChatModel:
 # ---------------------------------------------------------------------------
 _chroma_client: "chromadb.ClientAPI | None" = None
 
+
 def get_chroma() -> "chromadb.ClientAPI":
     """Return a persistent ChromaDB client (singleton)."""
     global _chroma_client
     if _chroma_client is None:
         import chromadb
+
         _chroma_client = chromadb.PersistentClient(path=settings.chroma_persist_dir)
     return _chroma_client
