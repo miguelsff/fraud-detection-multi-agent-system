@@ -40,14 +40,16 @@ Detailed architecture documentation (in Spanish) lives in `.claude/docs/arquitec
 
 ## Environment Configuration
 
-This project uses **2 environment-specific configuration files**:
+**Production SSOT**: `terraform/main.tf` — all Azure env vars and secrets (Key Vault) are defined there.
 
 ```bash
 backend/
 ├── .env.development   # Local development (default)
-├── .env.production    # Production/Azure
+├── .env.production    # Local simulation of production (NOT deployed to Azure)
 └── .env.example       # Template (committed to git)
 ```
+
+`.env.production` is excluded by `.dockerignore` and `.gitignore`. It only exists for running `APP_ENV=production` locally.
 
 **Setup:**
 ```bash
@@ -61,7 +63,7 @@ cp .env.example .env.development  # First time only
 # Development (default) - Local with Ollama
 python -m uv run uvicorn app.main:app --reload
 
-# Production - Azure with Azure OpenAI
+# Production simulation (local only) - Azure OpenAI
 APP_ENV=production python -m uv run uvicorn app.main:app
 ```
 
