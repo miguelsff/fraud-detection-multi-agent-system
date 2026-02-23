@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 from .config import settings
 
-#SQLAlchemy async engine & session factory (module-level singletons)
+# SQLAlchemy async engine & session factory (module-level singletons)
 engine = create_async_engine(
     settings.effective_database_url, echo=(settings.app_env == "development")
 )
@@ -26,7 +26,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-#LLM Factory (Ollama for local dev, Azure OpenAI for cloud production)
+# LLM Factory (Ollama for local dev, Azure OpenAI for cloud production)
 def get_llm() -> BaseChatModel:
     """Return LLM instance based on configuration."""
     if settings.use_azure_openai:
@@ -49,7 +49,7 @@ def get_llm() -> BaseChatModel:
         )
 
 
-#ChromaDB
+# ChromaDB
 _chroma_client: "chromadb.ClientAPI | None" = None
 
 

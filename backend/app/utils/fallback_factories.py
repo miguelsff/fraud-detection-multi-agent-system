@@ -10,26 +10,20 @@ from ..models import AggregatedEvidence, DebateArguments
 # Single source of truth — used by decision_arbiter (initial explanation)
 # and explainability (fallback & safe-replacement templates).
 CUSTOMER_EXPLANATION_TEMPLATES: dict[str, str] = {
-    "APPROVE": (
-        "Su transacción ha sido aprobada. Todo está en orden."
-    ),
+    "APPROVE": ("Su transacción ha sido aprobada. Todo está en orden."),
     "CHALLENGE": (
-        "Por seguridad, necesitamos verificar esta transacción. "
-        "Le contactaremos pronto."
+        "Por seguridad, necesitamos verificar esta transacción. Le contactaremos pronto."
     ),
     "BLOCK": (
         "Por su seguridad, hemos bloqueado esta transacción. "
         "Si usted la autorizó, contáctenos de inmediato."
     ),
     "ESCALATE_TO_HUMAN": (
-        "Su transacción está en revisión. "
-        "Nuestro equipo la analizará y le contactaremos pronto."
+        "Su transacción está en revisión. Nuestro equipo la analizará y le contactaremos pronto."
     ),
 }
 
-CUSTOMER_EXPLANATION_DEFAULT = (
-    "Su transacción está siendo procesada. Le mantendremos informado."
-)
+CUSTOMER_EXPLANATION_DEFAULT = "Su transacción está siendo procesada. Le mantendremos informado."
 
 
 def get_customer_explanation(decision: str) -> str:
