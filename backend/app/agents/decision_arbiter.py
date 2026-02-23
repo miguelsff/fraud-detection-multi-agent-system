@@ -117,9 +117,7 @@ async def _call_llm_for_decision(
         decision_type="una de: APPROVE, CHALLENGE, BLOCK, ESCALATE_TO_HUMAN",
     )
 
-    content, llm_trace = await invoke_llm_with_timeout(
-        llm, prompt, agent_name="decision_arbiter"
-    )
+    content, llm_trace = await invoke_llm_with_timeout(llm, prompt, agent_name="decision_arbiter")
     if content:
         decision, confidence, reasoning = _parse_decision_response(content)
         return decision, confidence, reasoning, llm_trace

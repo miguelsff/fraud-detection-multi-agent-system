@@ -120,7 +120,9 @@ class ConnectionManager:
             removed += 1
 
         if removed:
-            logger.debug("stale_buffers_cleaned", removed=removed, remaining=len(self._event_buffers))
+            logger.debug(
+                "stale_buffers_cleaned", removed=removed, remaining=len(self._event_buffers)
+            )
 
 
 manager = ConnectionManager()

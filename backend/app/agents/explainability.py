@@ -134,9 +134,7 @@ async def _call_llm_for_explanation(
         pro_customer_argument=debate.pro_customer_argument,
     )
 
-    content, llm_trace = await invoke_llm_with_timeout(
-        llm, prompt, agent_name="explainability"
-    )
+    content, llm_trace = await invoke_llm_with_timeout(llm, prompt, agent_name="explainability")
     if content:
         customer_exp, audit_exp, key_factors, actions = _parse_explanation_response(content)
         return customer_exp, audit_exp, key_factors, actions, llm_trace

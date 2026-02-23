@@ -74,7 +74,7 @@ async def _run_agent(
         raise
 
 
-#Node functions
+# Node functions
 
 
 async def validate_input(state: OrchestratorState, config: RunnableConfig) -> dict:
@@ -334,7 +334,7 @@ async def respond(state: OrchestratorState, config: RunnableConfig) -> dict:
     return {"status": "completed"}
 
 
-#Routing functions (conditional edges)
+# Routing functions (conditional edges)
 
 
 def route_after_validation(state: OrchestratorState) -> str:
@@ -352,7 +352,7 @@ def route_decision(state: OrchestratorState) -> str:
     return "respond"
 
 
-#Graph construction
+# Graph construction
 
 
 def build_graph() -> StateGraph:
@@ -397,7 +397,7 @@ def build_graph() -> StateGraph:
 graph = build_graph()
 
 
-#Public API
+# Public API
 
 
 async def analyze_transaction(
