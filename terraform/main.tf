@@ -201,7 +201,6 @@ resource "azurerm_storage_account" "main" {
 }
 
 # REMOVED: Azure File Share not compatible with SQLite (used by ChromaDB)
-# ChromaDB now uses ephemeral container storage + re-ingests policies on startup
 # resource "azurerm_storage_share" "chromadb" {
 #   name                 = "chromadb"
 #   storage_account_name = azurerm_storage_account.main.name
