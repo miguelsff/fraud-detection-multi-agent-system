@@ -134,7 +134,7 @@ print(f"Using Azure OpenAI: {settings.use_azure_openai}")
 2. **ALWAYS use** `SecretStr` for sensitive values in `config.py`
 3. **Store secrets** in Azure Key Vault for production (reference via Container Apps)
 4. **Rotate credentials** regularly
-5. **Use different credentials** for dev/staging/prod environments
+5. **Use different credentials** for dev/staging/prod environments.
 
 ## 🐛 Troubleshooting
 
