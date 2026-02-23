@@ -1,11 +1,7 @@
 """Policy RAG Agent - matches transaction signals against fraud policies using LLM + RAG."""
 
-import asyncio
-from typing import Optional
-
 from langchain_core.language_models import BaseChatModel
 
-from ..constants import AGENT_TIMEOUTS
 from ..dependencies import get_llm
 from ..models import (
     BehavioralSignals,
@@ -17,6 +13,7 @@ from ..models import (
 )
 from ..prompts.policy import POLICY_ANALYSIS_PROMPT
 from ..rag.vector_store import query_policies
+from ..utils.llm_call import invoke_llm_with_timeout
 from ..utils.logger import get_logger
 from ..utils.policy_utils import build_rag_query, build_signals_summary, parse_policy_matches
 from ..utils.timing import timed_agent
@@ -52,8 +49,7 @@ async def policy_rag_agent(state: OrchestratorState) -> dict:
                 "_rag_trace": rag_trace,
             }
 
-        # Use GPT-3.5 for simple policy matching (cost optimization)
-        llm = get_llm(use_gpt4=False)
+        llm = get_llm()
         policy_matches, llm_trace = await _call_llm_for_policy_analysis(
             llm,
             transaction,
@@ -81,8 +77,8 @@ async def policy_rag_agent(state: OrchestratorState) -> dict:
 async def _call_llm_for_policy_analysis(
     llm: BaseChatModel,
     transaction: Transaction,
-    transaction_signals: Optional[TransactionSignals],
-    behavioral_signals: Optional[BehavioralSignals],
+    transaction_signals: TransactionSignals | None,
+    behavioral_signals: BehavioralSignals | None,
     rag_results: list[dict],
 ) -> tuple[list[PolicyMatch], dict]:
     """Call LLM to analyze which policies apply.
@@ -108,32 +104,6 @@ async def _call_llm_for_policy_analysis(
         policy_chunks=policy_chunks_text,
     )
 
-    # Initialize LLM trace metadata
-    llm_trace = {
-        "llm_prompt": prompt,
-        "llm_model": getattr(llm, "model", None) or getattr(llm, "deployment_name", "unknown"),
-        "llm_temperature": getattr(llm, "temperature", 0.0),
-    }
-
-    try:
-        response = await asyncio.wait_for(llm.ainvoke(prompt), timeout=AGENT_TIMEOUTS.llm_call)
-
-        # Capture raw response
-        llm_trace["llm_response_raw"] = response.content
-
-        # Capture token usage if available
-        if hasattr(response, "response_metadata"):
-            usage = response.response_metadata.get("usage", {})
-            llm_trace["llm_tokens_used"] = usage.get("total_tokens")
-
-        matches = parse_policy_matches(response.content)
-        return matches, llm_trace
-
-    except asyncio.TimeoutError:
-        logger.error("llm_timeout", timeout_seconds=AGENT_TIMEOUTS.llm_call)
-        llm_trace["llm_response_raw"] = f"TIMEOUT after {AGENT_TIMEOUTS.llm_call}s"
-        return [], llm_trace
-    except Exception as e:
-        logger.error("llm_call_failed", error=str(e))
-        llm_trace["llm_response_raw"] = f"ERROR: {str(e)}"
-        return [], llm_trace
+    content, llm_trace = await invoke_llm_with_timeout(llm, prompt, agent_name="policy_rag")
+    matches = parse_policy_matches(content) if content else []
+    return matches, llm_trace

@@ -12,6 +12,9 @@ from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+MAX_BUFFER_SIZE: int = 100
+MAX_BUFFER_AGE_SECONDS: int = 3600
+
 
 class ConnectionManager:
     """Manages WebSocket connections for real-time updates."""
@@ -53,14 +56,7 @@ class ConnectionManager:
         agent: str | None = None,
         data: dict | None = None,
     ):
-        """Broadcast a standardised agent pipeline event.
-
-        Args:
-            transaction_id: The transaction being analysed.
-            event: Event type (agent_started, agent_completed, decision_ready, analysis_error).
-            agent: Agent name (e.g. "TransactionContext").
-            data: Optional extra payload.
-        """
+        """Broadcast a standardised agent pipeline event."""
         message: dict = {
             "transaction_id": transaction_id,
             "event": event,
@@ -71,12 +67,14 @@ class ConnectionManager:
         if data is not None:
             message["data"] = data
 
-        # Buffer event for late-connecting clients
         self._event_buffers.setdefault(transaction_id, []).append(message)
 
-        # Mark buffer for cleanup when analysis finishes
         if event in ("decision_ready", "analysis_error"):
             self._pending_cleanup.add(transaction_id)
+
+        # Prevent unbounded buffer growth
+        if len(self._event_buffers) > MAX_BUFFER_SIZE:
+            self._cleanup_stale_buffers()
 
         await self.broadcast(message)
 
@@ -92,6 +90,37 @@ class ConnectionManager:
         if transaction_id in self._pending_cleanup:
             self._event_buffers.pop(transaction_id, None)
             self._pending_cleanup.discard(transaction_id)
+
+    def _cleanup_stale_buffers(self) -> None:
+        """Remove buffers older than MAX_BUFFER_AGE_SECONDS, prioritizing completed analyses."""
+        now = datetime.now(UTC)
+        stale_ids: list[str] = []
+
+        # First pass: remove completed (pending_cleanup) buffers
+        for tid in list(self._pending_cleanup):
+            stale_ids.append(tid)
+
+        # Second pass: remove buffers older than TTL
+        for tid, events in self._event_buffers.items():
+            if tid in stale_ids:
+                continue
+            if events:
+                try:
+                    first_ts = datetime.fromisoformat(events[0]["timestamp"])
+                    age = (now - first_ts).total_seconds()
+                    if age > MAX_BUFFER_AGE_SECONDS:
+                        stale_ids.append(tid)
+                except (KeyError, ValueError):
+                    stale_ids.append(tid)
+
+        removed = 0
+        for tid in stale_ids:
+            self._event_buffers.pop(tid, None)
+            self._pending_cleanup.discard(tid)
+            removed += 1
+
+        if removed:
+            logger.debug("stale_buffers_cleaned", removed=removed, remaining=len(self._event_buffers))
 
 
 manager = ConnectionManager()

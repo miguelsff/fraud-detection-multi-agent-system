@@ -253,7 +253,7 @@ def mock_db_session() -> AsyncMock:
     mock_result.scalar_one_or_none.return_value = None
     mock_result.scalar_one.return_value = 1  # Default int for count/avg queries
     mock_result.scalars.return_value.all.return_value = []
-    
+
     session.execute = AsyncMock(return_value=mock_result)
     return session
 
@@ -494,8 +494,8 @@ def test_client(mock_db_session):
             response = test_client.get("/api/v1/health")
             assert response.status_code == 200
     """
-    from app.main import app
     from app.dependencies import get_db
+    from app.main import app
 
     # Override dependency
     app.dependency_overrides[get_db] = lambda: mock_db_session

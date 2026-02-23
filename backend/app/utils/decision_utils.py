@@ -6,10 +6,9 @@ and fallback decision logic for the Decision Arbiter agent.
 
 import re
 
-from app.models import AggregatedEvidence, DebateArguments
-from app.utils.logger import get_logger
-
 from ..constants import SAFETY_OVERRIDES
+from ..models import AggregatedEvidence, DebateArguments
+from .logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -175,24 +174,6 @@ def generate_fallback_decision(evidence: AggregatedEvidence) -> tuple[str, float
         confidence=confidence,
     )
     return decision, confidence, reasoning
-
-
-def generate_customer_explanation(decision: str) -> str:
-    """Generate customer-facing explanation based on decision."""
-    templates = {
-        "APPROVE": "Su transacción ha sido aprobada. Todo está en orden.",
-        "CHALLENGE": "Hemos detectado actividad inusual en su cuenta. "
-        "Por seguridad, necesitamos verificar esta transacción. "
-        "Le contactaremos pronto.",
-        "BLOCK": "Por su seguridad, hemos bloqueado esta transacción debido a actividad sospechosa. "
-        "Si usted autorizó esta transacción, por favor contáctenos de inmediato.",
-        "ESCALATE_TO_HUMAN": "Su transacción está en revisión. "
-        "Nuestro equipo de seguridad la analizará y le contactaremos pronto.",
-    }
-    return templates.get(
-        decision,
-        "Su transacción está siendo procesada. Le contactaremos si necesitamos más información.",
-    )
 
 
 def generate_audit_explanation(

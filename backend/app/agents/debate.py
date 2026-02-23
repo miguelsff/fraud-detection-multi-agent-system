@@ -7,10 +7,9 @@ This module implements Phase 3 of the fraud detection pipeline:
 Both agents execute in parallel and provide balanced perspectives for the Decision Arbiter.
 """
 
-from app.prompts.debate import PRO_CUSTOMER_PROMPT, PRO_FRAUD_PROMPT
-
 from ..dependencies import get_llm
 from ..models import OrchestratorState
+from ..prompts.debate import PRO_CUSTOMER_PROMPT, PRO_FRAUD_PROMPT
 from ..utils.debate_utils import (
     call_debate_llm,
     generate_fallback_pro_customer,
@@ -20,11 +19,6 @@ from ..utils.logger import get_logger
 from ..utils.timing import timed_agent
 
 logger = get_logger(__name__)
-
-
-# ============================================================================
-# MAIN AGENT FUNCTIONS
-# ============================================================================
 
 
 @timed_agent("debate_pro_fraud")
@@ -41,8 +35,7 @@ async def debate_pro_fraud_agent(state: OrchestratorState) -> dict:
                 "pro_fraud_evidence": ["no_evidence"],
             }
 
-        # Use GPT-3.5 for debate arguments (cost optimization)
-        llm = get_llm(use_gpt4=False)
+        llm = get_llm()
         argument, confidence, evidence_cited, llm_trace = await call_debate_llm(
             llm, evidence, PRO_FRAUD_PROMPT
         )
@@ -89,8 +82,7 @@ async def debate_pro_customer_agent(state: OrchestratorState) -> dict:
                 "pro_customer_evidence": ["no_evidence"],
             }
 
-        # Use GPT-3.5 for debate arguments (cost optimization)
-        llm = get_llm(use_gpt4=False)
+        llm = get_llm()
         argument, confidence, evidence_cited, llm_trace = await call_debate_llm(
             llm, evidence, PRO_CUSTOMER_PROMPT
         )

@@ -182,6 +182,100 @@ Cuando agregues o modifiques prompts en `backend/app/prompts/`:
 3. Verifica que las instrucciones de formato JSON especifiquen campos en español
 4. NUNCA uses inglés en los prompts para texto que será visible al usuario final o en auditoría
 
+## Uso de Skills y Context7
+
+### Regla general de decisión
+
+| Necesidad | Herramienta |
+|-----------|-------------|
+| Documentación oficial, API reference, ejemplos de código de una librería específica | **Context7** |
+| Patrones, buenas prácticas, checklist o guía de arquitectura propios del stack | **Skill** correspondiente |
+
+Ambas pueden usarse en la misma tarea si aplica (ej: diseñar una tabla → Skill `postgresql-table-design` + Context7 para sintaxis exacta de SQLAlchemy).
+
+---
+
+### Context7 — cuándo usarlo
+
+Usar Context7 **proactivamente** (sin que el usuario lo pida) en cualquiera de estos casos:
+- Consultar docs de una librería: LangGraph, LangChain, FastAPI, SQLAlchemy, Pydantic, ChromaDB, Alembic, asyncpg, Next.js, shadcn/ui, Terraform, etc.
+- Generar código de configuración o setup que depende de una versión específica
+- Verificar firmas de funciones, parámetros o comportamientos de una API externa
+- El usuario pregunta "¿cómo se usa X en Y?" donde X es una librería del stack
+
+---
+
+### Skills — cuándo usar cada una
+
+#### `async-python-patterns`
+Trigger cuando la tarea involucre:
+- Escribir o revisar código `async/await` en Python
+- Manejo de concurrencia con `asyncio`, `TaskGroup`, semáforos o locks
+- WebSocket handlers, streaming responses o background tasks en FastAPI
+- Optimizar operaciones I/O-bound (DB, HTTP, ChromaDB, LLM calls)
+
+#### `azure-terraform`
+Trigger cuando la tarea involucre:
+- Crear, modificar o revisar recursos en `terraform/`
+- Desplegar a Azure Container Apps, AKS, Storage, Key Vault, etc.
+- Configurar GitHub Actions CI/CD que interactúe con Azure
+- El usuario mencione "deploy", "infra", "Azure", "Terraform" o "pipeline"
+
+#### `docker-expert`
+Trigger cuando la tarea involucre:
+- Crear o modificar `Dockerfile` o `docker-compose.yml`
+- Optimizar imágenes (multi-stage builds, tamaño, capas)
+- Solucionar problemas de contenedores o networking entre servicios
+- Configurar seguridad de contenedores en producción
+
+#### `fastapi-templates`
+Trigger cuando la tarea involucre:
+- Crear nuevos routers, endpoints o servicios en `backend/app/routers/` o `backend/app/services/`
+- Definir dependency injection patterns
+- Estructurar nuevos módulos del backend
+- Implementar autenticación, middleware o manejo de errores en FastAPI
+
+#### `postgresql-table-design`
+Trigger cuando la tarea involucre:
+- Crear o modificar modelos SQLAlchemy / migraciones Alembic
+- Diseñar nuevas tablas, índices o constraints
+- Optimizar queries o esquemas existentes
+- El usuario mencione "tabla", "migración", "índice", "schema" o "Alembic"
+
+#### `python-anti-patterns`
+Trigger cuando la tarea involucre:
+- Revisar código Python existente (code review)
+- Detectar posibles bugs o malas prácticas antes de hacer merge
+- Refactorizar código que "funciona pero se ve mal"
+- Como checklist antes de finalizar cualquier implementación Python no trivial
+
+#### `python-code-style`
+Trigger cuando la tarea involucre:
+- Escribir código Python nuevo (verificar naming, docstrings, formato)
+- Configurar linters (`ruff`, `black`, `mypy`)
+- El usuario pida revisar estilo o consistencia de código
+- Añadir type hints o anotaciones a funciones
+
+#### `python-design-patterns`
+Trigger cuando la tarea involucre:
+- Tomar decisiones de arquitectura (¿clase o función? ¿herencia o composición?)
+- Diseñar nuevos módulos o capas del sistema
+- Evaluar si una abstracción es apropiada o es over-engineering
+- Refactorizar código para mejorar separación de responsabilidades
+
+#### `python-performance-optimization`
+Trigger cuando la tarea involucre:
+- El usuario reporte lentitud en el pipeline o en algún agente
+- Optimizar procesamiento de transacciones en batch
+- Profiling de código Python (cProfile, memory profiler)
+- Reducir latencia en llamadas a LLM, ChromaDB o PostgreSQL
+
+#### `python-testing-patterns`
+Trigger cuando la tarea involucre:
+- Escribir tests para agentes, routers o servicios (`backend/tests/`)
+- Configurar fixtures en `conftest.py`
+- Mockear LLMs, ChromaDB o PostgreSQL en tests unitarios
+- Implementar estrategias de test (unit, integration, e2e)
+
 ## Reglas general
 1. Sólo debes crear documentación si te solicita explicitamente y en caso se te solicita debes preguntar para confirmar
-2. Always use Context7 MCP when I need library/API documentation, code generation, setup or configuration steps without me having to explicitly ask

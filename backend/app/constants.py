@@ -30,6 +30,11 @@ class EvidenceWeights(BaseModel):
     policy: float = 0.25
     threat: float = 0.20
     transaction: float = 0.25
+    # Transaction score sub-weights
+    amount_normalization_factor: float = 3.0
+    amount_max_contribution: float = 0.5
+    flag_weight: float = 0.1
+    flag_max_contribution: float = 0.5
 
 
 class RiskThresholds(BaseModel):
@@ -64,4 +69,4 @@ SAFETY_OVERRIDES = SafetyOverrides()
 AGENT_TIMEOUTS = AgentTimeouts()
 
 # Max policies for normalization (based on current policy count)
-MAX_POLICIES = 6.0
+MAX_POLICIES: int = 6

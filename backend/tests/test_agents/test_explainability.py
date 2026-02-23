@@ -24,7 +24,6 @@ from app.models import (
     Transaction,
 )
 
-
 # ============================================================================
 # PARSING TESTS
 # ============================================================================
@@ -101,7 +100,6 @@ def test_parse_explanation_response_invalid():
 
 def test_generate_fallback_explanations_approve():
     """Test fallback explanations for APPROVE decision."""
-    from datetime import datetime, UTC
 
     decision = FraudDecision(
         transaction_id="T-001",
@@ -146,7 +144,6 @@ def test_generate_fallback_explanations_approve():
 
 def test_generate_fallback_explanations_challenge():
     """Test fallback explanations for CHALLENGE decision."""
-    from datetime import datetime, UTC
 
     decision = FraudDecision(
         transaction_id="T-002",
@@ -190,7 +187,6 @@ def test_generate_fallback_explanations_challenge():
 
 def test_generate_fallback_explanations_block():
     """Test fallback explanations for BLOCK decision."""
-    from datetime import datetime, UTC
 
     decision = FraudDecision(
         transaction_id="T-003",
@@ -234,7 +230,6 @@ def test_generate_fallback_explanations_block():
 
 def test_generate_fallback_explanations_escalate():
     """Test fallback explanations for ESCALATE_TO_HUMAN decision."""
-    from datetime import datetime, UTC
 
     decision = FraudDecision(
         transaction_id="T-004",
@@ -277,7 +272,6 @@ def test_generate_fallback_explanations_escalate():
 
 def test_generate_fallback_explanations_with_policies():
     """Test fallback explanations include policy information."""
-    from datetime import datetime, UTC
 
     decision = FraudDecision(
         transaction_id="T-005",
@@ -391,7 +385,6 @@ def test_get_safe_customer_template():
 
 def test_enhance_audit_explanation_complete():
     """Test enhancement leaves complete audit explanation unchanged."""
-    from datetime import datetime, UTC
 
     decision = FraudDecision(
         transaction_id="T-001",
@@ -424,7 +417,6 @@ def test_enhance_audit_explanation_complete():
 
 def test_enhance_audit_explanation_missing_elements():
     """Test enhancement adds missing audit elements."""
-    from datetime import datetime, UTC
 
     decision = FraudDecision(
         transaction_id="T-002",
@@ -458,7 +450,6 @@ def test_enhance_audit_explanation_missing_elements():
 
 def test_enhance_audit_explanation_adds_policies():
     """Test enhancement adds policy IDs if missing."""
-    from datetime import datetime, UTC
 
     decision = FraudDecision(
         transaction_id="T-003",
@@ -505,7 +496,6 @@ def test_enhance_audit_explanation_adds_policies():
 @pytest.mark.asyncio
 async def test_call_llm_for_explanation_success():
     """Test successful LLM call for explanation."""
-    from datetime import datetime, UTC
 
     decision = FraudDecision(
         transaction_id="T-001",
@@ -566,7 +556,6 @@ async def test_call_llm_for_explanation_success():
 @pytest.mark.asyncio
 async def test_call_llm_for_explanation_timeout():
     """Test LLM timeout handling."""
-    from datetime import datetime, UTC
 
     decision = FraudDecision(
         transaction_id="T-001",
@@ -599,7 +588,7 @@ async def test_call_llm_for_explanation_timeout():
     mock_llm = AsyncMock()
     mock_llm.ainvoke.side_effect = TimeoutError("LLM timeout")
 
-    with patch("app.agents.explainability.asyncio.wait_for", side_effect=TimeoutError):
+    with patch("app.utils.llm_call.asyncio.wait_for", side_effect=TimeoutError):
         customer, audit, factors, actions, llm_trace = await _call_llm_for_explanation(
             mock_llm,
             decision,
@@ -623,7 +612,7 @@ async def test_call_llm_for_explanation_timeout():
 @pytest.mark.asyncio
 async def test_explainability_agent_success():
     """Test explainability agent with successful LLM call."""
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
 
     state: OrchestratorState = {
         "transaction": Transaction(
@@ -689,7 +678,6 @@ async def test_explainability_agent_success():
 @pytest.mark.asyncio
 async def test_explainability_agent_llm_timeout_uses_fallback():
     """Test explainability uses fallback when LLM times out."""
-    from datetime import datetime, UTC
 
     state: OrchestratorState = {
         "decision": FraudDecision(
@@ -721,7 +709,7 @@ async def test_explainability_agent_llm_timeout_uses_fallback():
     }
 
     with patch("app.agents.explainability.get_llm") as mock_get_llm, \
-         patch("app.agents.explainability.asyncio.wait_for", side_effect=TimeoutError):
+         patch("app.utils.llm_call.asyncio.wait_for", side_effect=TimeoutError):
         mock_llm = AsyncMock()
         mock_llm.model = "test-model"
         mock_get_llm.return_value = mock_llm
@@ -738,7 +726,6 @@ async def test_explainability_agent_llm_timeout_uses_fallback():
 @pytest.mark.asyncio
 async def test_explainability_agent_sanitizes_customer_explanation():
     """Test that customer explanation is sanitized."""
-    from datetime import datetime, UTC
 
     state: OrchestratorState = {
         "decision": FraudDecision(
@@ -807,7 +794,6 @@ async def test_explainability_agent_no_decision():
 @pytest.mark.asyncio
 async def test_explainability_agent_exception_handling():
     """Test explainability handles exceptions gracefully."""
-    from datetime import datetime, UTC
 
     state: OrchestratorState = {
         "decision": FraudDecision(

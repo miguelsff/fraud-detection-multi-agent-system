@@ -1,21 +1,22 @@
 """Tests for PolicyService CRUD operations and markdown parsing."""
 
-import pytest
-from pathlib import Path
-import tempfile
 import shutil
+import tempfile
+from pathlib import Path
+
+import pytest
 
 from app.exceptions import InvalidPolicyFormatError, PolicyExistsError, PolicyNotFoundError
-from app.services.policy_service import PolicyService
+from app.models.policy import PolicyCreate, PolicyUpdate
 from app.services.policy_parser import (
-    model_to_markdown,
-    parse_markdown_to_model,
     _extract_action,
     _extract_list_section,
     _extract_section,
     _extract_severity,
+    model_to_markdown,
+    parse_markdown_to_model,
 )
-from app.models.policy import PolicyCreate, PolicyUpdate
+from app.services.policy_service import PolicyService
 
 
 @pytest.fixture

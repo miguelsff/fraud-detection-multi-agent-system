@@ -17,16 +17,18 @@ from app.agents.external_threat import (
     _get_enabled_providers,
     external_threat_agent,
 )
-from app.utils.threat_utils import (
-    calculate_baseline_from_sources as _calculate_baseline_from_sources,
-    classify_provider_type as _classify_provider_type,
-)
 from app.config import settings
-from app.models import OrchestratorState, Transaction, TransactionSignals, ThreatSource
+from app.models import OrchestratorState, ThreatSource, Transaction, TransactionSignals
 from app.services.threat_intel import (
     CountryRiskProvider,
     OSINTSearchProvider,
     SanctionsProvider,
+)
+from app.utils.threat_utils import (
+    calculate_baseline_from_sources as _calculate_baseline_from_sources,
+)
+from app.utils.threat_utils import (
+    classify_provider_type as _classify_provider_type,
 )
 
 # ============================================================================

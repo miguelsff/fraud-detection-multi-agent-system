@@ -11,22 +11,31 @@ from app.agents.decision_arbiter import (
     _parse_decision_response,
     decision_arbiter_agent,
 )
-from app.utils.decision_utils import (
-    apply_safety_overrides as _apply_safety_overrides,
-    build_citations_external as _build_citations_external,
-    build_citations_internal as _build_citations_internal,
-    generate_audit_explanation as _generate_audit_explanation,
-    generate_customer_explanation as _generate_customer_explanation,
-    generate_fallback_decision as _generate_fallback_decision,
-)
 from app.models import (
-    AggregatedEvidence,
     AgentTraceEntry,
+    AggregatedEvidence,
     DebateArguments,
     OrchestratorState,
     Transaction,
 )
-
+from app.utils.decision_utils import (
+    apply_safety_overrides as _apply_safety_overrides,
+)
+from app.utils.decision_utils import (
+    build_citations_external as _build_citations_external,
+)
+from app.utils.decision_utils import (
+    build_citations_internal as _build_citations_internal,
+)
+from app.utils.decision_utils import (
+    generate_audit_explanation as _generate_audit_explanation,
+)
+from app.utils.fallback_factories import (
+    get_customer_explanation as _generate_customer_explanation,
+)
+from app.utils.decision_utils import (
+    generate_fallback_decision as _generate_fallback_decision,
+)
 
 # ============================================================================
 # PARSING TESTS
@@ -362,7 +371,7 @@ def test_generate_customer_explanation_challenge():
     explanation = _generate_customer_explanation("CHALLENGE")
 
     assert "verificar" in explanation.lower()
-    assert "inusual" in explanation.lower()
+    assert "seguridad" in explanation.lower()
 
 
 def test_generate_customer_explanation_block():
@@ -370,7 +379,7 @@ def test_generate_customer_explanation_block():
     explanation = _generate_customer_explanation("BLOCK")
 
     assert "bloqueado" in explanation.lower() or "bloqueada" in explanation.lower()
-    assert "sospechosa" in explanation.lower()
+    assert "seguridad" in explanation.lower()
 
 
 def test_generate_customer_explanation_escalate():
@@ -420,7 +429,7 @@ def test_generate_audit_explanation():
 
 def test_extract_agent_trace():
     """Test extracting agent trace from state."""
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
 
     state: OrchestratorState = {
         "trace": [
@@ -523,7 +532,7 @@ async def test_call_llm_for_decision_timeout():
     mock_llm = AsyncMock()
     mock_llm.ainvoke.side_effect = TimeoutError("LLM timeout")
 
-    with patch("app.agents.decision_arbiter.asyncio.wait_for", side_effect=TimeoutError):
+    with patch("app.utils.llm_call.asyncio.wait_for", side_effect=TimeoutError):
         decision, confidence, reasoning, llm_trace = await _call_llm_for_decision(mock_llm, evidence, debate)
 
     assert decision is None
@@ -540,7 +549,7 @@ async def test_call_llm_for_decision_timeout():
 @pytest.mark.asyncio
 async def test_decision_arbiter_agent_success():
     """Test decision arbiter agent with successful LLM call."""
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
 
     state: OrchestratorState = {
         "transaction": Transaction(
@@ -595,7 +604,7 @@ async def test_decision_arbiter_agent_success():
 @pytest.mark.asyncio
 async def test_decision_arbiter_agent_llm_timeout_uses_fallback():
     """Test decision arbiter uses fallback when LLM times out."""
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
 
     state: OrchestratorState = {
         "transaction": Transaction(
@@ -627,7 +636,7 @@ async def test_decision_arbiter_agent_llm_timeout_uses_fallback():
     }
 
     with patch("app.agents.decision_arbiter.get_llm") as mock_get_llm, \
-         patch("app.agents.decision_arbiter.asyncio.wait_for", side_effect=TimeoutError):
+         patch("app.utils.llm_call.asyncio.wait_for", side_effect=TimeoutError):
         mock_llm = AsyncMock()
         mock_llm.model = "test-model"
         mock_get_llm.return_value = mock_llm
@@ -642,7 +651,7 @@ async def test_decision_arbiter_agent_llm_timeout_uses_fallback():
 @pytest.mark.asyncio
 async def test_decision_arbiter_agent_safety_override_critical():
     """Test safety override for critical risk score."""
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
 
     state: OrchestratorState = {
         "transaction": Transaction(
@@ -697,7 +706,7 @@ async def test_decision_arbiter_agent_safety_override_critical():
 @pytest.mark.asyncio
 async def test_decision_arbiter_agent_no_evidence():
     """Test decision arbiter when evidence is missing."""
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
 
     state: OrchestratorState = {
         "transaction": Transaction(
@@ -724,7 +733,7 @@ async def test_decision_arbiter_agent_no_evidence():
 @pytest.mark.asyncio
 async def test_decision_arbiter_agent_exception_handling():
     """Test decision arbiter handles exceptions gracefully."""
-    from datetime import datetime, UTC
+    from datetime import UTC, datetime
 
     state: OrchestratorState = {
         "transaction": Transaction(

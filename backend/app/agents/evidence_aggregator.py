@@ -11,8 +11,6 @@ The aggregation uses a weighted scoring system with graceful degradation
 for missing inputs (e.g., if an upstream agent failed).
 """
 
-from typing import Optional
-
 from ..constants import EVIDENCE_WEIGHTS, MAX_POLICIES, RISK_THRESHOLDS
 from ..models import (
     AggregatedEvidence,
@@ -110,10 +108,10 @@ async def evidence_aggregation_agent(state: OrchestratorState) -> dict:
 
 
 def _calculate_composite_score(
-    transaction_signals: Optional[TransactionSignals],
-    behavioral_signals: Optional[BehavioralSignals],
-    policy_matches: Optional[PolicyMatchResult],
-    threat_intel: Optional[ThreatIntelResult],
+    transaction_signals: TransactionSignals | None,
+    behavioral_signals: BehavioralSignals | None,
+    policy_matches: PolicyMatchResult | None,
+    threat_intel: ThreatIntelResult | None,
 ) -> float:
     """Calculate weighted composite risk score from all signal sources.
 
@@ -161,11 +159,16 @@ def _calculate_composite_score(
         # Amount ratio: normalize with sigmoid-like function
         # 1.0x = 0.0, 2.0x = ~0.33, 3.0x = ~0.5, 5.0x = ~0.67, 10.0x = ~0.8
         amount_ratio = transaction_signals.amount_ratio
-        amount_score = min(1.0, amount_ratio / 3.0) * 0.5  # Cap at 0.5 for amount alone
+        amount_score = (
+            min(1.0, amount_ratio / EVIDENCE_WEIGHTS.amount_normalization_factor)
+            * EVIDENCE_WEIGHTS.amount_max_contribution
+        )
 
-        # Add bonus for other transaction flags
         flag_count = len(transaction_signals.flags)
-        flag_score = min(0.5, flag_count * 0.1)  # Each flag adds 0.1, max 0.5
+        flag_score = min(
+            EVIDENCE_WEIGHTS.flag_max_contribution,
+            flag_count * EVIDENCE_WEIGHTS.flag_weight,
+        )
 
         transaction_score = min(1.0, amount_score + flag_score)
     else:
@@ -195,10 +198,10 @@ def _calculate_composite_score(
 
 
 def _aggregate_signals(
-    transaction_signals: Optional[TransactionSignals],
-    behavioral_signals: Optional[BehavioralSignals],
-    policy_matches: Optional[PolicyMatchResult],
-    threat_intel: Optional[ThreatIntelResult],
+    transaction_signals: TransactionSignals | None,
+    behavioral_signals: BehavioralSignals | None,
+    policy_matches: PolicyMatchResult | None,
+    threat_intel: ThreatIntelResult | None,
 ) -> list[str]:
     """Aggregate all signals/flags from collection agents.
 
@@ -243,8 +246,8 @@ def _aggregate_signals(
 
 
 def _aggregate_citations(
-    policy_matches: Optional[PolicyMatchResult],
-    threat_intel: Optional[ThreatIntelResult],
+    policy_matches: PolicyMatchResult | None,
+    threat_intel: ThreatIntelResult | None,
 ) -> list[str]:
     """Aggregate all citations (policy descriptions + threat sources).
 
