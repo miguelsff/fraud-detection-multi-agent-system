@@ -51,7 +51,6 @@ def get_llm(use_gpt4: bool = False) -> BaseChatModel:
             base_url=base_url,
             api_key=settings.azure_openai_api_key.get_secret_value(),
             model=settings.azure_openai_deployment,  # deployment name as model
-            temperature=0.1,
         )
     else:
         return ChatOllama(
