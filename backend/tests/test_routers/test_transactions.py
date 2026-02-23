@@ -1,10 +1,13 @@
 """Tests for transaction analysis endpoints."""
-import pytest
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, Mock, patch
-from app.main import app
-from app.models import FraudDecision, AgentTraceEntry
+from unittest.mock import Mock, patch
+
+import pytest
+
 from app.dependencies import get_db
+from app.main import app
+from app.models import FraudDecision
+from app.routers.transactions import MAX_BATCH_SIZE
 
 
 @pytest.fixture
@@ -250,3 +253,91 @@ def test_list_transactions_custom_pagination(test_client):
     response = test_client.get("/api/v1/transactions?limit=10&offset=5")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
+
+
+@pytest.mark.asyncio
+@pytest.mark.unit
+async def test_analyze_batch_parallel_success(
+    sample_transaction_request, mock_db_session, test_client
+):
+    """Test batch endpoint processes multiple requests in parallel."""
+    mock_decision = FraudDecision(
+        transaction_id="T-TEST-001",
+        decision="APPROVE",
+        confidence=0.85,
+        signals=[],
+        citations_internal=[],
+        citations_external=[],
+        explanation_customer="Aprobada.",
+        explanation_audit="Audit.",
+        agent_trace=[],
+    )
+
+    with patch("app.routers.transactions.analyze_transaction") as mock_analyze:
+        mock_analyze.return_value = mock_decision
+        app.dependency_overrides[get_db] = lambda: mock_db_session
+
+        response = test_client.post(
+            "/api/v1/transactions/analyze/batch",
+            json=[sample_transaction_request, sample_transaction_request],
+        )
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 2
+    assert all(item["status"] == "ok" for item in data)
+
+
+@pytest.mark.asyncio
+@pytest.mark.unit
+async def test_analyze_batch_partial_failure(
+    sample_transaction_request, mock_db_session, test_client
+):
+    """Test batch endpoint handles partial failures gracefully."""
+    mock_decision = FraudDecision(
+        transaction_id="T-TEST-001",
+        decision="APPROVE",
+        confidence=0.85,
+        signals=[],
+        citations_internal=[],
+        citations_external=[],
+        explanation_customer="Aprobada.",
+        explanation_audit="Audit.",
+        agent_trace=[],
+    )
+
+    call_count = 0
+
+    async def _side_effect(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 2:
+            raise RuntimeError("Pipeline error")
+        return mock_decision
+
+    with patch("app.routers.transactions.analyze_transaction", side_effect=_side_effect):
+        app.dependency_overrides[get_db] = lambda: mock_db_session
+
+        response = test_client.post(
+            "/api/v1/transactions/analyze/batch",
+            json=[sample_transaction_request, sample_transaction_request, sample_transaction_request],
+        )
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 3
+    ok_count = sum(1 for item in data if item["status"] == "ok")
+    error_count = sum(1 for item in data if item["status"] == "error")
+    assert ok_count == 2
+    assert error_count == 1
+
+
+@pytest.mark.unit
+def test_analyze_batch_max_size_exceeded(sample_transaction_request, test_client):
+    """Test batch endpoint rejects oversized batches."""
+    too_many = [sample_transaction_request] * (MAX_BATCH_SIZE + 1)
+    response = test_client.post("/api/v1/transactions/analyze/batch", json=too_many)
+    assert response.status_code == 400
+    assert "exceeds maximum" in response.json()["detail"].lower()

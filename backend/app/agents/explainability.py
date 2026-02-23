@@ -7,13 +7,10 @@ This module implements Phase 5 of the fraud detection pipeline:
 - Falls back to deterministic templates if LLM fails
 """
 
-import asyncio
 import re
-from typing import Optional
 
 from langchain_core.language_models import BaseChatModel
 
-from ..constants import AGENT_TIMEOUTS
 from ..dependencies import get_llm
 from ..models import (
     AggregatedEvidence,
@@ -24,6 +21,12 @@ from ..models import (
     PolicyMatchResult,
 )
 from ..prompts.explainability import EXPLAINABILITY_PROMPT
+from ..utils.fallback_factories import (
+    create_minimal_debate,
+    create_minimal_evidence,
+    get_customer_explanation,
+)
+from ..utils.llm_call import invoke_llm_with_timeout
 from ..utils.llm_utils import parse_json_response
 from ..utils.logger import get_logger
 from ..utils.timing import timed_agent
@@ -31,14 +34,9 @@ from ..utils.timing import timed_agent
 logger = get_logger(__name__)
 
 
-# ============================================================================
-# PARSING HELPER
-# ============================================================================
-
-
 def _parse_explanation_response(
     response_text: str,
-) -> tuple[Optional[str], Optional[str], list[str], list[str]]:
+) -> tuple[str | None, str | None, list[str], list[str]]:
     """Parse LLM response to extract explanations, factors, and actions."""
     # Stage 1: JSON parsing
     data = parse_json_response(response_text, "customer_explanation", "explainability")
@@ -98,18 +96,13 @@ def _parse_explanation_response(
     return None, None, [], []
 
 
-# ============================================================================
-# LLM CALL
-# ============================================================================
-
-
 async def _call_llm_for_explanation(
     llm: BaseChatModel,
     decision: FraudDecision,
     evidence: AggregatedEvidence,
-    policy_matches: Optional[PolicyMatchResult],
+    policy_matches: PolicyMatchResult | None,
     debate: DebateArguments,
-) -> tuple[Optional[str], Optional[str], list[str], list[str], dict]:
+) -> tuple[str | None, str | None, list[str], list[str], dict]:
     """Call LLM for explanation generation.
 
     Returns:
@@ -141,65 +134,43 @@ async def _call_llm_for_explanation(
         pro_customer_argument=debate.pro_customer_argument,
     )
 
-    # Initialize LLM trace metadata
-    llm_trace = {
-        "llm_prompt": prompt,
-        "llm_model": getattr(llm, "model", None) or getattr(llm, "deployment_name", "unknown"),
-        "llm_temperature": 0.0,
-    }
-
-    try:
-        response = await asyncio.wait_for(llm.ainvoke(prompt), timeout=AGENT_TIMEOUTS.llm_call)
-
-        # Capture raw response
-        llm_trace["llm_response_raw"] = response.content
-
-        # Capture token usage if available
-        if hasattr(response, "response_metadata"):
-            usage = response.response_metadata.get("usage", {})
-            llm_trace["llm_tokens_used"] = usage.get("total_tokens")
-
-        customer_exp, audit_exp, key_factors, actions = _parse_explanation_response(
-            response.content
-        )
+    content, llm_trace = await invoke_llm_with_timeout(
+        llm, prompt, agent_name="explainability"
+    )
+    if content:
+        customer_exp, audit_exp, key_factors, actions = _parse_explanation_response(content)
         return customer_exp, audit_exp, key_factors, actions, llm_trace
-
-    except asyncio.TimeoutError:
-        logger.error("llm_timeout_explanation", timeout_seconds=AGENT_TIMEOUTS.llm_call)
-        llm_trace["llm_response_raw"] = f"TIMEOUT after {AGENT_TIMEOUTS.llm_call}s"
-        return None, None, [], [], llm_trace
-    except Exception as e:
-        logger.error("llm_call_failed_explanation", error=str(e))
-        llm_trace["llm_response_raw"] = f"ERROR: {str(e)}"
-        return None, None, [], [], llm_trace
+    return None, None, [], [], llm_trace
 
 
-# ============================================================================
-# DETERMINISTIC FALLBACK TEMPLATES
-# ============================================================================
+_FALLBACK_CUSTOMER_TEMPLATES = {
+    "APPROVE": "Su transacción ha sido procesada exitosamente. No se detectaron problemas de seguridad.",
+    "CHALLENGE": (
+        "Por seguridad, necesitamos verificar esta transacción. "
+        "Le enviaremos un código de verificación. "
+        "Esto es un procedimiento estándar para proteger su cuenta."
+    ),
+    "BLOCK": (
+        "Por su seguridad, hemos bloqueado esta transacción debido a patrones inusuales. "
+        "Si usted autorizó esta transacción, por favor contáctenos de inmediato al "
+        "número en el reverso de su tarjeta."
+    ),
+    "ESCALATE_TO_HUMAN": (
+        "Su transacción está siendo revisada por nuestro equipo de seguridad. "
+        "Le contactaremos dentro de las próximas 24 horas. "
+        "Gracias por su paciencia."
+    ),
+}
 
 
 def _generate_fallback_explanations(
     decision: FraudDecision,
     evidence: AggregatedEvidence,
-    policy_matches: Optional[PolicyMatchResult],
+    policy_matches: PolicyMatchResult | None,
     debate: DebateArguments,
 ) -> tuple[str, str]:
     """Generate deterministic explanations when LLM fails."""
     decision_type = decision.decision
-
-    customer_templates = {
-        "APPROVE": "Su transacción ha sido procesada exitosamente. No se detectaron problemas de seguridad.",
-        "CHALLENGE": "Por seguridad, necesitamos verificar esta transacción. "
-        "Le enviaremos un código de verificación. "
-        "Esto es un procedimiento estándar para proteger su cuenta.",
-        "BLOCK": "Por su seguridad, hemos bloqueado esta transacción debido a patrones inusuales. "
-        "Si usted autorizó esta transacción, por favor contáctenos de inmediato al "
-        "número en el reverso de su tarjeta.",
-        "ESCALATE_TO_HUMAN": "Su transacción está siendo revisada por nuestro equipo de seguridad. "
-        "Le contactaremos dentro de las próximas 24 horas. "
-        "Gracias por su paciencia.",
-    }
 
     policy_summary = (
         "sin políticas"
@@ -217,7 +188,7 @@ def _generate_fallback_explanations(
         f"Explicación generada por fallback determinístico."
     )
 
-    customer_explanation = customer_templates.get(
+    customer_explanation = _FALLBACK_CUSTOMER_TEMPLATES.get(
         decision_type,
         "Su transacción está siendo procesada. Le mantendremos informado.",
     )
@@ -228,11 +199,6 @@ def _generate_fallback_explanations(
         has_policies=bool(policy_matches and policy_matches.matches),
     )
     return customer_explanation, audit_explanation
-
-
-# ============================================================================
-# EXPLANATION ENHANCEMENT
-# ============================================================================
 
 
 def _enhance_customer_explanation(customer_explanation: str, decision_type: str) -> str:
@@ -267,23 +233,15 @@ def _enhance_customer_explanation(customer_explanation: str, decision_type: str)
 
 
 def _get_safe_customer_template(decision_type: str) -> str:
-    """Get safe customer explanation template."""
-    safe_templates = {
-        "APPROVE": "Su transacción ha sido aprobada. Todo está en orden.",
-        "CHALLENGE": "Por seguridad, necesitamos verificar esta transacción. Le contactaremos pronto.",
-        "BLOCK": "Por su seguridad, hemos bloqueado esta transacción. Si usted la autorizó, contáctenos de inmediato.",
-        "ESCALATE_TO_HUMAN": "Su transacción está en revisión. Nuestro equipo la analizará y le contactaremos pronto.",
-    }
-    return safe_templates.get(
-        decision_type, "Su transacción está siendo procesada. Le mantendremos informado."
-    )
+    """Get safe customer explanation template (uses shared SSOT)."""
+    return get_customer_explanation(decision_type)
 
 
 def _enhance_audit_explanation(
     audit_explanation: str,
     decision: FraudDecision,
     evidence: AggregatedEvidence,
-    policy_matches: Optional[PolicyMatchResult],
+    policy_matches: PolicyMatchResult | None,
 ) -> str:
     """Enhance audit explanation with required details if missing."""
     missing_parts = []
@@ -311,11 +269,6 @@ def _enhance_audit_explanation(
     return audit_explanation
 
 
-# ============================================================================
-# MAIN AGENT FUNCTION
-# ============================================================================
-
-
 @timed_agent("explainability")
 async def explainability_agent(state: OrchestratorState) -> dict:
     """Explainability Agent - generates customer and audit explanations."""
@@ -331,14 +284,13 @@ async def explainability_agent(state: OrchestratorState) -> dict:
 
         if not evidence:
             logger.warning("explainability_no_evidence")
-            evidence = _create_minimal_evidence()
+            evidence = create_minimal_evidence()
 
         if not debate:
             logger.warning("explainability_no_debate")
-            debate = _create_minimal_debate()
+            debate = create_minimal_debate()
 
-        # Use GPT-4 for complex explanation generation (customer-facing text)
-        llm = get_llm(use_gpt4=True)
+        llm = get_llm()
         (
             customer_explanation,
             audit_explanation,
@@ -389,33 +341,6 @@ async def explainability_agent(state: OrchestratorState) -> dict:
     except Exception as e:
         logger.error("explainability_error", error=str(e), exc_info=True)
         return _build_error_explanation()
-
-
-# ============================================================================
-# HELPER FUNCTIONS
-# ============================================================================
-
-
-def _create_minimal_evidence() -> AggregatedEvidence:
-    """Create minimal evidence when evidence phase failed."""
-    return AggregatedEvidence(
-        composite_risk_score=0.0,
-        all_signals=[],
-        all_citations=[],
-        risk_category="low",
-    )
-
-
-def _create_minimal_debate() -> DebateArguments:
-    """Create minimal debate arguments when debate phase failed."""
-    return DebateArguments(
-        pro_fraud_argument="Análisis no disponible.",
-        pro_fraud_confidence=0.50,
-        pro_fraud_evidence=[],
-        pro_customer_argument="Análisis no disponible.",
-        pro_customer_confidence=0.50,
-        pro_customer_evidence=[],
-    )
 
 
 def _build_error_explanation() -> dict:

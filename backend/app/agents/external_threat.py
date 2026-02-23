@@ -10,7 +10,6 @@ Uses a provider-based architecture for easy extension with additional threat sou
 """
 
 import asyncio
-from typing import Optional
 
 from langchain_core.language_models import BaseChatModel
 
@@ -18,6 +17,7 @@ from ..config import settings
 from ..constants import AGENT_TIMEOUTS
 from ..dependencies import get_llm
 from ..models import (
+    BehavioralSignals,
     OrchestratorState,
     ThreatIntelResult,
     ThreatSource,
@@ -31,6 +31,7 @@ from ..services.threat_intel import (
     SanctionsProvider,
     ThreatProvider,
 )
+from ..utils.llm_call import invoke_llm_with_timeout
 from ..utils.logger import get_logger
 from ..utils.threat_utils import (
     calculate_baseline_from_sources,
@@ -64,8 +65,7 @@ async def external_threat_agent(state: OrchestratorState) -> dict:
             "baseline_calculated", baseline=baseline_threat_level, sources_count=len(all_sources)
         )
 
-        # Use GPT-3.5 for OSINT analysis (cost optimization)
-        llm = get_llm(use_gpt4=False)
+        llm = get_llm()
         llm_threat_level, explanation = await _call_llm_for_threat_analysis(
             llm,
             transaction,
@@ -144,12 +144,11 @@ async def _gather_threat_intel(
 async def _call_llm_for_threat_analysis(
     llm: BaseChatModel,
     transaction: Transaction,
-    transaction_signals: Optional[TransactionSignals],
+    transaction_signals: TransactionSignals | None,
     threat_sources: list[ThreatSource],
-    behavioral_signals=None,
-) -> tuple[Optional[float], str]:
+    behavioral_signals: BehavioralSignals | None = None,
+) -> tuple[float | None, str]:
     """Call LLM to interpret threat intelligence sources."""
-    # Build threat feeds summary
     threat_feeds_summary_parts = []
     for source in threat_sources:
         provider_type = classify_provider_type(source.source_name)
@@ -158,7 +157,6 @@ async def _call_llm_for_threat_analysis(
         )
     threat_feeds_summary = "\n".join(threat_feeds_summary_parts)
 
-    # Build signals summary
     signals_parts = []
     if transaction_signals:
         signals_parts.append(f"- Ratio de monto: {transaction_signals.amount_ratio:.2f}x")
@@ -183,12 +181,7 @@ async def _call_llm_for_threat_analysis(
         signals_summary=signals_summary,
     )
 
-    try:
-        response = await asyncio.wait_for(llm.ainvoke(prompt), timeout=AGENT_TIMEOUTS.llm_call)
-        return parse_threat_analysis(response.content)
-    except asyncio.TimeoutError:
-        logger.error("llm_timeout_threat_analysis", timeout_seconds=AGENT_TIMEOUTS.llm_call)
-        return None, "LLM timeout"
-    except Exception as e:
-        logger.error("llm_call_failed_threat_analysis", error=str(e))
-        return None, f"LLM error: {str(e)}"
+    content, _ = await invoke_llm_with_timeout(llm, prompt, agent_name="external_threat")
+    if content:
+        return parse_threat_analysis(content)
+    return None, "LLM failed"

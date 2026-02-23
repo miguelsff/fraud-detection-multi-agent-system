@@ -11,6 +11,7 @@ degradation when individual agents fail.
 
 import asyncio
 import time
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 
 from langchain_core.runnables import RunnableConfig
@@ -40,10 +41,7 @@ from .transaction_context import transaction_context_agent
 
 logger = get_logger(__name__)
 
-
-# ---------------------------------------------------------------------------
-# WebSocket broadcast helper
-# ---------------------------------------------------------------------------
+type BroadcastFn = Callable[[str, str, str | None, dict | None], Awaitable[None]]
 
 
 async def _broadcast(
@@ -55,11 +53,16 @@ async def _broadcast(
     if fn:
         try:
             await fn(transaction_id, event, agent, data)
-        except Exception:
-            pass  # Never crash the pipeline because of WS
+        except Exception as e:
+            logger.debug("broadcast_failed", error=str(e))
 
 
-async def _run_agent(config: RunnableConfig, name: str, agent_fn, state: OrchestratorState) -> dict:
+async def _run_agent(
+    config: RunnableConfig,
+    name: str,
+    agent_fn: Callable[[OrchestratorState], Awaitable[dict]],
+    state: OrchestratorState,
+) -> dict:
     """Wrap an agent call with independent start/complete broadcasts."""
     await _broadcast(config, "agent_started", name)
     try:
@@ -71,9 +74,7 @@ async def _run_agent(config: RunnableConfig, name: str, agent_fn, state: Orchest
         raise
 
 
-# ---------------------------------------------------------------------------
-# Node functions
-# ---------------------------------------------------------------------------
+#Node functions
 
 
 async def validate_input(state: OrchestratorState, config: RunnableConfig) -> dict:
@@ -333,9 +334,7 @@ async def respond(state: OrchestratorState, config: RunnableConfig) -> dict:
     return {"status": "completed"}
 
 
-# ---------------------------------------------------------------------------
-# Routing functions (conditional edges)
-# ---------------------------------------------------------------------------
+#Routing functions (conditional edges)
 
 
 def route_after_validation(state: OrchestratorState) -> str:
@@ -353,9 +352,7 @@ def route_decision(state: OrchestratorState) -> str:
     return "respond"
 
 
-# ---------------------------------------------------------------------------
-# Graph construction
-# ---------------------------------------------------------------------------
+#Graph construction
 
 
 def build_graph() -> StateGraph:
@@ -400,16 +397,14 @@ def build_graph() -> StateGraph:
 graph = build_graph()
 
 
-# ---------------------------------------------------------------------------
-# Public API
-# ---------------------------------------------------------------------------
+#Public API
 
 
 async def analyze_transaction(
     transaction: Transaction,
     customer_behavior: CustomerBehavior,
     db_session: AsyncSession,
-    broadcast_fn=None,
+    broadcast_fn: BroadcastFn | None = None,
 ) -> FraudDecision:
     """Run the full fraud-detection pipeline and return the final decision.
 

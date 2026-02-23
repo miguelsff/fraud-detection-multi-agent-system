@@ -1,7 +1,7 @@
 """Tests for the RAG vector store."""
 
+
 import pytest
-from pathlib import Path
 
 from app.rag.vector_store import (
     _split_markdown_sections,

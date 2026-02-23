@@ -8,8 +8,8 @@ Usage:
 
 import json
 import sys
-import urllib.request
 import urllib.error
+import urllib.request
 
 
 def test_endpoint(name: str, url: str, expected_status: int = 200) -> bool:
@@ -32,7 +32,7 @@ def test_endpoint(name: str, url: str, expected_status: int = 200) -> bool:
                 preview = json_str[:500] + "..." if len(json_str) > 500 else json_str
                 print(f"   Response: {preview}")
             except Exception:
-                print(f"   Response: (binary or non-JSON data)")
+                print("   Response: (binary or non-JSON data)")
         else:
             print(f"   Error: Status {status_code}")
 

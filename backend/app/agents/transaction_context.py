@@ -1,5 +1,6 @@
 """Transaction Context Agent - deterministic analysis of transaction signals."""
 
+from ..constants import AMOUNT_THRESHOLDS
 from ..models import OrchestratorState, TransactionSignals
 from ..utils.timing import timed_agent
 
@@ -47,9 +48,9 @@ async def transaction_context_agent(state: OrchestratorState) -> dict:
         # 5. Build flags list
         flags = []
 
-        if amount_ratio > 3.0:
+        if amount_ratio > AMOUNT_THRESHOLDS.high_ratio:
             flags.append(f"high_amount_ratio_{amount_ratio:.1f}x")
-        elif amount_ratio > 2.0:
+        elif amount_ratio > AMOUNT_THRESHOLDS.elevated_ratio:
             flags.append(f"elevated_amount_{amount_ratio:.1f}x")
 
         if is_foreign:

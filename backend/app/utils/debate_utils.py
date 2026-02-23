@@ -4,32 +4,24 @@ Provides shared LLM calling logic, parsing, and fallback generation
 for both pro-fraud and pro-customer debate agents.
 """
 
-import asyncio
 import re
-from typing import Optional
 
-from langchain_ollama import ChatOllama
+from langchain_core.language_models import BaseChatModel
 
-from app.models import AggregatedEvidence
-from app.utils.llm_utils import clamp_float, parse_json_response
-from app.utils.logger import get_logger
-
-from ..constants import AGENT_TIMEOUTS
+from ..models import AggregatedEvidence
+from .llm_call import invoke_llm_with_timeout
+from .llm_utils import clamp_float, parse_json_response
+from .logger import get_logger
 
 logger = get_logger(__name__)
 
 
 async def call_debate_llm(
-    llm: ChatOllama,
+    llm: BaseChatModel,
     evidence: AggregatedEvidence,
     prompt_template: str,
-) -> tuple[Optional[str], Optional[float], list[str], dict]:
+) -> tuple[str | None, float | None, list[str], dict]:
     """Call LLM for debate argument generation with parsing.
-
-    Args:
-        llm: ChatOllama instance
-        evidence: AggregatedEvidence from Phase 2
-        prompt_template: Prompt template (PRO_FRAUD_PROMPT or PRO_CUSTOMER_PROMPT)
 
     Returns:
         Tuple of (argument, confidence, evidence_cited, llm_trace_metadata)
@@ -41,38 +33,14 @@ async def call_debate_llm(
         all_citations="\n- ".join(evidence.all_citations) if evidence.all_citations else "ninguna",
     )
 
-    # Initialize LLM trace metadata
-    llm_trace = {
-        "llm_prompt": prompt,
-        "llm_model": getattr(llm, "model", None) or getattr(llm, "deployment_name", "unknown"),
-        "llm_temperature": 0.0,
-    }
-
-    try:
-        response = await asyncio.wait_for(llm.ainvoke(prompt), timeout=AGENT_TIMEOUTS.llm_call)
-
-        # Capture raw response
-        llm_trace["llm_response_raw"] = response.content
-
-        # Capture token usage if available
-        if hasattr(response, "response_metadata"):
-            usage = response.response_metadata.get("usage", {})
-            llm_trace["llm_tokens_used"] = usage.get("total_tokens")
-
-        argument, confidence, evidence_cited = _parse_debate_response(response.content)
+    content, llm_trace = await invoke_llm_with_timeout(llm, prompt, agent_name="debate")
+    if content:
+        argument, confidence, evidence_cited = _parse_debate_response(content)
         return argument, confidence, evidence_cited, llm_trace
-
-    except asyncio.TimeoutError:
-        logger.error("llm_timeout_debate", timeout_seconds=AGENT_TIMEOUTS.llm_call)
-        llm_trace["llm_response_raw"] = f"TIMEOUT after {AGENT_TIMEOUTS.llm_call}s"
-        return None, None, [], llm_trace
-    except Exception as e:
-        logger.error("llm_call_failed_debate", error=str(e))
-        llm_trace["llm_response_raw"] = f"ERROR: {str(e)}"
-        return None, None, [], llm_trace
+    return None, None, [], llm_trace
 
 
-def _parse_debate_response(response_text: str) -> tuple[Optional[str], Optional[float], list[str]]:
+def _parse_debate_response(response_text: str) -> tuple[str | None, float | None, list[str]]:
     """Parse LLM response to extract argument, confidence, and evidence.
 
     Two-stage parsing: JSON first, regex fallback.

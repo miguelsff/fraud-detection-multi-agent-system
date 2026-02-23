@@ -70,15 +70,11 @@ def timed_agent(agent_name: str) -> Callable:
 
 def _summarise_result(result: dict) -> str:
     try:
-        # Excluimos la clave 'trace' para no incluir metadatos
         result_clean = {k: v for k, v in result.items() if k != "trace"}
         serializable = _to_serializable(result_clean)
-        # Opcional: limitar longitud para evitar logs excesivos
         json_str = json.dumps(serializable, ensure_ascii=False)
-        # Si quieres truncar, puedes hacer: json_str[:1000] + "..." si es muy largo
         return json_str
     except Exception:
-        # Fallback seguro: representación string simple
         return str(result)
 
 
@@ -174,7 +170,7 @@ def _attach_trace(
 
 
 def _to_serializable(obj: Any) -> Any:
-    """Convierte objetos complejos a tipos serializables por JSON."""
+    """Convert complex objects to JSON-serializable types."""
     if obj is None or isinstance(obj, (str, int, float, bool)):
         return obj
     if isinstance(obj, (list, tuple)):
@@ -182,12 +178,8 @@ def _to_serializable(obj: Any) -> Any:
     if isinstance(obj, dict):
         return {key: _to_serializable(value) for key, value in obj.items()}
 
-    # Para objetos personalizados, intentamos obtener un dict
-    if hasattr(obj, "dict") and callable(obj.dict):  # Pydantic v1
-        return _to_serializable(obj.dict())
-    if hasattr(obj, "model_dump") and callable(obj.model_dump):  # Pydantic v2
+    if hasattr(obj, "model_dump") and callable(obj.model_dump):
         return _to_serializable(obj.model_dump())
-    if hasattr(obj, "__dict__"):  # Objetos con __dict__
+    if hasattr(obj, "__dict__"):
         return _to_serializable(obj.__dict__)
-    # Último recurso: convertir a string
     return str(obj)

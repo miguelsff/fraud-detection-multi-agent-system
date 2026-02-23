@@ -1,6 +1,5 @@
 """Tests for the LangGraph orchestrator (graph construction, nodes, routing, full pipeline)."""
 
-import asyncio
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -29,7 +28,6 @@ from app.models import (
     TransactionSignals,
 )
 from app.models.evidence import PolicyMatchResult, ThreatIntelResult
-
 
 # ============================================================================
 # Fixtures

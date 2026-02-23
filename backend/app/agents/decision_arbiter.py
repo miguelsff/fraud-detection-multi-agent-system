@@ -8,13 +8,10 @@ This module implements Phase 4 of the fraud detection pipeline:
 - Generates initial explanations (to be enhanced by Phase 5)
 """
 
-import asyncio
 import re
-from typing import Optional
 
 from langchain_core.language_models import BaseChatModel
 
-from ..constants import AGENT_TIMEOUTS
 from ..dependencies import get_llm
 from ..models import (
     AggregatedEvidence,
@@ -28,9 +25,10 @@ from ..utils.decision_utils import (
     build_citations_external,
     build_citations_internal,
     generate_audit_explanation,
-    generate_customer_explanation,
     generate_fallback_decision,
 )
+from ..utils.fallback_factories import create_minimal_debate, get_customer_explanation
+from ..utils.llm_call import invoke_llm_with_timeout
 from ..utils.llm_utils import clamp_float, parse_json_response
 from ..utils.logger import get_logger
 from ..utils.timing import timed_agent
@@ -40,14 +38,9 @@ logger = get_logger(__name__)
 VALID_DECISIONS = {"APPROVE", "CHALLENGE", "BLOCK", "ESCALATE_TO_HUMAN"}
 
 
-# ============================================================================
-# PARSING HELPER
-# ============================================================================
-
-
 def _parse_decision_response(
     response_text: str,
-) -> tuple[Optional[str], Optional[float], Optional[str]]:
+) -> tuple[str | None, float | None, str | None]:
     """Parse LLM response to extract decision, confidence, and reasoning.
 
     Two-stage parsing: JSON first, regex fallback.
@@ -96,16 +89,11 @@ def _parse_decision_response(
     return None, None, None
 
 
-# ============================================================================
-# LLM CALL HELPER
-# ============================================================================
-
-
 async def _call_llm_for_decision(
     llm: BaseChatModel,
     evidence: AggregatedEvidence,
     debate: DebateArguments,
-) -> tuple[Optional[str], Optional[float], Optional[str], dict]:
+) -> tuple[str | None, float | None, str | None, dict]:
     """Call LLM for decision making with timeout.
 
     Returns:
@@ -129,40 +117,13 @@ async def _call_llm_for_decision(
         decision_type="una de: APPROVE, CHALLENGE, BLOCK, ESCALATE_TO_HUMAN",
     )
 
-    # Initialize LLM trace metadata
-    llm_trace = {
-        "llm_prompt": prompt,
-        "llm_model": getattr(llm, "model", None) or getattr(llm, "deployment_name", "unknown"),
-        "llm_temperature": 0.0,
-    }
-
-    try:
-        response = await asyncio.wait_for(llm.ainvoke(prompt), timeout=AGENT_TIMEOUTS.llm_call)
-
-        # Capture raw response
-        llm_trace["llm_response_raw"] = response.content
-
-        # Capture token usage if available
-        if hasattr(response, "response_metadata"):
-            usage = response.response_metadata.get("usage", {})
-            llm_trace["llm_tokens_used"] = usage.get("total_tokens")
-
-        decision, confidence, reasoning = _parse_decision_response(response.content)
+    content, llm_trace = await invoke_llm_with_timeout(
+        llm, prompt, agent_name="decision_arbiter"
+    )
+    if content:
+        decision, confidence, reasoning = _parse_decision_response(content)
         return decision, confidence, reasoning, llm_trace
-
-    except asyncio.TimeoutError:
-        logger.error("llm_timeout_decision", timeout_seconds=AGENT_TIMEOUTS.llm_call)
-        llm_trace["llm_response_raw"] = f"TIMEOUT after {AGENT_TIMEOUTS.llm_call}s"
-        return None, None, None, llm_trace
-    except Exception as e:
-        logger.error("llm_call_failed_decision", error=str(e))
-        llm_trace["llm_response_raw"] = f"ERROR: {str(e)}"
-        return None, None, None, llm_trace
-
-
-# ============================================================================
-# MAIN AGENT FUNCTION
-# ============================================================================
+    return None, None, None, llm_trace
 
 
 @timed_agent("decision_arbiter")
@@ -183,10 +144,9 @@ async def decision_arbiter_agent(state: OrchestratorState) -> dict:
 
         if not debate:
             logger.warning("decision_arbiter_no_debate")
-            debate = _create_minimal_debate()
+            debate = create_minimal_debate()
 
-        # Use GPT-4 for critical decision making (high-stakes reasoning)
-        llm = get_llm(use_gpt4=True)
+        llm = get_llm()
         decision, confidence, reasoning, llm_trace = await _call_llm_for_decision(
             llm, evidence, debate
         )
@@ -211,7 +171,7 @@ async def decision_arbiter_agent(state: OrchestratorState) -> dict:
             signals=evidence.all_signals,
             citations_internal=build_citations_internal(evidence),
             citations_external=build_citations_external(evidence),
-            explanation_customer=generate_customer_explanation(decision),
+            explanation_customer=get_customer_explanation(decision),
             explanation_audit=generate_audit_explanation(
                 decision, confidence, reasoning, evidence, debate
             ),
@@ -239,23 +199,6 @@ async def decision_arbiter_agent(state: OrchestratorState) -> dict:
         transaction = state.get("transaction")
         transaction_id = transaction.transaction_id if transaction else "UNKNOWN"
         return _build_error_decision(transaction_id, f"Decision error: {str(e)}")
-
-
-# ============================================================================
-# HELPER FUNCTIONS
-# ============================================================================
-
-
-def _create_minimal_debate() -> DebateArguments:
-    """Create minimal debate arguments when debate phase failed."""
-    return DebateArguments(
-        pro_fraud_argument="Análisis de debate no disponible.",
-        pro_fraud_confidence=0.50,
-        pro_fraud_evidence=["debate_unavailable"],
-        pro_customer_argument="Análisis de debate no disponible.",
-        pro_customer_confidence=0.50,
-        pro_customer_evidence=["debate_unavailable"],
-    )
 
 
 def _extract_agent_trace(state: OrchestratorState) -> list[str]:

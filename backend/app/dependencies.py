@@ -13,9 +13,7 @@ if TYPE_CHECKING:
 
 from .config import settings
 
-# ---------------------------------------------------------------------------
-# SQLAlchemy async engine & session factory (module-level singletons)
-# ---------------------------------------------------------------------------
+#SQLAlchemy async engine & session factory (module-level singletons)
 engine = create_async_engine(
     settings.effective_database_url, echo=(settings.app_env == "development")
 )
@@ -28,18 +26,9 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-# ---------------------------------------------------------------------------
-# LLM Factory (Ollama for local dev, Azure OpenAI for cloud production)
-# ---------------------------------------------------------------------------
-def get_llm(use_gpt4: bool = False) -> BaseChatModel:
-    """Return LLM instance based on configuration.
-
-    Args:
-        use_gpt4: DEPRECATED - Ignored. Kept for backward compatibility.
-
-    Returns:
-        BaseChatModel: Either ChatOllama (local) or ChatOpenAI (Azure endpoint)
-    """
+#LLM Factory (Ollama for local dev, Azure OpenAI for cloud production)
+def get_llm() -> BaseChatModel:
+    """Return LLM instance based on configuration."""
     if settings.use_azure_openai:
         if not settings.azure_openai_endpoint:
             raise ValueError("USE_AZURE_OPENAI=true but AZURE_OPENAI_ENDPOINT not configured")
@@ -60,9 +49,7 @@ def get_llm(use_gpt4: bool = False) -> BaseChatModel:
         )
 
 
-# ---------------------------------------------------------------------------
-# ChromaDB
-# ---------------------------------------------------------------------------
+#ChromaDB
 _chroma_client: "chromadb.ClientAPI | None" = None
 
 

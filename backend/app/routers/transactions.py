@@ -3,7 +3,7 @@
 import asyncio
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,11 +17,6 @@ from ..utils.logger import get_logger
 
 router = APIRouter()
 logger = get_logger(__name__)
-
-
-class PaginationParams(BaseModel):
-    limit: int = Field(10, ge=1, le=1000)
-    offset: int = Field(0, ge=0)
 
 
 @router.post("/analyze", response_model=FraudDecision)
@@ -110,30 +105,37 @@ async def analyze_start(
     return AnalyzeStartResponse(transaction_id=transaction_id)
 
 
+MAX_BATCH_SIZE: int = 20
+
+
 @router.post("/analyze/batch")
 async def analyze_batch(
     requests: list[AnalyzeRequest],
     db: AsyncSession = Depends(get_db),
 ):
-    """Batch analyze multiple transactions."""
-    results = []
-    for req in requests:
+    """Batch analyze multiple transactions in parallel."""
+    if len(requests) > MAX_BATCH_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Batch size {len(requests)} exceeds maximum of {MAX_BATCH_SIZE}",
+        )
+
+    async def _analyze_one(req: AnalyzeRequest) -> dict:
         try:
             decision = await analyze_transaction(req.transaction, req.customer_behavior, db)
-            results.append({"status": "ok", "decision": decision})
+            return {"status": "ok", "decision": decision}
         except Exception as e:
             logger.error(
                 "batch_item_failed", transaction_id=req.transaction.transaction_id, error=str(e)
             )
-            results.append(
-                {
-                    "status": "error",
-                    "transaction_id": req.transaction.transaction_id,
-                    "error": str(e),
-                }
-            )
+            return {
+                "status": "error",
+                "transaction_id": req.transaction.transaction_id,
+                "error": str(e),
+            }
 
-    return results
+    results = await asyncio.gather(*[_analyze_one(req) for req in requests])
+    return list(results)
 
 
 @router.get("/{transaction_id}/result")

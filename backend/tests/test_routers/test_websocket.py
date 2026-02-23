@@ -1,6 +1,5 @@
 """Tests for WebSocket and analytics endpoints."""
 import pytest
-from app.main import app
 
 
 def test_analytics_summary(test_client):

@@ -1,6 +1,4 @@
 """Tests for HITL (Human-in-the-Loop) endpoints."""
-import pytest
-from app.main import app
 
 
 def test_get_queue_default_status(test_client):
