@@ -200,11 +200,13 @@ resource "azurerm_storage_account" "main" {
   tags = local.common_tags
 }
 
-resource "azurerm_storage_share" "chromadb" {
-  name                 = "chromadb"
-  storage_account_name = azurerm_storage_account.main.name
-  quota                = 10
-}
+# REMOVED: Azure File Share not compatible with SQLite (used by ChromaDB)
+# ChromaDB now uses ephemeral container storage + re-ingests policies on startup
+# resource "azurerm_storage_share" "chromadb" {
+#   name                 = "chromadb"
+#   storage_account_name = azurerm_storage_account.main.name
+#   quota                = 10
+# }
 
 # ============================================================================
 # POSTGRESQL - DISABLED (Using Supabase instead)
@@ -390,15 +392,15 @@ resource "azurerm_container_app_environment" "main" {
   }
 }
 
-# Storage mount para ChromaDB
-resource "azurerm_container_app_environment_storage" "chromadb" {
-  name                         = "chromadb-storage"
-  container_app_environment_id = azurerm_container_app_environment.main.id
-  account_name                 = azurerm_storage_account.main.name
-  share_name                   = azurerm_storage_share.chromadb.name
-  access_key                   = azurerm_storage_account.main.primary_access_key
-  access_mode                  = "ReadWrite"
-}
+# REMOVED: Storage mount for ChromaDB no longer needed (ephemeral storage)
+# resource "azurerm_container_app_environment_storage" "chromadb" {
+#   name                         = "chromadb-storage"
+#   container_app_environment_id = azurerm_container_app_environment.main.id
+#   account_name                 = azurerm_storage_account.main.name
+#   share_name                   = azurerm_storage_share.chromadb.name
+#   access_key                   = azurerm_storage_account.main.primary_access_key
+#   access_mode                  = "ReadWrite"
+# }
 
 # Managed Identity para Container Apps
 resource "azurerm_user_assigned_identity" "container_apps" {
@@ -525,11 +527,6 @@ resource "azurerm_container_app" "backend" {
       }
 
       env {
-        name  = "CHROMA_PERSIST_DIR"
-        value = "/app/data/chroma"
-      }
-
-      env {
         name  = "APPLICATIONINSIGHTS_CONNECTION_STRING"
         value = azurerm_application_insights.main.connection_string
       }
@@ -539,17 +536,6 @@ resource "azurerm_container_app" "backend" {
         value = "https://${local.frontend_fqdn}"
       }
 
-      volume_mounts {
-        name = "chromadb-data"
-        path = "/app/data/chroma"
-      }
-
-    }
-
-    volume {
-      name         = "chromadb-data"
-      storage_type = "AzureFile"
-      storage_name = azurerm_container_app_environment_storage.chromadb.name
     }
   }
 
