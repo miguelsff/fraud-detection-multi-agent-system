@@ -75,12 +75,13 @@ def main() -> int:
 
     # ChromaDB
     print("\n📚 ChromaDB:")
-    print(f"   Persist Dir: {settings.chroma_persist_dir}")
+    if settings.chroma_use_http:
+        print(f"   Mode: HTTP client → {settings.chroma_host}:{settings.chroma_port}")
+    else:
+        print(f"   Mode: Persistent (local) → {settings.chroma_persist_dir}")
     if settings.chroma_azure_storage_account:
         print(f"   Azure Storage: {settings.chroma_azure_storage_account}")
         print(f"   Share Name: {settings.chroma_azure_share_name}")
-    else:
-        print("   Azure Storage: Not configured (using local storage)")
 
     # CORS
     print("\n🔐 CORS Origins:")

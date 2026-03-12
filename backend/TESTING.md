@@ -124,13 +124,13 @@ python -m uv run uvicorn app.main:app --reload
 # In another terminal:
 
 # List policies
-curl http://localhost:8000/api/v1/policies/
+curl http://localhost:8080/api/v1/policies/
 
 # Get single policy
-curl http://localhost:8000/api/v1/policies/FP-01
+curl http://localhost:8080/api/v1/policies/FP-01
 
 # Create policy
-curl -X POST http://localhost:8000/api/v1/policies/ \
+curl -X POST http://localhost:8080/api/v1/policies/ \
   -H "Content-Type: application/json" \
   -d '{
     "policy_id": "FP-99",
@@ -143,17 +143,17 @@ curl -X POST http://localhost:8000/api/v1/policies/ \
   }'
 
 # Update policy
-curl -X PUT http://localhost:8000/api/v1/policies/FP-99 \
+curl -X PUT http://localhost:8080/api/v1/policies/FP-99 \
   -H "Content-Type: application/json" \
   -d '{"title": "Updated Title", "severity": "HIGH"}'
 
 # Delete policy
-curl -X DELETE http://localhost:8000/api/v1/policies/FP-99
+curl -X DELETE http://localhost:8080/api/v1/policies/FP-99
 ```
 
 ### Method 4: Interactive API Documentation
 
-Visit http://localhost:8000/docs for interactive Swagger UI to test all endpoints.
+Visit http://localhost:8080/docs for interactive Swagger UI to test all endpoints.
 
 ## Test Coverage Summary
 

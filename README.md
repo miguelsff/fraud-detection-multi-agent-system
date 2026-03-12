@@ -155,16 +155,16 @@ make dev
 ```
 
 La API estará disponible en:
-- **API**: http://localhost:8000
-- **Docs**: http://localhost:8000/docs
-- **Redoc**: http://localhost:8000/redoc
+- **API**: http://localhost:8080
+- **Docs**: http://localhost:8080/docs
+- **Redoc**: http://localhost:8080/redoc
 
 ### Ejemplo de Solicitud API
 
 **Analizar una transacción de alto riesgo:**
 
 ```bash
-curl -X POST "http://localhost:8000/api/v1/transactions/analyze" \
+curl -X POST "http://localhost:8080/api/v1/transactions/analyze" \
   -H "Content-Type: application/json" \
   -d '{
     "transaction": {
@@ -373,8 +373,8 @@ Los sistemas tradicionales de detección de fraude dependen de reglas rígidas o
 | **GET** | `/api/v1/health` | Verificación de salud | ❌ |
 
 **Documentación Interactiva:**
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+- Swagger UI: http://localhost:8080/docs
+- ReDoc: http://localhost:8080/redoc
 
 ---
 
@@ -407,7 +407,7 @@ Los sistemas tradicionales de detección de fraude dependen de reglas rígidas o
 | **Base de Datos (prod)** | Supabase PostgreSQL | PostgreSQL gestionado — Session Pooler (IPv4) |
 
 **Archivos Docker Compose:**
-- `devops/docker-compose.yml` — Desarrollo (solo PostgreSQL, backend/frontend corren localmente)
+- PostgreSQL y ChromaDB provistos por `ai-local-stack` (infraestructura compartida)
 - `docker-compose.prod.yml` — Producción (PostgreSQL + Backend + Frontend containerizados)
 
 ### Frontend
@@ -586,7 +586,7 @@ Los humanos pueden **anular** decisiones de agentes y proporcionar retroalimenta
 ## 📚 Documentación
 
 - **Arquitectura en Profundidad**: [`.claude/docs/arquitectura-sistema.md`](.claude/docs/arquitectura-sistema.md)
-- **Referencia API**: http://localhost:8000/docs (cuando el servidor está corriendo)
+- **Referencia API**: http://localhost:8080/docs (cuando el servidor está corriendo)
 - **Especificaciones de Agentes**: Ver archivos individuales en `backend/app/agents/`
 - **Ejemplos de Políticas**: [`backend/policies/fraud_policies.md`](backend/policies/fraud_policies.md)
 - **Datos de Prueba**: [`backend/data/README.md`](backend/data/README.md)

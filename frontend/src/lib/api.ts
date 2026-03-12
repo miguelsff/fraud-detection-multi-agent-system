@@ -19,7 +19,7 @@ import {
 } from "@/lib/types";
 
 // API base URL from environment variables
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 /**
  * Custom error class for API errors with status code and message.

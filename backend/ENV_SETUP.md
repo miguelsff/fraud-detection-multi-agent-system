@@ -65,11 +65,11 @@ If you DON'T have `DATABASE_URL` in system env:
 ### Development (`.env.development`)
 
 - **LLM**: Ollama (local)
-- **Database**: Local PostgreSQL via Docker
-- **ChromaDB**: Local file-based storage (`./data/chroma`)
+- **Database**: PostgreSQL via ai-local-stack (shared, port 5432)
+- **ChromaDB**: HTTP client via ai-local-stack (port 8000) or local file-based fallback
 - **Log Level**: DEBUG
 - **CORS**: Allow `http://localhost:3000`
-- **API**: http://localhost:8000
+- **API**: http://localhost:8080
 
 ### Production (`terraform/main.tf` → Azure Container Apps)
 

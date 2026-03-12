@@ -43,19 +43,17 @@ help:
 	@echo "  make clean            - Remove Python cache files and ChromaDB data"
 	@echo ""
 
-# Setup: Start PostgreSQL + Install dependencies
+# Setup: Install dependencies (PostgreSQL provided by ai-local-stack)
 setup:
-	@echo "Starting PostgreSQL..."
-	docker compose -f devops/docker-compose.yml up -d
 	@echo "Installing backend dependencies..."
 	cd backend && python -m uv sync
-	@echo "✓ Setup complete!"
+	@echo "✓ Setup complete! (Ensure ai-local-stack is running for PostgreSQL + ChromaDB)"
 
 # Development: Run FastAPI server with auto-reload
 dev:
 	@echo "Starting FastAPI development server..."
-	@echo "API will be available at: http://localhost:8000"
-	@echo "Docs at: http://localhost:8000/docs"
+	@echo "API will be available at: http://localhost:8080"
+	@echo "Docs at: http://localhost:8080/docs"
 	cd backend && python -m uv run uvicorn app.main:app --reload
 
 # Test: Run all tests
@@ -98,9 +96,9 @@ db-reset:
 	echo; \
 	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
 		echo "Stopping and removing PostgreSQL container..."; \
-		docker compose -f devops/docker-compose.yml down -v; \
-		echo "Starting fresh PostgreSQL instance..."; \
-		docker compose -f devops/docker-compose.yml up -d; \
+		echo "Dropping and recreating fraud_detection_db database..."; \
+		PGPASSWORD=postgres_dev_pass dropdb -U postgres -h localhost fraud_detection_db --if-exists; \
+		PGPASSWORD=postgres_dev_pass createdb -U postgres -h localhost fraud_detection_db; \
 		echo "✓ Database reset complete!"; \
 	else \
 		echo "Database reset cancelled."; \
@@ -143,9 +141,9 @@ docker-all:
 	@echo ""
 	@echo "Services available at:"
 	@echo "  Frontend:  http://localhost:3000"
-	@echo "  Backend:   http://localhost:8000"
-	@echo "  API Docs:  http://localhost:8000/docs"
-	@echo "  Database:  postgresql://fraud_user:fraud_pass_dev@localhost:5432/fraud_detection"
+	@echo "  Backend:   http://localhost:8080"
+	@echo "  API Docs:  http://localhost:8080/docs"
+	@echo "  Database:  postgresql://postgres:postgres_dev_pass@localhost:5432/fraud_detection_db"
 	@echo ""
 	@echo "View logs with: make docker-logs"
 

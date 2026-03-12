@@ -8,7 +8,7 @@ def main():
     with open("data/synthetic_data.json", "r") as f:
         data = json.load(f)
 
-    base_url = "http://localhost:8000/api/v1"
+    base_url = "http://localhost:8080/api/v1"
 
     print(f"Seeding {len(data)} transactions...")
 

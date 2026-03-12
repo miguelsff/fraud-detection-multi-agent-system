@@ -13,7 +13,7 @@ from datetime import datetime, UTC
 import httpx
 
 
-BASE_URL = "http://localhost:8000/api/v1"
+BASE_URL = "http://localhost:8080/api/v1"
 
 
 async def test_health():

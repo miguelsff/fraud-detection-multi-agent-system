@@ -1124,8 +1124,8 @@ graph TD
 ```mermaid
 graph TB
     subgraph "Host Machine - localhost"
-        subgraph "Docker Compose (devops/docker-compose.yml)"
-            PG[(PostgreSQL 16<br/>:5432<br/>fraud_detection DB)]
+        subgraph "ai-local-stack (shared infrastructure)"
+            PG[(PostgreSQL 16<br/>:5432<br/>fraud_detection_db DB)]
         end
 
         subgraph "Servicios Locales (no containerizados)"
@@ -1187,7 +1187,7 @@ npm run dev
 **Configuración** (archivo `backend/.env`):
 ```bash
 # Database
-DATABASE_URL=postgresql+asyncpg://fraud_user:fraud_pass_dev@localhost:5432/fraud_detection
+DATABASE_URL=postgresql+asyncpg://postgres:postgres_dev_pass@localhost:5432/fraud_detection_db
 
 # LLM
 OLLAMA_BASE_URL=http://localhost:11434
@@ -1416,9 +1416,9 @@ Lecciones clave aprendidas durante el despliegue en Azure:
 ## 10. Endpoints API (FastAPI)
 
 **Documentación interactiva**:
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
-- OpenAPI JSON: `http://localhost:8000/openapi.json`
+- Swagger UI: `http://localhost:8080/docs`
+- ReDoc: `http://localhost:8080/redoc`
+- OpenAPI JSON: `http://localhost:8080/openapi.json`
 
 ### Endpoints Implementados
 
@@ -1435,7 +1435,7 @@ Lecciones clave aprendidas durante el despliegue en Azure:
 **Ejemplo de uso**:
 ```bash
 # Analizar transacción
-curl -X POST http://localhost:8000/api/v1/transactions/analyze \
+curl -X POST http://localhost:8080/api/v1/transactions/analyze \
   -H "Content-Type: application/json" \
   -d '{
     "transaction": {...},
@@ -1443,7 +1443,7 @@ curl -X POST http://localhost:8000/api/v1/transactions/analyze \
   }'
 
 # Ver resultado
-curl http://localhost:8000/api/v1/transactions/T-1001/result
+curl http://localhost:8080/api/v1/transactions/T-1001/result
 ```
 
 **Campo `hitl` en respuesta de `GET /{transaction_id}/result`**:
@@ -1479,10 +1479,10 @@ Si la transacción tiene un caso HITL asociado, el campo `hitl` contendrá los d
 **Ejemplo de uso**:
 ```bash
 # Ver cola HITL
-curl http://localhost:8000/api/v1/hitl/queue?status=pending
+curl http://localhost:8080/api/v1/hitl/queue?status=pending
 
 # Resolver caso
-curl -X POST http://localhost:8000/api/v1/hitl/1/resolve \
+curl -X POST http://localhost:8080/api/v1/hitl/1/resolve \
   -H "Content-Type: application/json" \
   -d '{
     "reviewer_id": "analyst_01",
@@ -1505,10 +1505,10 @@ curl -X POST http://localhost:8000/api/v1/hitl/1/resolve \
 **Ejemplo de uso**:
 ```bash
 # Listar políticas
-curl http://localhost:8000/api/v1/policies
+curl http://localhost:8080/api/v1/policies
 
 # Crear nueva política
-curl -X POST http://localhost:8000/api/v1/policies \
+curl -X POST http://localhost:8080/api/v1/policies \
   -H "Content-Type: application/json" \
   -d '{
     "policy_id": "FP-07",
@@ -1546,7 +1546,7 @@ curl -X POST http://localhost:8000/api/v1/policies \
 **Uso del WebSocket**:
 ```javascript
 // Frontend (lib/websocket.ts)
-const ws = new WebSocket('ws://localhost:8000/api/v1/ws/transactions');
+const ws = new WebSocket('ws://localhost:8080/api/v1/ws/transactions');
 
 ws.onmessage = (event) => {
   const data = JSON.parse(event.data);
@@ -2018,7 +2018,7 @@ export function useWebSocket() {
   const maxReconnectAttempts = 5;
 
   const connect = () => {
-    const ws = new WebSocket('ws://localhost:8000/api/v1/ws/transactions');
+    const ws = new WebSocket('ws://localhost:8080/api/v1/ws/transactions');
 
     ws.onopen = () => {
       console.log('WebSocket connected');

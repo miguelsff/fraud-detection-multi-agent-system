@@ -68,8 +68,8 @@ jobs:
       - name: Build frontend image
         run: |
           docker build \
-            --build-arg NEXT_PUBLIC_API_URL=http://localhost:8000 \
-            --build-arg NEXT_PUBLIC_WS_URL=ws://localhost:8000 \
+            --build-arg NEXT_PUBLIC_API_URL=http://localhost:8080 \
+            --build-arg NEXT_PUBLIC_WS_URL=ws://localhost:8080 \
             -t fraud-detection-frontend ./frontend
 
   terraform-validate:

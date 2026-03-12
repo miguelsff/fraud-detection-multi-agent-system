@@ -54,10 +54,15 @@ _chroma_client: "chromadb.ClientAPI | None" = None
 
 
 def get_chroma() -> "chromadb.ClientAPI":
-    """Return a persistent ChromaDB client (singleton)."""
+    """Return a ChromaDB client (singleton). Uses HTTP or persistent based on config."""
     global _chroma_client
     if _chroma_client is None:
         import chromadb
 
-        _chroma_client = chromadb.PersistentClient(path=settings.chroma_persist_dir)
+        if settings.chroma_use_http:
+            _chroma_client = chromadb.HttpClient(
+                host=settings.chroma_host, port=settings.chroma_port
+            )
+        else:
+            _chroma_client = chromadb.PersistentClient(path=settings.chroma_persist_dir)
     return _chroma_client

@@ -22,7 +22,7 @@ Detailed architecture documentation (in Spanish) lives in `.claude/docs/arquitec
 
 - **Backend**: FastAPI + Python 3.13 + LangGraph + Pydantic v2
 - **LLM**: LangChain + Ollama (dev: qwen3:30b) / Azure OpenAI (prod: gpt-5.2-chat)
-- **Vector DB**: ChromaDB (embedded, for fraud policy RAG)
+- **Vector DB**: ChromaDB (HTTP client via ai-local-stack / embedded fallback, for fraud policy RAG)
 - **Database**: PostgreSQL (via SQLAlchemy async + asyncpg + Alembic migrations) · Supabase (production)
 - **Frontend**: Next.js 16 + TypeScript + Tailwind + shadcn/ui
 - **Deploy**: Azure Container Apps + Terraform + GitHub Actions CI/CD
@@ -99,8 +99,8 @@ python -m uv run pytest tests/test_agents/test_example.py
 # Run a specific test
 python -m uv run pytest tests/test_agents/test_example.py::test_function_name -v
 
-# Start PostgreSQL (from repo root)
-docker compose -f devops/docker-compose.yml up -d
+# PostgreSQL & ChromaDB are provided by ai-local-stack (external)
+# Ensure ai-local-stack is running with fraud_detection_db DB created
 
 # Run seed & test with synthetic data
 python seed_test.py
@@ -170,7 +170,7 @@ WS     /api/v1/ws/transactions
 Layout: app/layout.tsx (sidebar + header)
 Pages: app/page.tsx (dashboard), app/transactions/, app/hitl/, app/analytics/
 Components: components/{dashboard,transactions,agents,hitl,explanation}/
-API Client: lib/api.ts (fetch wrapper → backend :8000)
+API Client: lib/api.ts (fetch wrapper → backend :8080)
 Types: lib/types.ts (mirror de Pydantic schemas del backend)
 
 ## Reglas Backend LLM

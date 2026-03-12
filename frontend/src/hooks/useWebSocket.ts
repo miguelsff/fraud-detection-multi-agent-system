@@ -17,7 +17,7 @@ interface UseWebSocketReturn {
   disconnect: () => void;
 }
 
-const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
+const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080";
 
 export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketReturn {
   const { transactionId, autoConnect = true, maxReconnectDelay = 30000 } = options;

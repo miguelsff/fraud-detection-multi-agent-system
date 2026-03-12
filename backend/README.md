@@ -44,8 +44,7 @@ backend/
 # Install dependencies
 uv sync --group dev
 
-# Start PostgreSQL
-docker compose -f ../devops/docker-compose.yml up -d
+# Ensure ai-local-stack is running (provides PostgreSQL + ChromaDB)
 
 # Run database migrations
 uv run alembic upgrade head
@@ -57,7 +56,7 @@ uv run python -m app.rag.ingest
 uv run uvicorn app.main:app --reload
 ```
 
-The API will be available at http://localhost:8000 with interactive docs at http://localhost:8000/docs.
+The API will be available at http://localhost:8080 with interactive docs at http://localhost:8080/docs.
 
 ## Testing
 

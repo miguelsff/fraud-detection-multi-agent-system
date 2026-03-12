@@ -283,8 +283,8 @@ if __name__ == "__main__":
         print("\nThe Policy Management system is working correctly.")
         print("You can now:")
         print("  1. Start the backend server: cd backend && python -m uvicorn app.main:app --reload")
-        print("  2. Test the API endpoints at http://localhost:8000/api/v1/policies")
-        print("  3. View API docs at http://localhost:8000/docs")
+        print("  2. Test the API endpoints at http://localhost:8080/api/v1/policies")
+        print("  3. View API docs at http://localhost:8080/docs")
         print()
 
     except AssertionError as e:

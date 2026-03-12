@@ -230,7 +230,7 @@ Client component for transactions list with auto-refresh.
 ### Connection URL
 
 ```
-ws://localhost:8000/api/v1/ws/transactions
+ws://localhost:8080/api/v1/ws/transactions
 ```
 
 Optional query parameter:
@@ -284,11 +284,11 @@ Optional query parameter:
 Create `.env.local` in `frontend/`:
 
 ```bash
-# WebSocket URL (optional, defaults to ws://localhost:8000)
-NEXT_PUBLIC_WS_URL=ws://localhost:8000
+# WebSocket URL (optional, defaults to ws://localhost:8080)
+NEXT_PUBLIC_WS_URL=ws://localhost:8080
 
-# API URL (optional, defaults to http://localhost:8000)
-NEXT_PUBLIC_API_URL=http://localhost:8000
+# API URL (optional, defaults to http://localhost:8080)
+NEXT_PUBLIC_API_URL=http://localhost:8080
 ```
 
 ---
@@ -435,7 +435,7 @@ Connection is only attempted if `shouldConnect` is true (controlled by `disconne
 2. **Verify WebSocket endpoint**:
    ```bash
    # Test with wscat (npm install -g wscat)
-   wscat -c ws://localhost:8000/api/v1/ws/transactions
+   wscat -c ws://localhost:8080/api/v1/ws/transactions
    ```
 
 3. **Check browser console**: Look for connection errors

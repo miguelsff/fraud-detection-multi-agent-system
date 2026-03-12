@@ -43,13 +43,13 @@ class Settings(BaseSettings):
     # Database - connection parts (production: password from Key Vault)
     database_host: str = "localhost"
     database_port: int = 5432
-    database_user: str = "fraud_user"
-    database_name: str = "fraud_detection"
+    database_user: str = "postgres"
+    database_name: str = "fraud_detection_db"
     database_password: SecretStr = SecretStr("")
 
     # Database - full URL (development fallback)
     database_url: SecretStr = SecretStr(
-        "postgresql+asyncpg://fraud_user:fraud_pass_dev@localhost:5432/fraud_detection"
+        "postgresql+asyncpg://postgres:postgres_dev_pass@localhost:5432/fraud_detection_db"
     )
 
     @property
@@ -65,6 +65,9 @@ class Settings(BaseSettings):
 
     # ChromaDB
     chroma_persist_dir: str = "./data/chroma"
+    chroma_host: str = "localhost"
+    chroma_port: int = 8000
+    chroma_use_http: bool = False
     chroma_azure_storage_account: str = ""
     chroma_azure_share_name: str = "chromadb"
 
@@ -72,7 +75,7 @@ class Settings(BaseSettings):
     app_env: Literal["development", "production"] = "development"
     log_level: str = "DEBUG"
     api_host: str = "0.0.0.0"
-    api_port: int = 8000
+    api_port: int = 8080
 
     # CORS - Frontend origins (production/staging)
     cors_frontend_prod_url: str = (
