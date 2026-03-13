@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.services.ws_manager import MAX_BUFFER_AGE_SECONDS, MAX_BUFFER_SIZE, ConnectionManager
+from app.infrastructure.adapters.broadcast.connection_manager import MAX_BUFFER_AGE_SECONDS, MAX_BUFFER_SIZE, ConnectionManager
 
 
 @pytest.fixture

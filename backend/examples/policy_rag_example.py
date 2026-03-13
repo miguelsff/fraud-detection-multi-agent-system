@@ -8,8 +8,8 @@ from pathlib import Path
 # Add backend directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.agents.policy_rag import policy_rag_agent
-from app.models import (
+from app.application.agents.policy_rag import policy_rag_agent
+from app.application.models import (
     BehavioralSignals,
     CustomerBehavior,
     OrchestratorState,

@@ -5,16 +5,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.agents.explainability import (
+from app.application.agents.explainability import (
     _call_llm_for_explanation,
     _enhance_audit_explanation,
     _enhance_customer_explanation,
     _generate_fallback_explanations,
-    _get_safe_customer_template,
     _parse_explanation_response,
     explainability_agent,
 )
-from app.models import (
+from app.utils.fallback_factories import get_customer_explanation as _get_safe_customer_template
+from app.application.models import (
     AggregatedEvidence,
     DebateArguments,
     FraudDecision,
@@ -525,21 +525,22 @@ async def test_call_llm_for_explanation_success():
         pro_customer_evidence=["e2"],
     )
 
-    # Mock LLM response
-    mock_llm = AsyncMock()
-    mock_response = MagicMock()
-    mock_response.content = """```json
+    # Mock LLMPort
+    mock_llm_port = AsyncMock()
+    mock_llm_port.invoke.return_value = (
+        """```json
 {
   "customer_explanation": "Necesitamos verificar esta transacción.",
   "audit_explanation": "Transacción T-001 requiere verificación adicional.",
   "key_factors": ["monto_elevado"],
   "recommended_actions": ["verificar_sms"]
 }
-```"""
-    mock_llm.ainvoke.return_value = mock_response
+```""",
+        {"llm_prompt": "test", "llm_model": "test-model"},
+    )
 
     customer, audit, factors, actions, llm_trace = await _call_llm_for_explanation(
-        mock_llm,
+        mock_llm_port,
         decision,
         evidence,
         None,
@@ -585,17 +586,17 @@ async def test_call_llm_for_explanation_timeout():
         pro_customer_evidence=[],
     )
 
-    mock_llm = AsyncMock()
-    mock_llm.ainvoke.side_effect = TimeoutError("LLM timeout")
+    # Mock LLMPort returning None (simulating timeout)
+    mock_llm_port = AsyncMock()
+    mock_llm_port.invoke.return_value = (None, {"llm_prompt": "test"})
 
-    with patch("app.utils.llm_call.asyncio.wait_for", side_effect=TimeoutError):
-        customer, audit, factors, actions, llm_trace = await _call_llm_for_explanation(
-            mock_llm,
-            decision,
-            evidence,
-            None,
-            debate,
-        )
+    customer, audit, factors, actions, llm_trace = await _call_llm_for_explanation(
+        mock_llm_port,
+        decision,
+        evidence,
+        None,
+        debate,
+    )
 
     assert customer is None
     assert audit is None
@@ -654,21 +655,19 @@ async def test_explainability_agent_success():
         "policy_matches": None,
     }
 
-    with patch("app.agents.explainability.get_llm") as mock_get_llm:
-        mock_llm = AsyncMock()
-        mock_llm.model = "test-model"
-        mock_response = MagicMock()
-        mock_response.content = json.dumps({
+    mock_llm_port = AsyncMock()
+    mock_llm_port.invoke.return_value = (
+        json.dumps({
             "customer_explanation": "Necesitamos verificar esta transacción.",
             "audit_explanation": "Transacción T-001 analizada.",
             "key_factors": ["monto"],
             "recommended_actions": ["verificar"],
-        })
-        del mock_response.response_metadata
-        mock_llm.ainvoke.return_value = mock_response
-        mock_get_llm.return_value = mock_llm
+        }),
+        {"llm_prompt": "test", "llm_model": "test-model"},
+    )
 
-        result = await explainability_agent(state)
+    config = {"configurable": {"llm_port": mock_llm_port}}
+    result = await explainability_agent(state, config=config)
 
     assert "explanation" in result
     assert result["explanation"].customer_explanation
@@ -708,13 +707,12 @@ async def test_explainability_agent_llm_timeout_uses_fallback():
         "policy_matches": None,
     }
 
-    with patch("app.agents.explainability.get_llm") as mock_get_llm, \
-         patch("app.utils.llm_call.asyncio.wait_for", side_effect=TimeoutError):
-        mock_llm = AsyncMock()
-        mock_llm.model = "test-model"
-        mock_get_llm.return_value = mock_llm
+    # Mock LLMPort returning None (simulating timeout handled by adapter)
+    mock_llm_port = AsyncMock()
+    mock_llm_port.invoke.return_value = (None, {"llm_prompt": "test"})
 
-        result = await explainability_agent(state)
+    config = {"configurable": {"llm_port": mock_llm_port}}
+    result = await explainability_agent(state, config=config)
 
     # Should use fallback
     assert "explanation" in result
@@ -756,22 +754,20 @@ async def test_explainability_agent_sanitizes_customer_explanation():
         "policy_matches": None,
     }
 
-    with patch("app.agents.explainability.get_llm") as mock_get_llm:
-        mock_llm = AsyncMock()
-        mock_llm.model = "test-model"
-        mock_response = MagicMock()
-        # LLM returns explanation with internal details (should be sanitized)
-        mock_response.content = json.dumps({
+    # LLM returns explanation with internal details (should be sanitized)
+    mock_llm_port = AsyncMock()
+    mock_llm_port.invoke.return_value = (
+        json.dumps({
             "customer_explanation": "Su transacción tiene un score de 80 y viola la política FP-01.",
             "audit_explanation": "Test audit",
             "key_factors": [],
             "recommended_actions": [],
-        })
-        del mock_response.response_metadata
-        mock_llm.ainvoke.return_value = mock_response
-        mock_get_llm.return_value = mock_llm
+        }),
+        {"llm_prompt": "test", "llm_model": "test-model"},
+    )
 
-        result = await explainability_agent(state)
+    config = {"configurable": {"llm_port": mock_llm_port}}
+    result = await explainability_agent(state, config=config)
 
     # Customer explanation should be replaced with safe template
     assert "score" not in result["explanation"].customer_explanation.lower()
@@ -824,8 +820,12 @@ async def test_explainability_agent_exception_handling():
         "policy_matches": None,
     }
 
-    with patch("app.agents.explainability.get_llm", side_effect=Exception("Test error")):
-        result = await explainability_agent(state)
+    # Mock LLMPort to raise exception
+    mock_llm_port = AsyncMock()
+    mock_llm_port.invoke.side_effect = Exception("Test error")
+
+    config = {"configurable": {"llm_port": mock_llm_port}}
+    result = await explainability_agent(state, config=config)
 
     # Should return error explanation
     assert "explanation" in result

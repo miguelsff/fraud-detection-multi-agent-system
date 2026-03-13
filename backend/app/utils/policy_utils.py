@@ -7,11 +7,11 @@ and policy match response parsing.
 import re
 from typing import Optional
 
-from app.models import BehavioralSignals, PolicyMatch, Transaction, TransactionSignals
+from app.application.models import BehavioralSignals, PolicyMatch, Transaction, TransactionSignals
 from app.utils.llm_utils import clamp_float, parse_json_response
 from app.utils.logger import get_logger
 
-from ..constants import AMOUNT_THRESHOLDS
+from app.domain.constants import AMOUNT_THRESHOLDS
 
 logger = get_logger(__name__)
 

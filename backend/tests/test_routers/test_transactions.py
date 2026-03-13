@@ -1,13 +1,11 @@
 """Tests for transaction analysis endpoints."""
 from datetime import datetime, timezone
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
-from app.dependencies import get_db
-from app.main import app
-from app.models import FraudDecision
-from app.routers.transactions import MAX_BATCH_SIZE
+from app.application.models import FraudDecision
+from app.presentation.routers.transactions import MAX_BATCH_SIZE
 
 
 @pytest.fixture
@@ -37,15 +35,8 @@ def sample_transaction_request():
 
 @pytest.mark.asyncio
 @pytest.mark.unit
-async def test_analyze_transaction_success(sample_transaction_request, mock_db_session, test_client):
-    """Test POST /api/v1/transactions/analyze with mocked orchestrator.
-
-    Validates that the endpoint correctly:
-    - Parses request body
-    - Calls analyze_transaction orchestrator
-    - Returns FraudDecision response
-    """
-    # Mock the analyze_transaction function
+async def test_analyze_transaction_success(sample_transaction_request, test_client):
+    """Test POST /api/v1/transactions/analyze with mocked orchestrator."""
     mock_decision = FraudDecision(
         transaction_id="T-TEST-001",
         decision="CHALLENGE",
@@ -60,20 +51,13 @@ async def test_analyze_transaction_success(sample_transaction_request, mock_db_s
         agent_trace=["transaction_context", "policy_rag", "evidence_aggregation"],
     )
 
-    with patch("app.routers.transactions.analyze_transaction") as mock_analyze:
+    with patch("app.presentation.routers.transactions.analyze_transaction") as mock_analyze:
         mock_analyze.return_value = mock_decision
-
-        # Override DB dependency
-        app.dependency_overrides[get_db] = lambda: mock_db_session
 
         response = test_client.post(
             "/api/v1/transactions/analyze", json=sample_transaction_request
         )
 
-        # Cleanup
-        app.dependency_overrides.clear()
-
-    # Assertions
     assert response.status_code == 200
     data = response.json()
     assert data["transaction_id"] == "T-TEST-001"
@@ -85,44 +69,19 @@ async def test_analyze_transaction_success(sample_transaction_request, mock_db_s
 
 @pytest.mark.asyncio
 @pytest.mark.unit
-async def test_get_result_success(mock_db_session, test_client):
-    """Test GET /api/v1/transactions/{id}/result with existing transaction.
-
-    Validates that the endpoint correctly:
-    - Queries database for TransactionRecord
-    - Returns transaction result with decision
-    """
-    # Mock DB query to return a TransactionRecord
-    mock_record = Mock()
-    mock_record.transaction_id = "T-001"
-    mock_record.raw_data = {
+async def test_get_result_success(mock_container, test_client):
+    """Test GET /api/v1/transactions/{id}/result with existing transaction."""
+    mock_container.persistence.get_transaction.return_value = {
         "transaction_id": "T-001",
-        "amount": 1500.0,
-        "currency": "PEN",
+        "transaction": {"transaction_id": "T-001", "amount": 1500.0, "currency": "PEN"},
+        "decision": "APPROVE",
+        "confidence": 0.95,
+        "hitl": None,
+        "analyzed_at": datetime.now(timezone.utc).isoformat(),
     }
-    mock_record.decision = "APPROVE"
-    mock_record.confidence = 0.95
-    mock_record.signals = ["low_risk"]
-    mock_record.analysis_state = {}  # Important: prevent Mock recursion during serialization
-    mock_record.created_at = datetime.now(timezone.utc)
-
-    # scalar_one_or_none is a synchronous method on the Result object.
-    # First execute returns TransactionRecord, second returns HITLCase (None).
-    mock_tx_result = Mock()
-    mock_tx_result.scalar_one_or_none.return_value = mock_record
-
-    mock_hitl_result = Mock()
-    mock_hitl_result.scalar_one_or_none.return_value = None
-
-    mock_db_session.execute.side_effect = [mock_tx_result, mock_hitl_result]
-
-    app.dependency_overrides[get_db] = lambda: mock_db_session
 
     response = test_client.get("/api/v1/transactions/T-001/result")
 
-    app.dependency_overrides.clear()
-
-    # Assertions
     assert response.status_code == 200
     data = response.json()
     assert data["transaction_id"] == "T-001"
@@ -133,65 +92,47 @@ async def test_get_result_success(mock_db_session, test_client):
 
 @pytest.mark.asyncio
 @pytest.mark.unit
-async def test_get_trace_success(mock_db_session, test_client):
-    """Test GET /api/v1/transactions/{id}/trace with existing traces.
-
-    Validates that the endpoint correctly:
-    - Queries database for AgentTrace records
-    - Returns list of agent execution traces
-    """
-    # Mock DB query to return list of AgentTrace
-    mock_trace1 = Mock()
-    mock_trace1.agent_name = "transaction_context"
-    mock_trace1.duration_ms = 15.5
-    mock_trace1.status = "success"
-    mock_trace1.input_summary = "Transaction T-001"
-    mock_trace1.output_summary = "6 signals generated"
-    mock_trace1.created_at = datetime.now(timezone.utc)
-    mock_trace1.llm_prompt = None
-    mock_trace1.llm_response_raw = None
-    mock_trace1.llm_model = None
-    mock_trace1.llm_temperature = None
-    mock_trace1.llm_tokens_used = None
-    mock_trace1.rag_query = None
-    mock_trace1.rag_scores = None
-    mock_trace1.fallback_reason = None
-    mock_trace1.error_details = None
-
-    mock_trace2 = Mock()
-    mock_trace2.agent_name = "evidence_aggregation"
-    mock_trace2.duration_ms = 8.2
-    mock_trace2.status = "success"
-    mock_trace2.input_summary = "Signals from 3 sources"
-    mock_trace2.output_summary = "Composite score: 45.0"
-    mock_trace2.created_at = datetime.now(timezone.utc)
-    mock_trace2.llm_prompt = None
-    mock_trace2.llm_response_raw = None
-    mock_trace2.llm_model = None
-    mock_trace2.llm_temperature = None
-    mock_trace2.llm_tokens_used = None
-    mock_trace2.rag_query = None
-    mock_trace2.rag_scores = None
-    mock_trace2.fallback_reason = None
-    mock_trace2.error_details = None
-
-    # Result.scalars() is synchronous, returns ScalarResult.
-    # ScalarResult.all() is synchronous.
-    mock_scalars = Mock()
-    mock_scalars.all.return_value = [mock_trace1, mock_trace2]
-
-    mock_result = Mock()
-    mock_result.scalars.return_value = mock_scalars
-
-    mock_db_session.execute.return_value = mock_result
-
-    app.dependency_overrides[get_db] = lambda: mock_db_session
+async def test_get_trace_success(mock_container, test_client):
+    """Test GET /api/v1/transactions/{id}/trace with existing traces."""
+    mock_container.persistence.get_transaction_trace.return_value = [
+        {
+            "agent_name": "transaction_context",
+            "duration_ms": 15.5,
+            "input_summary": "Transaction T-001",
+            "output_summary": "6 signals generated",
+            "status": "success",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "llm_prompt": None,
+            "llm_response_raw": None,
+            "llm_model": None,
+            "llm_temperature": None,
+            "llm_tokens_used": None,
+            "rag_query": None,
+            "rag_scores": None,
+            "fallback_reason": None,
+            "error_details": None,
+        },
+        {
+            "agent_name": "evidence_aggregation",
+            "duration_ms": 8.2,
+            "input_summary": "Signals from 3 sources",
+            "output_summary": "Composite score: 45.0",
+            "status": "success",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "llm_prompt": None,
+            "llm_response_raw": None,
+            "llm_model": None,
+            "llm_temperature": None,
+            "llm_tokens_used": None,
+            "rag_query": None,
+            "rag_scores": None,
+            "fallback_reason": None,
+            "error_details": None,
+        },
+    ]
 
     response = test_client.get("/api/v1/transactions/T-001/trace")
 
-    app.dependency_overrides.clear()
-
-    # Assertions
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 2
@@ -257,9 +198,7 @@ def test_list_transactions_custom_pagination(test_client):
 
 @pytest.mark.asyncio
 @pytest.mark.unit
-async def test_analyze_batch_parallel_success(
-    sample_transaction_request, mock_db_session, test_client
-):
+async def test_analyze_batch_parallel_success(sample_transaction_request, test_client):
     """Test batch endpoint processes multiple requests in parallel."""
     mock_decision = FraudDecision(
         transaction_id="T-TEST-001",
@@ -273,15 +212,13 @@ async def test_analyze_batch_parallel_success(
         agent_trace=[],
     )
 
-    with patch("app.routers.transactions.analyze_transaction") as mock_analyze:
+    with patch("app.presentation.routers.transactions.analyze_transaction") as mock_analyze:
         mock_analyze.return_value = mock_decision
-        app.dependency_overrides[get_db] = lambda: mock_db_session
 
         response = test_client.post(
             "/api/v1/transactions/analyze/batch",
             json=[sample_transaction_request, sample_transaction_request],
         )
-        app.dependency_overrides.clear()
 
     assert response.status_code == 200
     data = response.json()
@@ -291,9 +228,7 @@ async def test_analyze_batch_parallel_success(
 
 @pytest.mark.asyncio
 @pytest.mark.unit
-async def test_analyze_batch_partial_failure(
-    sample_transaction_request, mock_db_session, test_client
-):
+async def test_analyze_batch_partial_failure(sample_transaction_request, test_client):
     """Test batch endpoint handles partial failures gracefully."""
     mock_decision = FraudDecision(
         transaction_id="T-TEST-001",
@@ -316,14 +251,11 @@ async def test_analyze_batch_partial_failure(
             raise RuntimeError("Pipeline error")
         return mock_decision
 
-    with patch("app.routers.transactions.analyze_transaction", side_effect=_side_effect):
-        app.dependency_overrides[get_db] = lambda: mock_db_session
-
+    with patch("app.presentation.routers.transactions.analyze_transaction", side_effect=_side_effect):
         response = test_client.post(
             "/api/v1/transactions/analyze/batch",
             json=[sample_transaction_request, sample_transaction_request, sample_transaction_request],
         )
-        app.dependency_overrides.clear()
 
     assert response.status_code == 200
     data = response.json()

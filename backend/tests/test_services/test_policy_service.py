@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from app.exceptions import InvalidPolicyFormatError, PolicyExistsError, PolicyNotFoundError
-from app.models.policy import PolicyCreate, PolicyUpdate
-from app.services.policy_parser import (
+from app.domain.exceptions import InvalidPolicyFormatError, PolicyExistsError, PolicyNotFoundError
+from app.application.models.policy import PolicyCreate, PolicyUpdate
+from app.infrastructure.adapters.persistence.markdown_policy_parser import (
     _extract_action,
     _extract_list_section,
     _extract_section,
@@ -16,7 +16,7 @@ from app.services.policy_parser import (
     model_to_markdown,
     parse_markdown_to_model,
 )
-from app.services.policy_service import PolicyService
+from app.application.services.policy_service import PolicyService
 
 
 @pytest.fixture

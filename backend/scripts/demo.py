@@ -27,10 +27,10 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 # Add backend directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.agents.orchestrator import graph
-from app.db.engine import async_session as async_session_maker
-from app.models import Transaction, CustomerBehavior, OrchestratorState
-from app.rag.vector_store import ingest_policies
+from app.application.agents.orchestrator import graph
+from app.infrastructure.adapters.persistence.engine import async_session as async_session_maker
+from app.application.models import Transaction, CustomerBehavior, OrchestratorState
+from app.infrastructure.adapters.vector_store import ingest_policies
 from app.utils.logger import get_logger, setup_logging
 from langchain_core.runnables import RunnableConfig
 

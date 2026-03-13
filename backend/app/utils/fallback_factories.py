@@ -4,7 +4,7 @@ Provides safe default objects when upstream phases fail, used by
 decision_arbiter and explainability agents.
 """
 
-from ..models import AggregatedEvidence, DebateArguments
+from app.application.models import AggregatedEvidence, DebateArguments
 
 # Customer-facing explanation templates keyed by decision type.
 # Single source of truth — used by decision_arbiter (initial explanation)

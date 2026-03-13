@@ -4,40 +4,19 @@ Provides shared LLM calling logic, parsing, and fallback generation
 for both pro-fraud and pro-customer debate agents.
 """
 
+from __future__ import annotations
+
 import re
+from typing import TYPE_CHECKING
 
-from langchain_core.language_models import BaseChatModel
-
-from ..models import AggregatedEvidence
-from .llm_call import invoke_llm_with_timeout
+from app.application.models import AggregatedEvidence
 from .llm_utils import clamp_float, parse_json_response
 from .logger import get_logger
 
+if TYPE_CHECKING:
+    from app.application.ports.llm import LLMPort
+
 logger = get_logger(__name__)
-
-
-async def call_debate_llm(
-    llm: BaseChatModel,
-    evidence: AggregatedEvidence,
-    prompt_template: str,
-) -> tuple[str | None, float | None, list[str], dict]:
-    """Call LLM for debate argument generation with parsing.
-
-    Returns:
-        Tuple of (argument, confidence, evidence_cited, llm_trace_metadata)
-    """
-    prompt = prompt_template.format(
-        composite_risk_score=evidence.composite_risk_score,
-        risk_category=evidence.risk_category,
-        all_signals=", ".join(evidence.all_signals) if evidence.all_signals else "ninguna",
-        all_citations="\n- ".join(evidence.all_citations) if evidence.all_citations else "ninguna",
-    )
-
-    content, llm_trace = await invoke_llm_with_timeout(llm, prompt, agent_name="debate")
-    if content:
-        argument, confidence, evidence_cited = _parse_debate_response(content)
-        return argument, confidence, evidence_cited, llm_trace
-    return None, None, [], llm_trace
 
 
 def _parse_debate_response(response_text: str) -> tuple[str | None, float | None, list[str]]:
@@ -180,3 +159,27 @@ def generate_fallback_pro_customer(evidence: AggregatedEvidence) -> dict:
         "pro_customer_confidence": confidence,
         "pro_customer_evidence": evidence_cited,
     }
+
+
+async def call_debate_llm_via_port(
+    llm_port: LLMPort,
+    evidence: AggregatedEvidence,
+    prompt_template: str,
+) -> tuple[str | None, float | None, list[str], dict]:
+    """Call LLM for debate argument generation using the LLMPort interface.
+
+    Returns:
+        Tuple of (argument, confidence, evidence_cited, llm_trace_metadata)
+    """
+    prompt = prompt_template.format(
+        composite_risk_score=evidence.composite_risk_score,
+        risk_category=evidence.risk_category,
+        all_signals=", ".join(evidence.all_signals) if evidence.all_signals else "ninguna",
+        all_citations="\n- ".join(evidence.all_citations) if evidence.all_citations else "ninguna",
+    )
+
+    content, llm_trace = await llm_port.invoke(prompt, agent_name="debate")
+    if content:
+        argument, confidence, evidence_cited = _parse_debate_response(content)
+        return argument, confidence, evidence_cited, llm_trace
+    return None, None, [], llm_trace

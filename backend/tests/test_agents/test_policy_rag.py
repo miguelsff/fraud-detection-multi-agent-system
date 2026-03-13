@@ -1,12 +1,12 @@
 """Tests for the Policy RAG agent."""
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from app.agents.policy_rag import policy_rag_agent
-from app.models import (
+from app.application.agents.policy_rag import policy_rag_agent
+from app.application.models import (
     BehavioralSignals,
     CustomerBehavior,
     OrchestratorState,
@@ -226,12 +226,11 @@ def test_parse_llm_response_filters_low_scores():
 
 
 @pytest.mark.asyncio
-@patch("app.agents.policy_rag.query_policies")
-@patch("app.agents.policy_rag.get_llm")
-async def test_policy_rag_agent_success(mock_get_llm, mock_query_policies):
+async def test_policy_rag_agent_success():
     """Test successful policy RAG agent execution."""
-    # Mock RAG results
-    mock_query_policies.return_value = [
+    # Mock vector store
+    mock_vector_store = Mock()
+    mock_vector_store.query.return_value = [
         {
             "id": "fp-01-section-0",
             "text": "## FP-01: Test Policy\nDescription...",
@@ -240,12 +239,10 @@ async def test_policy_rag_agent_success(mock_get_llm, mock_query_policies):
         }
     ]
 
-    # Mock LLM
-    mock_llm = AsyncMock()
-    mock_llm.model = "test-model"
-    mock_llm.temperature = 0.0
-    mock_response = Mock()
-    mock_response.content = """{
+    # Mock LLMPort
+    mock_llm_port = AsyncMock()
+    mock_llm_port.invoke.return_value = (
+        """{
   "matches": [
     {
       "policy_id": "FP-01",
@@ -253,10 +250,9 @@ async def test_policy_rag_agent_success(mock_get_llm, mock_query_policies):
       "relevance_score": 0.90
     }
   ]
-}"""
-    del mock_response.response_metadata
-    mock_llm.ainvoke = AsyncMock(return_value=mock_response)
-    mock_get_llm.return_value = mock_llm
+}""",
+        {"llm_prompt": "test", "llm_model": "test-model"},
+    )
 
     # Build state
     state: OrchestratorState = {
@@ -289,8 +285,9 @@ async def test_policy_rag_agent_success(mock_get_llm, mock_query_policies):
         "trace": [],
     }
 
-    # Execute agent
-    result = await policy_rag_agent(state)
+    # Execute agent with ports via config
+    config = {"configurable": {"llm_port": mock_llm_port, "vector_store": mock_vector_store}}
+    result = await policy_rag_agent(state, config=config)
 
     # Assertions
     assert "policy_matches" in result
@@ -304,10 +301,10 @@ async def test_policy_rag_agent_success(mock_get_llm, mock_query_policies):
 
 
 @pytest.mark.asyncio
-@patch("app.agents.policy_rag.query_policies")
-async def test_policy_rag_agent_no_rag_results(mock_query_policies):
+async def test_policy_rag_agent_no_rag_results():
     """Test agent behavior when ChromaDB returns no results."""
-    mock_query_policies.return_value = []
+    mock_vector_store = Mock()
+    mock_vector_store.query.return_value = []
 
     state: OrchestratorState = {
         "transaction": Transaction(
@@ -332,7 +329,8 @@ async def test_policy_rag_agent_no_rag_results(mock_query_policies):
         "trace": [],
     }
 
-    result = await policy_rag_agent(state)
+    config = {"configurable": {"vector_store": mock_vector_store}}
+    result = await policy_rag_agent(state, config=config)
 
     assert result["policy_matches"].matches == []
     assert result["policy_matches"].chunk_ids == []

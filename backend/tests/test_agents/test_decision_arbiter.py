@@ -5,13 +5,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.agents.decision_arbiter import (
+from app.application.agents.decision_arbiter import (
     _call_llm_for_decision,
     _extract_agent_trace,
     _parse_decision_response,
     decision_arbiter_agent,
 )
-from app.models import (
+from app.application.models import (
     AgentTraceEntry,
     AggregatedEvidence,
     DebateArguments,
@@ -490,19 +490,20 @@ async def test_call_llm_for_decision_success():
         pro_customer_evidence=["e2"],
     )
 
-    # Mock LLM response
-    mock_llm = AsyncMock()
-    mock_response = MagicMock()
-    mock_response.content = """```json
+    # Mock LLMPort
+    mock_llm_port = AsyncMock()
+    mock_llm_port.invoke.return_value = (
+        """```json
 {
   "decision": "BLOCK",
   "confidence": 0.82,
   "reasoning": "Evidencia fuerte de fraude"
 }
-```"""
-    mock_llm.ainvoke.return_value = mock_response
+```""",
+        {"llm_prompt": "test", "llm_model": "test-model"},
+    )
 
-    decision, confidence, reasoning, llm_trace = await _call_llm_for_decision(mock_llm, evidence, debate)
+    decision, confidence, reasoning, llm_trace = await _call_llm_for_decision(mock_llm_port, evidence, debate)
 
     assert decision == "BLOCK"
     assert confidence == 0.82
@@ -529,11 +530,11 @@ async def test_call_llm_for_decision_timeout():
         pro_customer_evidence=[],
     )
 
-    mock_llm = AsyncMock()
-    mock_llm.ainvoke.side_effect = TimeoutError("LLM timeout")
+    # Mock LLMPort returning None (simulating timeout)
+    mock_llm_port = AsyncMock()
+    mock_llm_port.invoke.return_value = (None, {"llm_prompt": "test"})
 
-    with patch("app.utils.llm_call.asyncio.wait_for", side_effect=TimeoutError):
-        decision, confidence, reasoning, llm_trace = await _call_llm_for_decision(mock_llm, evidence, debate)
+    decision, confidence, reasoning, llm_trace = await _call_llm_for_decision(mock_llm_port, evidence, debate)
 
     assert decision is None
     assert confidence is None
@@ -580,20 +581,18 @@ async def test_decision_arbiter_agent_success():
         "trace": [],
     }
 
-    with patch("app.agents.decision_arbiter.get_llm") as mock_get_llm:
-        mock_llm = AsyncMock()
-        mock_llm.model = "test-model"
-        mock_response = MagicMock()
-        mock_response.content = json.dumps({
+    mock_llm_port = AsyncMock()
+    mock_llm_port.invoke.return_value = (
+        json.dumps({
             "decision": "BLOCK",
             "confidence": 0.85,
             "reasoning": "Evidencia fuerte de fraude",
-        })
-        del mock_response.response_metadata
-        mock_llm.ainvoke.return_value = mock_response
-        mock_get_llm.return_value = mock_llm
+        }),
+        {"llm_prompt": "test", "llm_model": "test-model"},
+    )
 
-        result = await decision_arbiter_agent(state)
+    config = {"configurable": {"llm_port": mock_llm_port}}
+    result = await decision_arbiter_agent(state, config=config)
 
     assert "decision" in result
     assert result["decision"].decision == "BLOCK"
@@ -635,13 +634,12 @@ async def test_decision_arbiter_agent_llm_timeout_uses_fallback():
         "trace": [],
     }
 
-    with patch("app.agents.decision_arbiter.get_llm") as mock_get_llm, \
-         patch("app.utils.llm_call.asyncio.wait_for", side_effect=TimeoutError):
-        mock_llm = AsyncMock()
-        mock_llm.model = "test-model"
-        mock_get_llm.return_value = mock_llm
+    # Mock LLMPort returning None (simulating timeout handled by adapter)
+    mock_llm_port = AsyncMock()
+    mock_llm_port.invoke.return_value = (None, {"llm_prompt": "test"})
 
-        result = await decision_arbiter_agent(state)
+    config = {"configurable": {"llm_port": mock_llm_port}}
+    result = await decision_arbiter_agent(state, config=config)
 
     # Should use fallback based on low risk_category
     assert result["decision"].decision == "APPROVE"
@@ -682,21 +680,19 @@ async def test_decision_arbiter_agent_safety_override_critical():
         "trace": [],
     }
 
-    with patch("app.agents.decision_arbiter.get_llm") as mock_get_llm:
-        mock_llm = AsyncMock()
-        mock_llm.model = "test-model"
-        mock_response = MagicMock()
-        # LLM suggests CHALLENGE, but should be overridden to BLOCK
-        mock_response.content = json.dumps({
+    # LLM suggests CHALLENGE, but should be overridden to BLOCK
+    mock_llm_port = AsyncMock()
+    mock_llm_port.invoke.return_value = (
+        json.dumps({
             "decision": "CHALLENGE",
             "confidence": 0.70,
             "reasoning": "Test",
-        })
-        del mock_response.response_metadata
-        mock_llm.ainvoke.return_value = mock_response
-        mock_get_llm.return_value = mock_llm
+        }),
+        {"llm_prompt": "test", "llm_model": "test-model"},
+    )
 
-        result = await decision_arbiter_agent(state)
+    config = {"configurable": {"llm_port": mock_llm_port}}
+    result = await decision_arbiter_agent(state, config=config)
 
     # Should override to BLOCK due to critical score
     assert result["decision"].decision == "BLOCK"
@@ -764,8 +760,12 @@ async def test_decision_arbiter_agent_exception_handling():
         "trace": [],
     }
 
-    with patch("app.agents.decision_arbiter.get_llm", side_effect=Exception("Test error")):
-        result = await decision_arbiter_agent(state)
+    # Mock LLMPort to raise exception
+    mock_llm_port = AsyncMock()
+    mock_llm_port.invoke.side_effect = Exception("Test error")
+
+    config = {"configurable": {"llm_port": mock_llm_port}}
+    result = await decision_arbiter_agent(state, config=config)
 
     # Should return error decision with ESCALATE_TO_HUMAN
     assert result["decision"].decision == "ESCALATE_TO_HUMAN"

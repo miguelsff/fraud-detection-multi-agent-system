@@ -1,0 +1,218 @@
+"""Decision Arbiter Agent - evaluates debate arguments and makes final fraud decision.
+
+Implements Phase 4. Uses llm_port from config["configurable"] and delegates
+safety overrides to domain/services/safety_overrides.py.
+"""
+
+import re
+
+from langchain_core.runnables import RunnableConfig
+
+from app.domain.models import (
+    AggregatedEvidence,
+    DebateArguments,
+    FraudDecision,
+    OrchestratorState,
+)
+from app.domain.services.safety_overrides import (
+    apply_safety_overrides,
+    generate_fallback_decision,
+)
+from app.application.ports.llm import LLMPort
+from app.application.prompts.decision import DECISION_ARBITER_PROMPT
+from app.utils.decision_utils import (
+    build_citations_external,
+    build_citations_internal,
+    generate_audit_explanation,
+)
+from app.utils.fallback_factories import create_minimal_debate, get_customer_explanation
+from app.utils.llm_utils import clamp_float, parse_json_response
+from app.utils.logger import get_logger
+from app.utils.timing import timed_agent
+
+logger = get_logger(__name__)
+
+VALID_DECISIONS = {"APPROVE", "CHALLENGE", "BLOCK", "ESCALATE_TO_HUMAN"}
+
+
+def _parse_decision_response(
+    response_text: str,
+) -> tuple[str | None, float | None, str | None]:
+    """Parse LLM response to extract decision, confidence, and reasoning.
+
+    Two-stage parsing: JSON first, regex fallback.
+    """
+    # Stage 1: JSON parsing
+    data = parse_json_response(response_text, "decision", "decision_arbiter")
+    if data:
+        decision = data.get("decision")
+        confidence = data.get("confidence")
+        reasoning = data.get("reasoning")
+
+        if decision and decision in VALID_DECISIONS and confidence is not None:
+            confidence = clamp_float(confidence)
+            logger.info("decision_response_parsed_json", decision=decision, confidence=confidence)
+            return decision, confidence, reasoning
+
+    # Stage 2: Regex fallback
+    try:
+        decision_match = re.search(
+            r'"?decision"?\s*:\s*"?(APPROVE|CHALLENGE|BLOCK|ESCALATE_TO_HUMAN)"?',
+            response_text,
+            re.IGNORECASE,
+        )
+        decision = decision_match.group(1).upper() if decision_match else None
+
+        confidence_match = re.search(
+            r'"?confidence"?\s*:\s*(0\.\d+|1\.0|0|1)', response_text, re.IGNORECASE
+        )
+        confidence = clamp_float(float(confidence_match.group(1))) if confidence_match else None
+
+        reasoning_match = re.search(
+            r'"?reasoning"?\s*:\s*"([^"]+)"', response_text, re.IGNORECASE | re.DOTALL
+        )
+        reasoning = reasoning_match.group(1) if reasoning_match else None
+
+        if decision and confidence is not None:
+            logger.info("decision_response_parsed_regex", decision=decision, confidence=confidence)
+            return decision, confidence, reasoning
+    except Exception as e:
+        logger.error("regex_parse_failed_decision", error=str(e))
+
+    logger.error("decision_response_parse_failed_completely")
+    return None, None, None
+
+
+async def _call_llm_for_decision(
+    llm_port: LLMPort | None,
+    evidence: AggregatedEvidence,
+    debate: DebateArguments,
+) -> tuple[str | None, float | None, str | None, dict]:
+    """Call LLM for decision making with timeout."""
+    prompt = DECISION_ARBITER_PROMPT.format(
+        composite_risk_score=evidence.composite_risk_score,
+        risk_category=evidence.risk_category,
+        all_signals=", ".join(evidence.all_signals) if evidence.all_signals else "ninguna",
+        all_citations="\n- ".join(evidence.all_citations) if evidence.all_citations else "ninguna",
+        pro_fraud_confidence=debate.pro_fraud_confidence,
+        pro_fraud_argument=debate.pro_fraud_argument,
+        pro_fraud_evidence=", ".join(debate.pro_fraud_evidence)
+        if debate.pro_fraud_evidence
+        else "ninguna",
+        pro_customer_confidence=debate.pro_customer_confidence,
+        pro_customer_argument=debate.pro_customer_argument,
+        pro_customer_evidence=", ".join(debate.pro_customer_evidence)
+        if debate.pro_customer_evidence
+        else "ninguna",
+        decision_type="una de: APPROVE, CHALLENGE, BLOCK, ESCALATE_TO_HUMAN",
+    )
+
+    if not llm_port:
+        logger.warning("decision_arbiter_no_llm_port_in_config")
+        return None, None, None, {"fallback_reason": "no_llm_port_in_config"}
+
+    content, llm_trace = await llm_port.invoke(prompt, agent_name="decision_arbiter")
+
+    if content:
+        decision, confidence, reasoning = _parse_decision_response(content)
+        return decision, confidence, reasoning, llm_trace
+    return None, None, None, llm_trace
+
+
+@timed_agent("decision_arbiter")
+async def decision_arbiter_agent(state: OrchestratorState, config: RunnableConfig = None) -> dict:
+    """Decision Arbiter Agent - makes final fraud decision."""
+    try:
+        evidence = state.get("evidence")
+        debate = state.get("debate")
+        transaction = state["transaction"]
+
+        if not evidence:
+            logger.error("decision_arbiter_no_evidence")
+            return _build_error_decision(transaction.transaction_id, "No evidence available")
+
+        if not debate:
+            logger.warning("decision_arbiter_no_debate")
+            debate = create_minimal_debate()
+
+        configurable = (config or {}).get("configurable", {})
+        llm_port: LLMPort | None = configurable.get("llm_port")
+
+        decision, confidence, reasoning, llm_trace = await _call_llm_for_decision(
+            llm_port, evidence, debate
+        )
+
+        if not decision or confidence is None:
+            logger.warning("decision_arbiter_llm_failed_using_fallback")
+            decision, confidence, reasoning = generate_fallback_decision(evidence)
+            llm_trace["fallback_reason"] = "llm_failed_using_deterministic_fallback"
+
+        decision, confidence, reasoning = apply_safety_overrides(
+            decision,
+            confidence,
+            reasoning,
+            evidence.composite_risk_score,
+        )
+
+        fraud_decision = FraudDecision(
+            transaction_id=transaction.transaction_id,
+            decision=decision,  # type: ignore
+            confidence=confidence,
+            signals=evidence.all_signals,
+            citations_internal=build_citations_internal(evidence),
+            citations_external=build_citations_external(evidence),
+            explanation_customer=get_customer_explanation(decision),
+            explanation_audit=generate_audit_explanation(
+                decision, confidence, reasoning, evidence, debate
+            ),
+            agent_trace=_extract_agent_trace(state),
+        )
+
+        logger.info(
+            "decision_arbiter_completed",
+            decision=decision,
+            confidence=confidence,
+            composite_score=evidence.composite_risk_score,
+            risk_category=evidence.risk_category,
+        )
+
+        result = {"decision": fraud_decision}
+        if llm_trace.get("llm_prompt"):
+            result["_llm_trace"] = llm_trace
+        if llm_trace.get("fallback_reason"):
+            result["_error_trace"] = {"fallback_reason": llm_trace["fallback_reason"]}
+
+        return result
+
+    except Exception as e:
+        logger.error("decision_arbiter_error", error=str(e), exc_info=True)
+        transaction = state.get("transaction")
+        transaction_id = transaction.transaction_id if transaction else "UNKNOWN"
+        return _build_error_decision(transaction_id, f"Decision error: {str(e)}")
+
+
+def _extract_agent_trace(state: OrchestratorState) -> list[str]:
+    """Extract agent trace from state."""
+    trace = state.get("trace", [])
+    return [entry.agent_name for entry in trace] if trace else []
+
+
+def _build_error_decision(transaction_id: str, error_message: str) -> dict:
+    """Build error decision when agent fails critically."""
+    logger.error(
+        "decision_arbiter_critical_error", transaction_id=transaction_id, error=error_message
+    )
+
+    error_decision = FraudDecision(
+        transaction_id=transaction_id,
+        decision="ESCALATE_TO_HUMAN",
+        confidence=0.0,
+        signals=["decision_arbiter_error"],
+        citations_internal=[{"policy_id": "ERROR", "text": error_message}],
+        citations_external=[{"source": "system_error", "detail": "Decision arbiter failed"}],
+        explanation_customer="Su transacción está en revisión. Nuestro equipo la analizará pronto.",
+        explanation_audit=f"ERROR: {error_message}. Escalado automático a revisión humana.",
+        agent_trace=["decision_arbiter_error"],
+    )
+
+    return {"decision": error_decision}

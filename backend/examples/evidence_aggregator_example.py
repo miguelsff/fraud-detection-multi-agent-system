@@ -8,8 +8,8 @@ from pathlib import Path
 # Add backend directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.agents.evidence_aggregator import evidence_aggregation_agent
-from app.models import (
+from app.application.agents.evidence_aggregator import evidence_aggregation_agent
+from app.application.models import (
     BehavioralSignals,
     CustomerBehavior,
     OrchestratorState,

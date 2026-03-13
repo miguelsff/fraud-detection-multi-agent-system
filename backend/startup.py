@@ -6,7 +6,7 @@ import sys
 
 from sqlalchemy import text
 
-from app.db.engine import engine, init_db
+from app.infrastructure.adapters.persistence.engine import engine, init_db
 
 
 async def setup_database():

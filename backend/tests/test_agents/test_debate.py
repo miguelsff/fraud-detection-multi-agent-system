@@ -1,21 +1,17 @@
 """Unit tests for debate agents (pro-fraud and pro-customer)."""
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock  # noqa: F401
 
 import pytest
 
-from app.agents.debate import (
+from app.application.agents.debate import (
     debate_pro_customer_agent,
     debate_pro_fraud_agent,
 )
-from app.models import AggregatedEvidence, OrchestratorState
-from app.prompts.debate import PRO_FRAUD_PROMPT
+from app.application.models import AggregatedEvidence, OrchestratorState
 from app.utils.debate_utils import (
     _parse_debate_response,
-)
-from app.utils.debate_utils import (
-    call_debate_llm as _call_llm_for_debate,
 )
 from app.utils.debate_utils import (
     generate_fallback_pro_customer as _generate_fallback_pro_customer,
@@ -262,101 +258,6 @@ def test_generate_fallback_pro_customer_low():
 
 
 # ============================================================================
-# LLM CALL TESTS
-# ============================================================================
-
-
-@pytest.mark.asyncio
-async def test_call_llm_for_debate_success():
-    """Test successful LLM call for debate."""
-    evidence = AggregatedEvidence(
-        composite_risk_score=68.5,
-        all_signals=["high_amount", "off_hours"],
-        all_citations=["FP-01: Policy match"],
-        risk_category="high",
-    )
-
-    # Mock LLM response
-    mock_llm = AsyncMock()
-    mock_llm.model = "test-model"
-    mock_response = MagicMock()
-    mock_response.content = """```json
-{
-  "argument": "Transacción de alto riesgo con múltiples señales.",
-  "confidence": 0.78,
-  "evidence_cited": ["high_amount", "off_hours", "FP-01"]
-}
-```"""
-    del mock_response.response_metadata
-    mock_llm.ainvoke.return_value = mock_response
-
-    argument, confidence, evidence_cited, llm_trace = await _call_llm_for_debate(
-        mock_llm,
-        evidence,
-        PRO_FRAUD_PROMPT,
-    )
-
-    assert argument == "Transacción de alto riesgo con múltiples señales."
-    assert confidence == 0.78
-    assert evidence_cited == ["high_amount", "off_hours", "FP-01"]
-    assert isinstance(llm_trace, dict)
-    mock_llm.ainvoke.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_call_llm_for_debate_timeout():
-    """Test LLM timeout handling."""
-    evidence = AggregatedEvidence(
-        composite_risk_score=50.0,
-        all_signals=[],
-        all_citations=[],
-        risk_category="medium",
-    )
-
-    # Mock LLM to raise TimeoutError
-    mock_llm = AsyncMock()
-    mock_llm.ainvoke.side_effect = TimeoutError("LLM timeout")
-
-    with patch("app.utils.llm_call.asyncio.wait_for", side_effect=TimeoutError):
-        argument, confidence, evidence_cited, llm_trace = await _call_llm_for_debate(
-            mock_llm,
-            evidence,
-            PRO_FRAUD_PROMPT,
-        )
-
-    assert argument is None
-    assert confidence is None
-    assert evidence_cited == []
-    assert isinstance(llm_trace, dict)
-
-
-@pytest.mark.asyncio
-async def test_call_llm_for_debate_exception():
-    """Test LLM exception handling."""
-    evidence = AggregatedEvidence(
-        composite_risk_score=50.0,
-        all_signals=[],
-        all_citations=[],
-        risk_category="medium",
-    )
-
-    # Mock LLM to raise exception
-    mock_llm = AsyncMock()
-    mock_llm.ainvoke.side_effect = Exception("LLM error")
-
-    argument, confidence, evidence_cited, llm_trace = await _call_llm_for_debate(
-        mock_llm,
-        evidence,
-        PRO_FRAUD_PROMPT,
-    )
-
-    assert argument is None
-    assert confidence is None
-    assert evidence_cited == []
-    assert isinstance(llm_trace, dict)
-
-
-# ============================================================================
 # AGENT INTEGRATION TESTS
 # ============================================================================
 
@@ -373,21 +274,19 @@ async def test_debate_pro_fraud_agent_success():
         ),
     }
 
-    # Mock LLM
-    with patch("app.agents.debate.get_llm") as mock_get_llm:
-        mock_llm = AsyncMock()
-        mock_llm.model = "test-model"
-        mock_response = MagicMock()
-        mock_response.content = json.dumps({
+    # Mock LLMPort
+    mock_llm_port = AsyncMock()
+    mock_llm_port.invoke.return_value = (
+        json.dumps({
             "argument": "Alta probabilidad de fraude.",
             "confidence": 0.80,
             "evidence_cited": ["high_amount", "unknown_device"],
-        })
-        del mock_response.response_metadata
-        mock_llm.ainvoke.return_value = mock_response
-        mock_get_llm.return_value = mock_llm
+        }),
+        {"llm_prompt": "test", "llm_model": "test-model"},
+    )
 
-        result = await debate_pro_fraud_agent(state)
+    config = {"configurable": {"llm_port": mock_llm_port}}
+    result = await debate_pro_fraud_agent(state, config=config)
 
     assert "pro_fraud_argument" in result
     assert "pro_fraud_confidence" in result
@@ -409,21 +308,19 @@ async def test_debate_pro_customer_agent_success():
         ),
     }
 
-    # Mock LLM
-    with patch("app.agents.debate.get_llm") as mock_get_llm:
-        mock_llm = AsyncMock()
-        mock_llm.model = "test-model"
-        mock_response = MagicMock()
-        mock_response.content = json.dumps({
+    # Mock LLMPort
+    mock_llm_port = AsyncMock()
+    mock_llm_port.invoke.return_value = (
+        json.dumps({
             "argument": "Transacción probablemente legítima.",
             "confidence": 0.65,
             "evidence_cited": ["customer_history"],
-        })
-        del mock_response.response_metadata
-        mock_llm.ainvoke.return_value = mock_response
-        mock_get_llm.return_value = mock_llm
+        }),
+        {"llm_prompt": "test", "llm_model": "test-model"},
+    )
 
-        result = await debate_pro_customer_agent(state)
+    config = {"configurable": {"llm_port": mock_llm_port}}
+    result = await debate_pro_customer_agent(state, config=config)
 
     assert "pro_customer_argument" in result
     assert "pro_customer_confidence" in result
@@ -444,13 +341,12 @@ async def test_debate_pro_fraud_agent_llm_timeout():
         ),
     }
 
-    # Mock LLM timeout
-    with patch("app.agents.debate.get_llm") as mock_get_llm, \
-         patch("app.utils.llm_call.asyncio.wait_for", side_effect=TimeoutError):
-        mock_llm = AsyncMock()
-        mock_get_llm.return_value = mock_llm
+    # Mock LLMPort returning None (simulating timeout handled by adapter)
+    mock_llm_port = AsyncMock()
+    mock_llm_port.invoke.return_value = (None, {"llm_prompt": "test"})
 
-        result = await debate_pro_fraud_agent(state)
+    config = {"configurable": {"llm_port": mock_llm_port}}
+    result = await debate_pro_fraud_agent(state, config=config)
 
     # Should use fallback
     assert "pro_fraud_argument" in result
@@ -470,15 +366,15 @@ async def test_debate_pro_customer_agent_parse_failure():
         ),
     }
 
-    # Mock LLM with invalid response
-    with patch("app.agents.debate.get_llm") as mock_get_llm:
-        mock_llm = AsyncMock()
-        mock_response = MagicMock()
-        mock_response.content = "This is invalid text with no JSON"
-        mock_llm.ainvoke.return_value = mock_response
-        mock_get_llm.return_value = mock_llm
+    # Mock LLMPort with unparseable response
+    mock_llm_port = AsyncMock()
+    mock_llm_port.invoke.return_value = (
+        "This is invalid text with no JSON",
+        {"llm_prompt": "test"},
+    )
 
-        result = await debate_pro_customer_agent(state)
+    config = {"configurable": {"llm_port": mock_llm_port}}
+    result = await debate_pro_customer_agent(state, config=config)
 
     # Should use fallback
     assert "pro_customer_argument" in result
@@ -514,9 +410,12 @@ async def test_debate_pro_fraud_agent_exception_handling():
         ),
     }
 
-    # Mock get_llm to raise exception
-    with patch("app.agents.debate.get_llm", side_effect=Exception("Test error")):
-        result = await debate_pro_fraud_agent(state)
+    # Mock LLMPort to raise exception
+    mock_llm_port = AsyncMock()
+    mock_llm_port.invoke.side_effect = Exception("Test error")
+
+    config = {"configurable": {"llm_port": mock_llm_port}}
+    result = await debate_pro_fraud_agent(state, config=config)
 
     # Should return error fallback
     assert "pro_fraud_argument" in result
@@ -537,9 +436,12 @@ async def test_debate_pro_customer_agent_exception_handling():
         ),
     }
 
-    # Mock get_llm to raise exception
-    with patch("app.agents.debate.get_llm", side_effect=Exception("Test error")):
-        result = await debate_pro_customer_agent(state)
+    # Mock LLMPort to raise exception
+    mock_llm_port = AsyncMock()
+    mock_llm_port.invoke.side_effect = Exception("Test error")
+
+    config = {"configurable": {"llm_port": mock_llm_port}}
+    result = await debate_pro_customer_agent(state, config=config)
 
     # Should return error fallback
     assert "pro_customer_argument" in result
@@ -560,21 +462,19 @@ async def test_debate_agents_partial_state_update():
         ),
     }
 
-    with patch("app.agents.debate.get_llm") as mock_get_llm:
-        mock_llm = AsyncMock()
-        mock_llm.model = "test-model"
-        mock_response = MagicMock()
-        mock_response.content = json.dumps({
+    mock_llm_port = AsyncMock()
+    mock_llm_port.invoke.return_value = (
+        json.dumps({
             "argument": "Test",
             "confidence": 0.7,
             "evidence_cited": ["test"],
-        })
-        del mock_response.response_metadata
-        mock_llm.ainvoke.return_value = mock_response
-        mock_get_llm.return_value = mock_llm
+        }),
+        {"llm_prompt": "test", "llm_model": "test-model"},
+    )
 
-        result_fraud = await debate_pro_fraud_agent(state)
-        result_customer = await debate_pro_customer_agent(state)
+    config = {"configurable": {"llm_port": mock_llm_port}}
+    result_fraud = await debate_pro_fraud_agent(state, config=config)
+    result_customer = await debate_pro_customer_agent(state, config=config)
 
     # Should return dicts, not model instances
     assert isinstance(result_fraud, dict)

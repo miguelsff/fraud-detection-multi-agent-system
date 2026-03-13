@@ -3,12 +3,17 @@
 
 import pytest
 
-from app.rag.vector_store import (
-    _split_markdown_sections,
+from app.infrastructure.adapters.vector_store.chromadb_adapter import (
+    ChromaDBVectorStoreAdapter,
+)
+from app.infrastructure.adapters.vector_store import (
     ingest_policies,
     initialize_collection,
     query_policies,
 )
+
+# Re-point to adapter's static method
+_split_markdown_sections = ChromaDBVectorStoreAdapter._split_markdown_sections
 
 
 @pytest.fixture

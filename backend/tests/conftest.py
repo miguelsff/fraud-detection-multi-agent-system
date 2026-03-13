@@ -20,7 +20,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.models import (
+from app.application.models import (
     CustomerBehavior,
     OrchestratorState,
     Transaction,
@@ -276,7 +276,7 @@ async def in_memory_db() -> AsyncGenerator[AsyncSession, None]:
     )
 
     # Import Base and create all tables
-    from app.db.models import Base
+    from app.infrastructure.adapters.persistence.orm_models import Base
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -481,12 +481,51 @@ def minimal_state(transaction_t1001, customer_behavior_c501) -> OrchestratorStat
 
 
 # ============================================================================
+# Container Mock Fixture
+# ============================================================================
+
+
+@pytest.fixture
+def mock_container():
+    """Mock Container for router tests.
+
+    Provides a mock with the same interface as app.container.Container,
+    with sensible defaults for all persistence methods.
+    """
+    container = MagicMock()
+
+    # Persistence port — all async methods with safe defaults
+    persistence = AsyncMock()
+    persistence.get_transaction.return_value = None
+    persistence.get_transaction_trace.return_value = None
+    persistence.list_transactions.return_value = []
+    persistence.get_hitl_queue.return_value = []
+    persistence.resolve_hitl_case.return_value = None
+    persistence.get_analytics_summary.return_value = {
+        "total_analyzed": 0,
+        "decisions_breakdown": {},
+        "avg_confidence": 0.0,
+        "avg_processing_time_ms": 0.0,
+        "escalation_rate": 0.0,
+    }
+    container.persistence = persistence
+
+    # Other ports
+    container.broadcast = AsyncMock()
+    container.llm_port = AsyncMock()
+    container.vector_store = MagicMock()
+    container.build_pipeline_config.return_value = {}
+
+    return container
+
+
+# ============================================================================
 # FastAPI Test Client
 # ============================================================================
 
 
 @pytest.fixture
-def test_client(mock_db_session):
+def test_client(mock_container):
     """Synchronous TestClient for FastAPI router tests.
 
     Usage:
@@ -494,13 +533,14 @@ def test_client(mock_db_session):
             response = test_client.get("/api/v1/health")
             assert response.status_code == 200
     """
-    from app.dependencies import get_db
     from app.main import app
 
-    # Override dependency
-    app.dependency_overrides[get_db] = lambda: mock_db_session
+    # Set container on app state (used by routers via request.app.state.container)
+    app.state.container = mock_container
 
     yield TestClient(app)
 
     # Cleanup
     app.dependency_overrides.clear()
+    if hasattr(app.state, "container"):
+        del app.state.container

@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.agents.orchestrator import (
+from app.application.agents.orchestrator import (
     analyze_transaction,
     build_graph,
     debate_parallel,
@@ -17,7 +17,7 @@ from app.agents.orchestrator import (
     route_decision,
     validate_input,
 )
-from app.models import (
+from app.application.models import (
     AggregatedEvidence,
     CustomerBehavior,
     DebateArguments,
@@ -27,7 +27,7 @@ from app.models import (
     Transaction,
     TransactionSignals,
 )
-from app.models.evidence import PolicyMatchResult, ThreatIntelResult
+from app.application.models import PolicyMatchResult, ThreatIntelResult
 
 # ============================================================================
 # Fixtures
@@ -141,21 +141,21 @@ def full_state(
     }
 
 
-def _mock_db_session() -> AsyncMock:
-    session = AsyncMock()
-    # add is synchronous in SQLAlchemy, the rest are awaitable
-    session.add = MagicMock()
-    # Explicitly mock commit as AsyncMock to avoid RuntimeWarning about unawaited coroutine
-    session.commit = AsyncMock()
-    return session
+def _mock_persistence() -> AsyncMock:
+    """Mock persistence port for orchestrator tests."""
+    persistence = AsyncMock()
+    persistence.save_transaction_record = AsyncMock()
+    persistence.save_agent_traces = AsyncMock()
+    persistence.create_hitl_case = AsyncMock()
+    return persistence
 
 
-def _runnable_config(db_session=None) -> dict:
-    return {"configurable": {"db_session": db_session or _mock_db_session()}}
+def _runnable_config(persistence=None) -> dict:
+    return {"configurable": {"persistence": persistence or _mock_persistence()}}
 
 
 def _empty_config() -> dict:
-    """Config without db_session for nodes that only need broadcast_fn (which defaults to None)."""
+    """Config without ports for nodes that don't need them."""
     return {"configurable": {}}
 
 
@@ -292,10 +292,10 @@ async def test_phase1_parallel_all_succeed(sample_transaction, sample_customer_b
     }
 
     with (
-        patch("app.agents.orchestrator.transaction_context_agent") as mock_tc,
-        patch("app.agents.orchestrator.behavioral_pattern_agent") as mock_bp,
-        patch("app.agents.orchestrator.policy_rag_agent") as mock_pr,
-        patch("app.agents.orchestrator.external_threat_agent") as mock_et,
+        patch("app.application.agents.orchestrator.transaction_context_agent") as mock_tc,
+        patch("app.application.agents.orchestrator.behavioral_pattern_agent") as mock_bp,
+        patch("app.application.agents.orchestrator.policy_rag_agent") as mock_pr,
+        patch("app.application.agents.orchestrator.external_threat_agent") as mock_et,
     ):
         mock_tc.return_value = {"transaction_signals": "signals_val", "trace": [MagicMock()]}
         mock_bp.return_value = {"behavioral_signals": "behavioral_val", "trace": [MagicMock()]}
@@ -326,10 +326,10 @@ async def test_phase1_parallel_one_fails(sample_transaction, sample_customer_beh
         raise RuntimeError("boom")
 
     with (
-        patch("app.agents.orchestrator.transaction_context_agent", side_effect=failing_agent),
-        patch("app.agents.orchestrator.behavioral_pattern_agent") as mock_bp,
-        patch("app.agents.orchestrator.policy_rag_agent") as mock_pr,
-        patch("app.agents.orchestrator.external_threat_agent") as mock_et,
+        patch("app.application.agents.orchestrator.transaction_context_agent", side_effect=failing_agent),
+        patch("app.application.agents.orchestrator.behavioral_pattern_agent") as mock_bp,
+        patch("app.application.agents.orchestrator.policy_rag_agent") as mock_pr,
+        patch("app.application.agents.orchestrator.external_threat_agent") as mock_et,
     ):
         mock_bp.return_value = {"behavioral_signals": "ok", "trace": [MagicMock()]}
         mock_pr.return_value = {"policy_matches": "ok", "trace": [MagicMock()]}
@@ -359,10 +359,10 @@ async def test_phase1_parallel_merges_trace(sample_transaction, sample_customer_
     trace_a, trace_b, trace_c, trace_d = MagicMock(), MagicMock(), MagicMock(), MagicMock()
 
     with (
-        patch("app.agents.orchestrator.transaction_context_agent") as mock_tc,
-        patch("app.agents.orchestrator.behavioral_pattern_agent") as mock_bp,
-        patch("app.agents.orchestrator.policy_rag_agent") as mock_pr,
-        patch("app.agents.orchestrator.external_threat_agent") as mock_et,
+        patch("app.application.agents.orchestrator.transaction_context_agent") as mock_tc,
+        patch("app.application.agents.orchestrator.behavioral_pattern_agent") as mock_bp,
+        patch("app.application.agents.orchestrator.policy_rag_agent") as mock_pr,
+        patch("app.application.agents.orchestrator.external_threat_agent") as mock_et,
     ):
         mock_tc.return_value = {"transaction_signals": "v", "trace": [trace_a]}
         mock_bp.return_value = {"behavioral_signals": "v", "trace": [trace_b]}
@@ -386,8 +386,8 @@ async def test_debate_parallel_merges_into_debate_arguments():
     state: OrchestratorState = {"evidence": MagicMock(), "trace": []}
 
     with (
-        patch("app.agents.orchestrator.debate_pro_fraud_agent") as mock_f,
-        patch("app.agents.orchestrator.debate_pro_customer_agent") as mock_c,
+        patch("app.application.agents.orchestrator.debate_pro_fraud_agent") as mock_f,
+        patch("app.application.agents.orchestrator.debate_pro_customer_agent") as mock_c,
     ):
         mock_f.return_value = {
             "pro_fraud_argument": "Fraude probable.",
@@ -423,8 +423,8 @@ async def test_debate_parallel_one_fails():
         raise RuntimeError("debate boom")
 
     with (
-        patch("app.agents.orchestrator.debate_pro_fraud_agent", side_effect=failing_agent),
-        patch("app.agents.orchestrator.debate_pro_customer_agent") as mock_c,
+        patch("app.application.agents.orchestrator.debate_pro_fraud_agent", side_effect=failing_agent),
+        patch("app.application.agents.orchestrator.debate_pro_customer_agent") as mock_c,
     ):
         mock_c.return_value = {
             "pro_customer_argument": "Legitimo.",
@@ -453,25 +453,24 @@ async def test_debate_parallel_one_fails():
 @pytest.mark.asyncio
 @pytest.mark.unit
 async def test_persist_audit_creates_records(full_state):
-    """TransactionRecord and AgentTrace rows are created."""
-    db_session = _mock_db_session()
-    config = _runnable_config(db_session)
+    """TransactionRecord and AgentTrace rows are created via persistence port."""
+    persistence = _mock_persistence()
+    config = _runnable_config(persistence)
 
     result = await persist_audit(full_state, config)
 
     assert result == {}
-    # add() called at least for TransactionRecord
-    assert db_session.add.called
-    db_session.commit.assert_called_once()
+    persistence.save_transaction_record.assert_called_once()
+    persistence.save_agent_traces.assert_called_once()
 
 
 @pytest.mark.asyncio
 @pytest.mark.unit
 async def test_persist_audit_db_error_non_fatal(full_state):
     """DB error is logged but pipeline continues (returns empty dict)."""
-    db_session = _mock_db_session()
-    db_session.flush.side_effect = Exception("DB connection lost")
-    config = _runnable_config(db_session)
+    persistence = _mock_persistence()
+    persistence.save_transaction_record.side_effect = Exception("DB connection lost")
+    config = _runnable_config(persistence)
 
     result = await persist_audit(full_state, config)
 
@@ -486,19 +485,18 @@ async def test_persist_audit_db_error_non_fatal(full_state):
 @pytest.mark.asyncio
 @pytest.mark.unit
 async def test_hitl_queue_creates_case(sample_transaction):
-    """HITLCase is created and status is set to 'escalated'."""
+    """HITLCase is created via persistence port and status is set to 'escalated'."""
     state: OrchestratorState = {
         "transaction": sample_transaction,
         "trace": [],
     }
-    db_session = _mock_db_session()
-    config = _runnable_config(db_session)
+    persistence = _mock_persistence()
+    config = _runnable_config(persistence)
 
     result = await hitl_queue(state, config)
 
     assert result["status"] == "escalated"
-    db_session.add.assert_called_once()
-    db_session.commit.assert_called_once()
+    persistence.create_hitl_case.assert_called_once_with(transaction_id="T-1001")
 
 
 @pytest.mark.asyncio
@@ -509,9 +507,9 @@ async def test_hitl_queue_db_error_non_fatal(sample_transaction):
         "transaction": sample_transaction,
         "trace": [],
     }
-    db_session = _mock_db_session()
-    db_session.commit.side_effect = Exception("DB error")
-    config = _runnable_config(db_session)
+    persistence = _mock_persistence()
+    persistence.create_hitl_case.side_effect = Exception("DB error")
+    config = _runnable_config(persistence)
 
     result = await hitl_queue(state, config)
 
@@ -542,18 +540,25 @@ async def test_analyze_transaction_full_pipeline(
     sample_transaction, sample_customer_behavior, sample_decision, sample_explanation
 ):
     """Full pipeline with all agents mocked returns a FraudDecision."""
-    db_session = _mock_db_session()
+    mock_container = MagicMock()
+    mock_container.build_pipeline_config.return_value = {
+        "persistence": _mock_persistence(),
+        "broadcast": AsyncMock(),
+        "llm_port": AsyncMock(),
+        "vector_store": MagicMock(),
+        "transaction_id": "T-1001",
+    }
 
     # Mock all agents
     with (
-        patch("app.agents.orchestrator.transaction_context_agent") as mock_tc,
-        patch("app.agents.orchestrator.policy_rag_agent") as mock_pr,
-        patch("app.agents.orchestrator.external_threat_agent") as mock_et,
-        patch("app.agents.orchestrator.evidence_aggregation_agent") as mock_ea,
-        patch("app.agents.orchestrator.debate_pro_fraud_agent") as mock_df,
-        patch("app.agents.orchestrator.debate_pro_customer_agent") as mock_dc,
-        patch("app.agents.orchestrator.decision_arbiter_agent") as mock_da,
-        patch("app.agents.orchestrator.explainability_agent") as mock_ex,
+        patch("app.application.agents.orchestrator.transaction_context_agent") as mock_tc,
+        patch("app.application.agents.orchestrator.policy_rag_agent") as mock_pr,
+        patch("app.application.agents.orchestrator.external_threat_agent") as mock_et,
+        patch("app.application.agents.orchestrator.evidence_aggregation_agent") as mock_ea,
+        patch("app.application.agents.orchestrator.debate_pro_fraud_agent") as mock_df,
+        patch("app.application.agents.orchestrator.debate_pro_customer_agent") as mock_dc,
+        patch("app.application.agents.orchestrator.decision_arbiter_agent") as mock_da,
+        patch("app.application.agents.orchestrator.explainability_agent") as mock_ex,
     ):
         mock_tc.return_value = {
             "transaction_signals": TransactionSignals(
@@ -599,7 +604,7 @@ async def test_analyze_transaction_full_pipeline(
         mock_ex.return_value = {"explanation": sample_explanation, "trace": []}
 
         result = await analyze_transaction(
-            sample_transaction, sample_customer_behavior, db_session
+            sample_transaction, sample_customer_behavior, container=mock_container
         )
 
     assert isinstance(result, FraudDecision)
@@ -611,18 +616,14 @@ async def test_analyze_transaction_full_pipeline(
 @pytest.mark.unit
 async def test_analyze_transaction_validation_error(sample_customer_behavior):
     """Missing transaction causes error status — pipeline short-circuits."""
-    db_session = _mock_db_session()
-
-    # Transaction is required but we pass a fake state without it
-    # We need to invoke the graph directly to test validation error
-    from app.agents.orchestrator import graph
+    from app.application.agents.orchestrator import graph
 
     initial_state: OrchestratorState = {
         "customer_behavior": sample_customer_behavior,
         "status": "pending",
         "trace": [],
     }
-    config = {"configurable": {"db_session": db_session}}
+    config = {"configurable": {"persistence": _mock_persistence()}}
 
     final_state = await graph.ainvoke(initial_state, config=config)
 
@@ -635,7 +636,7 @@ async def test_analyze_transaction_escalation(
     sample_transaction, sample_customer_behavior, sample_explanation
 ):
     """ESCALATE_TO_HUMAN decision triggers HITL queue creation."""
-    db_session = _mock_db_session()
+    persistence = _mock_persistence()
 
     escalate_decision = FraudDecision(
         transaction_id="T-1001",
@@ -650,14 +651,14 @@ async def test_analyze_transaction_escalation(
     )
 
     with (
-        patch("app.agents.orchestrator.transaction_context_agent") as mock_tc,
-        patch("app.agents.orchestrator.policy_rag_agent") as mock_pr,
-        patch("app.agents.orchestrator.external_threat_agent") as mock_et,
-        patch("app.agents.orchestrator.evidence_aggregation_agent") as mock_ea,
-        patch("app.agents.orchestrator.debate_pro_fraud_agent") as mock_df,
-        patch("app.agents.orchestrator.debate_pro_customer_agent") as mock_dc,
-        patch("app.agents.orchestrator.decision_arbiter_agent") as mock_da,
-        patch("app.agents.orchestrator.explainability_agent") as mock_ex,
+        patch("app.application.agents.orchestrator.transaction_context_agent") as mock_tc,
+        patch("app.application.agents.orchestrator.policy_rag_agent") as mock_pr,
+        patch("app.application.agents.orchestrator.external_threat_agent") as mock_et,
+        patch("app.application.agents.orchestrator.evidence_aggregation_agent") as mock_ea,
+        patch("app.application.agents.orchestrator.debate_pro_fraud_agent") as mock_df,
+        patch("app.application.agents.orchestrator.debate_pro_customer_agent") as mock_dc,
+        patch("app.application.agents.orchestrator.decision_arbiter_agent") as mock_da,
+        patch("app.application.agents.orchestrator.explainability_agent") as mock_ex,
     ):
         mock_tc.return_value = {"transaction_signals": MagicMock(), "trace": []}
         mock_pr.return_value = {"policy_matches": MagicMock(), "trace": []}
@@ -686,7 +687,7 @@ async def test_analyze_transaction_escalation(
         mock_da.return_value = {"decision": escalate_decision, "trace": []}
         mock_ex.return_value = {"explanation": sample_explanation, "trace": []}
 
-        from app.agents.orchestrator import graph
+        from app.application.agents.orchestrator import graph
 
         initial_state: OrchestratorState = {
             "transaction": sample_transaction,
@@ -694,13 +695,12 @@ async def test_analyze_transaction_escalation(
             "status": "pending",
             "trace": [],
         }
-        config = {"configurable": {"db_session": db_session}}
+        config = {"configurable": {"persistence": persistence}}
 
         final_state = await graph.ainvoke(initial_state, config=config)
 
     assert final_state["status"] == "escalated"
-    # db_session.add should have been called for HITLCase (and TransactionRecord)
-    assert db_session.add.call_count >= 1
+    persistence.create_hitl_case.assert_called_once()
 
 
 # ============================================================================

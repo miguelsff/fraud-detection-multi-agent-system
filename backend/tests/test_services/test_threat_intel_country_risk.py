@@ -10,8 +10,8 @@ backend_path = Path(__file__).parent.parent.parent
 if str(backend_path) not in sys.path:
     sys.path.insert(0, str(backend_path))
 
-from app.models import Transaction
-from app.services.threat_intel.country_risk import CountryRiskProvider
+from app.application.models import Transaction
+from app.infrastructure.adapters.threat_intel.country_risk import CountryRiskProvider
 
 
 async def main():

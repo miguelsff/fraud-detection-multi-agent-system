@@ -4,14 +4,14 @@ from datetime import datetime, timezone
 
 import pytest
 
-from app.agents.evidence_aggregator import (
-    _aggregate_citations,
-    _aggregate_signals,
-    _calculate_composite_score,
-    _determine_risk_category,
-    evidence_aggregation_agent,
+from app.application.agents.evidence_aggregator import evidence_aggregation_agent
+from app.domain.services.risk_scoring import (
+    aggregate_citations as _aggregate_citations,
+    aggregate_signals as _aggregate_signals,
+    calculate_composite_score as _calculate_composite_score,
+    determine_risk_category as _determine_risk_category,
 )
-from app.models import (
+from app.application.models import (
     BehavioralSignals,
     CustomerBehavior,
     OrchestratorState,

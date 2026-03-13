@@ -7,7 +7,7 @@ threat analysis response parsing.
 import re
 from typing import Optional
 
-from app.models import ThreatSource
+from app.application.models import ThreatSource
 from app.utils.llm_utils import clamp_float, parse_json_response
 from app.utils.logger import get_logger
 

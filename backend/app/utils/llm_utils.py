@@ -7,7 +7,7 @@ decision_arbiter, debate, policy_rag, external_threat, and explainability agents
 import json
 import re
 
-from ..exceptions import LLMParsingError
+from app.domain.exceptions import LLMParsingError
 
 
 def extract_json_from_text(text: str, anchor_field: str, agent_name: str = "unknown") -> str:

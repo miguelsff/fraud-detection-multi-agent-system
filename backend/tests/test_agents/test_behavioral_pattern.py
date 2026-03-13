@@ -6,11 +6,11 @@ Once implemented, remove the skipif condition and the tests will run.
 
 import pytest
 
-from app.models import BehavioralSignals, OrchestratorState
+from app.application.models import BehavioralSignals, OrchestratorState
 
 # Check if agent exists
 try:
-    from app.agents.behavioral_pattern import behavioral_pattern_agent
+    from app.application.agents.behavioral_pattern import behavioral_pattern_agent
 
     AGENT_EXISTS = True
 except ImportError:

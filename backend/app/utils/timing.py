@@ -7,7 +7,7 @@ import time
 from datetime import UTC, datetime
 from typing import Any, Callable
 
-from ..models.trace import AgentTraceEntry
+from app.domain.models.trace import AgentTraceEntry
 
 
 def timed_agent(agent_name: str) -> Callable:

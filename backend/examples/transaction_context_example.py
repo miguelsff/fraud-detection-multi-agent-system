@@ -9,8 +9,8 @@ from pathlib import Path
 backend_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_dir))
 
-from app.agents.transaction_context import transaction_context_agent
-from app.models import CustomerBehavior, OrchestratorState, Transaction
+from app.application.agents.transaction_context import transaction_context_agent
+from app.application.models import CustomerBehavior, OrchestratorState, Transaction
 
 
 async def main():

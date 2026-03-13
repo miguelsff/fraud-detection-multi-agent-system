@@ -7,8 +7,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.models.policy import PolicyCreate
-from app.services.policy_service import PolicyService
+from app.application.models.policy import PolicyCreate
+from app.application.services.policy_service import PolicyService
 
 
 @pytest.fixture

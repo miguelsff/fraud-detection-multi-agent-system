@@ -8,8 +8,8 @@ from pathlib import Path
 # Add backend directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.agents.external_threat import external_threat_agent
-from app.models import CustomerBehavior, OrchestratorState, Transaction, TransactionSignals
+from app.application.agents.external_threat import external_threat_agent
+from app.application.models import CustomerBehavior, OrchestratorState, Transaction, TransactionSignals
 
 
 async def demo_high_risk_transaction():

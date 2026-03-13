@@ -12,14 +12,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from pydantic import SecretStr
 
-from app.agents.external_threat import (
+from app.application.agents.external_threat import (
     _gather_threat_intel,
     _get_enabled_providers,
     external_threat_agent,
 )
 from app.config import settings
-from app.models import OrchestratorState, ThreatSource, Transaction, TransactionSignals
-from app.services.threat_intel import (
+from app.application.models import OrchestratorState, ThreatSource, Transaction, TransactionSignals
+from app.infrastructure.adapters.threat_intel import (
     CountryRiskProvider,
     OSINTSearchProvider,
     SanctionsProvider,
@@ -178,7 +178,7 @@ async def test_safe_country(transaction_low_risk):
 @pytest.mark.asyncio
 async def test_osint_search_disabled_via_config(transaction_high_risk):
     """OSINT search disabled via config should return empty list."""
-    with patch("app.services.threat_intel.osint_search.settings") as mock_settings:
+    with patch("app.infrastructure.adapters.threat_intel.osint_search.settings") as mock_settings:
         mock_settings.threat_intel_enable_osint = False
 
         provider = OSINTSearchProvider()
@@ -190,7 +190,7 @@ async def test_osint_search_disabled_via_config(transaction_high_risk):
 @pytest.mark.asyncio
 async def test_osint_search_with_mock_results(transaction_high_risk):
     """OSINT search with mocked results should return ThreatSource."""
-    with patch("app.services.threat_intel.osint_search.DDGS") as mock_ddgs:
+    with patch("app.infrastructure.adapters.threat_intel.osint_search.DDGS") as mock_ddgs:
         # Mock DuckDuckGo to return fake results
         mock_ddgs_instance = MagicMock()
         mock_ddgs.return_value = mock_ddgs_instance
@@ -211,7 +211,7 @@ async def test_osint_search_with_mock_results(transaction_high_risk):
 @pytest.mark.asyncio
 async def test_osint_search_timeout(transaction_high_risk):
     """OSINT search timeout should return empty list gracefully."""
-    with patch("app.services.threat_intel.osint_search.DDGS") as mock_ddgs:
+    with patch("app.infrastructure.adapters.threat_intel.osint_search.DDGS") as mock_ddgs:
         # Mock to raise timeout
         mock_ddgs_instance = MagicMock()
         mock_ddgs.return_value = mock_ddgs_instance
@@ -233,7 +233,7 @@ async def test_osint_search_timeout(transaction_high_risk):
 @pytest.mark.asyncio
 async def test_osint_search_error_graceful(transaction_high_risk):
     """OSINT search error should return empty list gracefully."""
-    with patch("app.services.threat_intel.osint_search.DDGS") as mock_ddgs:
+    with patch("app.infrastructure.adapters.threat_intel.osint_search.DDGS") as mock_ddgs:
         # Mock to raise exception
         mock_ddgs.side_effect = Exception("Network error")
 
@@ -267,7 +267,7 @@ async def test_osint_search_real_query(transaction_high_risk):
 @pytest.mark.asyncio
 async def test_sanctions_no_api_key(transaction_high_risk):
     """Sanctions provider without API key should skip gracefully."""
-    with patch("app.services.threat_intel.sanctions_screening.settings") as mock_settings:
+    with patch("app.infrastructure.adapters.threat_intel.sanctions_screening.settings") as mock_settings:
         mock_settings.opensanctions_api_key = SecretStr("")
 
         provider = SanctionsProvider()
@@ -280,7 +280,7 @@ async def test_sanctions_no_api_key(transaction_high_risk):
 @pytest.mark.asyncio
 async def test_sanctions_disabled_via_config(transaction_high_risk):
     """Sanctions disabled via config should return empty list."""
-    with patch("app.services.threat_intel.sanctions_screening.settings") as mock_settings:
+    with patch("app.infrastructure.adapters.threat_intel.sanctions_screening.settings") as mock_settings:
         mock_settings.opensanctions_api_key = SecretStr("fake-key")
         mock_settings.threat_intel_enable_sanctions = False
 
@@ -293,13 +293,13 @@ async def test_sanctions_disabled_via_config(transaction_high_risk):
 @pytest.mark.asyncio
 async def test_sanctions_api_error_graceful(transaction_high_risk):
     """Sanctions API error should return empty list gracefully."""
-    with patch("app.services.threat_intel.sanctions_screening.httpx.AsyncClient") as mock_client:
+    with patch("app.infrastructure.adapters.threat_intel.sanctions_screening.httpx.AsyncClient") as mock_client:
         # Mock API to raise HTTP error
         mock_client_instance = AsyncMock()
         mock_client.return_value.__aenter__.return_value = mock_client_instance
         mock_client_instance.get.side_effect = Exception("API error")
 
-        with patch("app.services.threat_intel.sanctions_screening.settings") as mock_settings:
+        with patch("app.infrastructure.adapters.threat_intel.sanctions_screening.settings") as mock_settings:
             mock_settings.opensanctions_api_key = SecretStr("fake-key")
             mock_settings.threat_intel_enable_sanctions = True
 
@@ -403,7 +403,7 @@ def test_classify_provider_type_unknown():
 
 def test_get_enabled_providers_all_enabled():
     """All providers enabled should return 3 providers."""
-    with patch("app.agents.external_threat.settings") as mock_settings:
+    with patch("app.application.agents.external_threat.settings") as mock_settings:
         mock_settings.threat_intel_enable_osint = True
         mock_settings.threat_intel_enable_sanctions = True
         mock_settings.opensanctions_api_key = SecretStr("fake-key")
@@ -419,7 +419,7 @@ def test_get_enabled_providers_all_enabled():
 
 def test_get_enabled_providers_only_country_risk():
     """Only country risk enabled should return 1 provider."""
-    with patch("app.agents.external_threat.settings") as mock_settings:
+    with patch("app.application.agents.external_threat.settings") as mock_settings:
         mock_settings.threat_intel_enable_osint = False
         mock_settings.threat_intel_enable_sanctions = False
 
@@ -431,7 +431,7 @@ def test_get_enabled_providers_only_country_risk():
 
 def test_get_enabled_providers_no_sanctions_without_key():
     """Sanctions without API key should not be included."""
-    with patch("app.agents.external_threat.settings") as mock_settings:
+    with patch("app.application.agents.external_threat.settings") as mock_settings:
         mock_settings.threat_intel_enable_osint = True
         mock_settings.threat_intel_enable_sanctions = True
         mock_settings.opensanctions_api_key = SecretStr("")  # No key
@@ -537,7 +537,7 @@ async def test_gather_threat_intel_timeout(transaction_high_risk):
 async def test_external_threat_agent_all_providers_fail(transaction_low_risk):
     """Agent with all providers failing should return threat_level 0.0."""
     # Mock all providers to fail
-    with patch("app.agents.external_threat._get_enabled_providers") as mock_get_providers:
+    with patch("app.application.agents.external_threat._get_enabled_providers") as mock_get_providers:
         mock_provider = AsyncMock()
         mock_provider.provider_name = "failing_provider"
         mock_provider.lookup = AsyncMock(side_effect=Exception("All providers failed"))
@@ -565,7 +565,7 @@ async def test_external_threat_agent_all_providers_fail(transaction_low_risk):
 @pytest.mark.asyncio
 async def test_external_threat_agent_country_risk_only(transaction_high_risk):
     """Agent with only country risk enabled should work."""
-    with patch("app.agents.external_threat.settings") as mock_settings:
+    with patch("app.application.agents.external_threat.settings") as mock_settings:
         mock_settings.threat_intel_enable_osint = False
         mock_settings.threat_intel_enable_sanctions = False
 
@@ -581,17 +581,16 @@ async def test_external_threat_agent_country_risk_only(transaction_high_risk):
             "explanations": None,
         }
 
-        # Mock LLM to avoid Ollama dependency
-        with patch("app.agents.external_threat.get_llm") as mock_get_llm:
-            mock_llm = AsyncMock()
-            mock_llm.ainvoke = AsyncMock(side_effect=Exception("LLM not available"))
-            mock_get_llm.return_value = mock_llm
+        # Mock LLMPort to avoid Ollama dependency (returns None = LLM unavailable)
+        mock_llm_port = AsyncMock()
+        mock_llm_port.invoke.return_value = (None, {"llm_prompt": "test"})
 
-            result = await external_threat_agent(state)
+        config = {"configurable": {"llm_port": mock_llm_port}}
+        result = await external_threat_agent(state, config=config)
 
-            # Should have threat from FATF blacklist
-            assert result["threat_intel"].threat_level > 0.8
-            assert len(result["threat_intel"].sources) >= 1
+        # Should have threat from FATF blacklist
+        assert result["threat_intel"].threat_level > 0.8
+        assert len(result["threat_intel"].sources) >= 1
 
 
 @pytest.mark.asyncio
@@ -611,23 +610,22 @@ async def test_external_threat_agent_with_signals(
         "explanations": None,
     }
 
-    # Mock LLM to avoid Ollama dependency
-    with patch("app.agents.external_threat.get_llm") as mock_get_llm:
-        mock_llm = AsyncMock()
-        mock_llm.ainvoke = AsyncMock(side_effect=Exception("LLM not available"))
-        mock_get_llm.return_value = mock_llm
+    # Mock LLMPort to avoid Ollama dependency
+    mock_llm_port = AsyncMock()
+    mock_llm_port.invoke.return_value = (None, {"llm_prompt": "test"})
 
-        # Mock OSINT to avoid real web search
-        with patch("app.services.threat_intel.osint_search.DDGS") as mock_ddgs:
-            mock_ddgs_instance = MagicMock()
-            mock_ddgs.return_value = mock_ddgs_instance
-            mock_ddgs_instance.text.return_value = []
+    # Mock OSINT to avoid real web search
+    with patch("app.infrastructure.adapters.threat_intel.osint_search.DDGS") as mock_ddgs:
+        mock_ddgs_instance = MagicMock()
+        mock_ddgs.return_value = mock_ddgs_instance
+        mock_ddgs_instance.text.return_value = []
 
-            result = await external_threat_agent(state)
+        config = {"configurable": {"llm_port": mock_llm_port}}
+        result = await external_threat_agent(state, config=config)
 
-            # Should have sources from FATF at minimum
-            assert result["threat_intel"].threat_level > 0.0
-            assert len(result["threat_intel"].sources) >= 1
+        # Should have sources from FATF at minimum
+        assert result["threat_intel"].threat_level > 0.0
+        assert len(result["threat_intel"].sources) >= 1
 
 
 @pytest.mark.integration
@@ -648,18 +646,17 @@ async def test_external_threat_agent_full_integration(
         "explanations": None,
     }
 
-    # Mock LLM only (let providers run real)
-    with patch("app.agents.external_threat.get_llm") as mock_get_llm:
-        mock_llm = AsyncMock()
-        mock_llm.ainvoke = AsyncMock(side_effect=Exception("LLM not available"))
-        mock_get_llm.return_value = mock_llm
+    # Mock LLMPort only (let providers run real)
+    mock_llm_port = AsyncMock()
+    mock_llm_port.invoke.return_value = (None, {"llm_prompt": "test"})
 
-        result = await external_threat_agent(state)
+    config = {"configurable": {"llm_port": mock_llm_port}}
+    result = await external_threat_agent(state, config=config)
 
-        # Should have elevated risk from Russia
-        assert result["threat_intel"].threat_level > 0.0
-        assert len(result["threat_intel"].sources) >= 1
+    # Should have elevated risk from Russia
+    assert result["threat_intel"].threat_level > 0.0
+    assert len(result["threat_intel"].sources) >= 1
 
-        # Verify source names
-        source_names = [s.source_name for s in result["threat_intel"].sources]
-        assert any("elevated_risk" in name or "fatf" in name.lower() for name in source_names)
+    # Verify source names
+    source_names = [s.source_name for s in result["threat_intel"].sources]
+    assert any("elevated_risk" in name or "fatf" in name.lower() for name in source_names)
